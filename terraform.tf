@@ -58,7 +58,7 @@ resource "aws_iam_role" "deploy_role" {
       ]
     })
   }
-  managed_policy_arns = [aws_iam_policy.deploy_access.arn]
+  managed_policy_arns = [aws_iam_policy.state_access.arn, "arn:aws:iam::aws:policy/AdministratorAccess"]
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -82,8 +82,9 @@ resource "aws_iam_role" "deploy_role" {
   })
 }
 
-resource "aws_iam_policy" "deploy_access" {
-  name        = "TerraformDeployAccess-terraform-example"
+# these permissions called out separately for hosting tfstate in a separate locked down account
+resource "aws_iam_policy" "state_access" {
+  name        = "TerraformStateAccess-terraform-example"
   path        = "/"
   description = "Allows access to everything terraform needs (state, lock, deploy role) to deploy"
 
