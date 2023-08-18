@@ -1,0 +1,34 @@
+name: Terraform
+description: Installs and executes terraform with a specific action.
+inputs:
+  terraform_deploy_role:
+    description: "The IAM role to deploy as"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache Terraform Providers
+      id: cache-terraform
+      uses: actions/cache@v3
+      with:
+        path: .terraform
+        key: ${{ runner.os }}-${{ inputs.environment }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+
+    - uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_wrapper: false
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        audience: sts.amazonaws.com # set default value to work around https://github.com/aws-actions/configure-aws-credentials/issues/271#issuecomment-1401481855
+        aws-region: eu-west-2
+        role-to-assume: ${{ inputs.terraform_deploy_role }}
+
+    - name: Terraform Init
+      id: init
+      shell: bash
+      run: |
+        terraform version
+        terraform init -input=false
