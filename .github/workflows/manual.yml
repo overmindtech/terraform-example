@@ -1,0 +1,57 @@
+name: Terraform Manual Deploy
+on:
+  workflow_dispatch:
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # required for checkout
+      id-token: write # mint AWS credentials through OIDC
+      pull-requests: write # create/update a comment
+    concurrency:
+      group: tfstate
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Terraform Init
+        uses: ./.github/actions/terraform_init/
+        with:
+          terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          set -o pipefail -ex
+          terraform plan -compact-warnings -no-color -input=false -lock-timeout=5m -out tfplan 2>&1 \
+            | tee terraform_log
+          terraform show -json tfplan > tfplan.json
+
+      - uses: overmindtech/actions/install-cli@main
+        continue-on-error: true
+        with:
+          version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: overmindtech/actions/submit-plan@main
+        continue-on-error: true
+        id: submit-plan
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+          plan-json: ./tfplan.json
+
+      - uses: overmindtech/actions/start-change@main
+        continue-on-error: true
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve -no-color -input=false -lock-timeout=5m tfplan
+
+      - uses: overmindtech/actions/end-change@main
+        continue-on-error: true
+        if: success() || failure() || cancelled()
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}

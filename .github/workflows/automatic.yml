@@ -1,0 +1,101 @@
+name: Terraform Pull Request
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check -diff
+
+  execute:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # required for checkout
+      id-token: write # mint AWS credentials through OIDC
+      pull-requests: write # create/update a comment
+      actions: read # access artifacts
+    concurrency:
+      group: tfstate
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Terraform Init
+        uses: ./.github/actions/terraform_init/
+        with:
+          terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Terraform Validate
+        if: github.event.action != 'closed'
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        if: github.event.action != 'closed'
+        id: plan
+        run: |
+          set -o pipefail -ex
+          terraform plan -compact-warnings -no-color -input=false -lock-timeout=5m -out tfplan 2>&1 \
+            | tee terraform_log
+          terraform show -json tfplan > tfplan.json
+
+      - name: upload tfplan
+        if: github.event.action != 'closed'
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: tfplan
+
+      - uses: overmindtech/actions/install-cli@main
+        with:
+          version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: overmindtech/actions/submit-plan@main
+        if: github.event.action != 'closed'
+        id: submit-plan
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+          plan-json: ./tfplan.json
+
+      - name: Install prerequisites
+        if: github.event.pull_request.merged == true
+        shell: bash
+        run: |
+          sudo apt install -y netcat-traditional
+
+      - uses: overmindtech/actions/start-change@main
+        if: github.event.pull_request.merged == true
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+      - name: "Deploy marker: Record start_time"
+        if: github.event.pull_request.merged == true
+        run: echo "DEPLOY_START_TIME=$(date +%s)" >> $GITHUB_ENV
+
+      - name: download tfplan
+        if: github.event.pull_request.merged == true
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          name: tfplan
+          pr: ${{ github.event.pull_request.number }}
+
+      - name: Terraform Apply
+        if: github.event.pull_request.merged == true
+        id: apply
+        run: terraform apply -auto-approve -no-color -input=false -lock-timeout=5m tfplan
+
+      - uses: overmindtech/actions/end-change@main
+        if: (success() || failure() || cancelled()) && github.event.pull_request.merged == true
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
