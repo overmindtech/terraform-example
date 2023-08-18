@@ -11,6 +11,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "example" {
 
     filter {}
 
+    expiration {
+      days = 14
+    }
+
     status = "Enabled"
   }
 }
