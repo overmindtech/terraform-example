@@ -2,7 +2,10 @@
 
 This example repo shows how to run terraform on GitHub Actions and automatically submit each PR's changes to [Overmind](https://overmind.tech), reporting back the blast radius as a comment on the PR. You can see that in action in [this PR](https://github.com/overmindtech/terraform-example/pull/5).
 
-![Example Overmind report showing the expected changes and timeline for the example PR](assets/example_report.png)
+![Example Overmind report showing the expected changes and timeline for the example PR](https://github.com/overmindtech/terraform-example/assets/122231433/2674702f-5b39-4f24-8fba-1e0f8d8bdcb6)
+
+Please note: You are unable to view the change in Overmind as it is a change tied to our personal account.
+
 
 # Developer Notes
 
