@@ -17,12 +17,12 @@
 				"hashicorp.terraform"
 			]
 		}
-	}
+	},
 	// configure an AWS profile and bind-mount the existing AWS credentials from the host
-	// "remoteEnv": {
-	// 	"AWS_PROFILE": "terraform-example"
-	// },
-	// "mounts": [
-	// 	"source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind",
-	// ]
+	"remoteEnv": {
+		"AWS_PROFILE": "dev-dylan"
+	},
+	"mounts": [
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind",
+	]
 }

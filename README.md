@@ -6,6 +6,32 @@ This example repo shows how to run terraform on GitHub Actions and automatically
 
 Please note: You are unable to view the change in Overmind as it is a change tied to our personal account.
 
+# Forking this repo
+
+If you would like to use this repo as an example. Follow these steps:
+
+1. Fork the repo
+1. Comment out the S3 section:
+
+```hcl
+terraform {
+  # backend "s3" {
+  #   bucket         = "replaceme-with-a-unique-bucket-name"
+  #   dynamodb_table = "overmind-tf-example-state"
+  #   key            = "terraform-example.tfstate"
+
+  #   region = "eu-west-2"
+  # }
+}
+```
+
+1. Replace all instances of `replaceme-with-a-unique-bucket-name` with a unique bucket name for your environment
+1. Replace `repo:overmindtech/terraform-example:*` with `repo:[YOUR USERNAME]/terraform-example:*`, replacing `[YOUR USERNAME]` with your Github username
+1. Run `terraform init`
+1. Run `terraform plan` to see what resources need to be set up
+1. Run `terraform apply`. This will set up the resources required for storing state]
+1. Un-comment the `backend "s3"` section from `terraform.tf` and run `terraform init -migrate-state`. This will migrate your state from your local device to S3
+1. Run `terraform plan` which should show no changes
 
 # Developer Notes
 

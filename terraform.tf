@@ -8,8 +8,8 @@ provider "aws" {}
 # been deployed
 terraform {
   backend "s3" {
-    bucket         = "overmind-terraform-example"
-    dynamodb_table = "overmind-terraform-example"
+    bucket         = "replaceme-with-a-unique-bucket-name"
+    dynamodb_table = "overmind-tf-example-state"
     key            = "terraform-example.tfstate"
 
     region = "eu-west-2"
@@ -23,11 +23,11 @@ locals {
 }
 
 resource "aws_s3_bucket" "terraform-example-state-bucket" {
-  bucket = "overmind-terraform-example"
+  bucket = "replaceme-with-a-unique-bucket-name"
 }
 
 resource "aws_dynamodb_table" "terraform-example-lock-table" {
-  name         = "overmind-terraform-example"
+  name         = "overmind-tf-example-state"
   billing_mode = "PAY_PER_REQUEST"
   attribute {
     name = "LockID"
@@ -126,12 +126,12 @@ resource "aws_iam_policy" "state_access" {
           "dynamodb:Query",
           "dynamodb:UpdateItem"
         ]
-        Resource = "arn:aws:dynamodb:*:*:table/overmind-terraform-example",
+        Resource = "arn:aws:dynamodb:*:*:table/overmind-tf-example-state",
         Condition = {
           "ForAllValues:StringEquals" = {
             "dynamodb:LeadingKeys" = [
-              "overmind-terraform-example/terraform-example.tfstate",
-              "overmind-terraform-example/terraform-example.tfstate-md5"
+              "overmind-tf-example-state/terraform-example.tfstate",
+              "overmind-tf-example-state/terraform-example.tfstate-md5"
             ]
           }
         }
