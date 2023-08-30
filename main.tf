@@ -1,16 +1,10 @@
+locals {
+    include_loom_example = false
+}
 
-# resource "aws_s3_bucket" "new_bucket" {
-#   bucket = "${var.name}-overmind-terraform-example-new-bucket"
-# }
+# Example of Loom outage configuration
+module "loom" {
+    count = local.include_loom_example ? 1 : 0
 
-# resource "aws_s3_bucket_lifecycle_configuration" "example" {
-#   bucket = aws_s3_bucket.new_bucket.id
-
-#   rule {
-#     id = "rule-1"
-
-#     filter {}
-
-#     status = "Enabled"
-#   }
-# }
+    source = "./modules/loom"
+}

@@ -25,11 +25,11 @@ terraform {
 }
 ```
 
-1. Replace all instances of `replaceme-with-a-unique-bucket-name` with a unique bucket name for your environment
+1. Replace all instances of `replaceme-with-a-unique-bucket-name` in `terraform.tf` with a unique bucket name for your environment
 1. Replace `repo:overmindtech/terraform-example:*` with `repo:[YOUR USERNAME]/terraform-example:*`, replacing `[YOUR USERNAME]` with your Github username
 1. Run `terraform init`
 1. Run `terraform plan` to see what resources need to be set up
-1. Run `terraform apply`. This will set up the resources required for storing state]
+1. Run `terraform apply`. This will set up the resources required for storing state and locks
 1. Un-comment the `backend "s3"` section from `terraform.tf` and run `terraform init -migrate-state`. This will migrate your state from your local device to S3
 1. Run `terraform plan` which should show no changes
 
