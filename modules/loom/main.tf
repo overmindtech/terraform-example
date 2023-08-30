@@ -4,10 +4,10 @@ locals {
 }
 
 module "cloudfront" {
-  source = "terraform-aws-modules/cloudfront/aws"
+  source  = "terraform-aws-modules/cloudfront/aws"
   version = "~> 3.0"
 
-#   aliases = ["${local.subdomain}.${local.domain_name}"]
+  #   aliases = ["${local.subdomain}.${local.domain_name}"]
 
   comment             = "My awesome CloudFront"
   enabled             = true
@@ -104,12 +104,12 @@ module "cloudfront" {
       target_origin_id       = "s3_one"
       viewer_protocol_policy = "redirect-to-https"
 
-      allowed_methods = ["GET", "HEAD", "OPTIONS"]
-      cached_methods  = ["GET", "HEAD"]
-      compress        = true
-      query_string    = true
+      allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+      cached_methods             = ["GET", "HEAD"]
+      compress                   = true
+      query_string               = true
       response_headers_policy_id = aws_cloudfront_response_headers_policy.headers-policy.id
-      
+
       function_association = {
         # Valid keys: viewer-request, viewer-response
         viewer-request = {
@@ -230,8 +230,8 @@ resource "aws_s3_bucket_ownership_controls" "b" {
 }
 
 resource "aws_s3_bucket_acl" "b_acl" {
-  bucket = aws_s3_bucket.b.id
-  acl    = "private"
+  bucket     = aws_s3_bucket.b.id
+  acl        = "private"
   depends_on = [aws_s3_bucket_ownership_controls.b]
 }
 
@@ -259,7 +259,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   comment             = "Some comment"
   default_root_object = "index.html"
 
-#   aliases = ["mysite.example.com", "yoursite.example.com"]
+  #   aliases = ["mysite.example.com", "yoursite.example.com"]
 
   default_cache_behavior {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
@@ -282,10 +282,10 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 
   # Cache behavior with precedence 0
   ordered_cache_behavior {
-    path_pattern     = "/content/immutable/*"
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = local.s3_origin_id
+    path_pattern               = "/content/immutable/*"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD", "OPTIONS"]
+    target_origin_id           = local.s3_origin_id
     response_headers_policy_id = aws_cloudfront_response_headers_policy.headers-policy.id
 
     forwarded_values {
@@ -365,4 +365,140 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
 
     origin_override = true
   }
+}
+
+#
+# ECS & Workloads
+#
+
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+
+  name = "workloads"
+  cidr = "10.0.0.0/16"
+
+  default_security_group_egress = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+
+  azs             = ["eu-west-2a", "eu-west-2b", "eu-west-2c"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+
+  enable_nat_gateway = true
+  enable_vpn_gateway = false
+
+  tags = {
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
+module "ecs" {
+  source = "terraform-aws-modules/ecs/aws"
+
+  cluster_name = "example"
+
+  # Capacity provider
+  fargate_capacity_providers = {
+    FARGATE = {
+      default_capacity_provider_strategy = {
+        weight = 100
+      }
+    }
+  }
+}
+
+resource "aws_ecs_task_definition" "face" {
+  family                   = "facial-recognition"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+
+  container_definitions = jsonencode([
+    {
+      name      = "face-recognition"
+      image     = "harshmanvar/face-detection-tensorjs:slim-amd"
+      cpu       = 256
+      memory    = 512
+      essential = true
+      healthCheck = {
+        command = ["CMD-SHELL", "curl -f http://localhost:1234 || exit 1"]
+      }
+      portMapping = {
+        containerPort = 1234
+        appProtocol   = "http"
+      }
+    },
+  ])
+}
+
+resource "aws_ecs_service" "face" {
+  name            = "facial-recognition"
+  cluster         = module.ecs.cluster_id
+  task_definition = aws_ecs_task_definition.face.arn
+  desired_count   = 1
+
+  network_configuration {
+    assign_public_ip = false
+    security_groups  = [module.vpc.default_security_group_id]
+    subnets          = module.vpc.private_subnets
+  }
+
+  # load_balancer {
+  #   target_group_arn = aws_lb_target_group.foo.arn
+  #   container_name   = "mongo"
+  #   container_port   = 8080
+  # }
+}
+
+resource "aws_ecs_task_definition" "visit_counter" {
+  family                   = "visit-counter"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+
+  container_definitions = jsonencode([
+    {
+      name      = "visit-counter"
+      image     = "yeasy/simple-web:latest"
+      cpu       = 256
+      memory    = 512
+      essential = true
+      healthCheck = {
+        command = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+      }
+      portMapping = {
+        containerPort = 80
+        appProtocol   = "http"
+      }
+    },
+  ])
+}
+
+
+resource "aws_ecs_service" "visit_counter" {
+  name            = "visit-counter"
+  cluster         = module.ecs.cluster_id
+  task_definition = aws_ecs_task_definition.visit_counter.arn
+  desired_count   = 1
+
+  network_configuration {
+    assign_public_ip = false
+    security_groups  = [module.vpc.default_security_group_id]
+    subnets          = module.vpc.private_subnets
+  }
+
+  # load_balancer {
+  #   target_group_arn = aws_lb_target_group.foo.arn
+  #   container_name   = "mongo"
+  #   container_port   = 8080
+  # }
 }
