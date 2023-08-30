@@ -1,9 +1,7 @@
 # This file contains resources that allow terraform running on GitHub Actions
 # see https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services for details
 
-provider "aws" {
-  region = "us-east-1"
-}
+provider "aws" {}
 
 # Disable this temporarily during bootstrapping and use `terraform init
 # -migrate-state` to migrate the local state into S3 after all resources have
