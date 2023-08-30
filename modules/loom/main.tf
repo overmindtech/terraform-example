@@ -96,19 +96,6 @@ module "cloudfront" {
 
     # This is id for SecurityHeadersPolicy copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
     response_headers_policy_id = "67f7725c-6f97-4210-82d7-5512b31e9d03"
-
-    lambda_function_association = {
-
-      # Valid keys: viewer-request, origin-request, viewer-response, origin-response
-      viewer-request = {
-        lambda_arn   = module.lambda_function.lambda_function_qualified_arn
-        include_body = true
-      }
-
-      origin-request = {
-        lambda_arn = module.lambda_function.lambda_function_qualified_arn
-      }
-    }
   }
 
   ordered_cache_behavior = [
@@ -171,46 +158,6 @@ module "s3_one" {
 #############################################
 # Using packaged function from Lambda module
 #############################################
-
-locals {
-  package_url = "https://raw.githubusercontent.com/terraform-aws-modules/terraform-aws-lambda/master/examples/fixtures/python3.8-zip/existing_package.zip"
-  downloaded  = "downloaded_package_${md5(local.package_url)}.zip"
-}
-
-resource "null_resource" "download_package" {
-  triggers = {
-    downloaded = local.downloaded
-  }
-
-  provisioner "local-exec" {
-    command = "curl -L -o ${local.downloaded} ${local.package_url}"
-  }
-}
-
-module "lambda_function" {
-  source  = "terraform-aws-modules/lambda/aws"
-  version = "~> 4.0"
-
-  function_name = "${random_pet.this.id}-lambda"
-  description   = "My awesome lambda function"
-  handler       = "index.lambda_handler"
-  runtime       = "python3.8"
-
-  publish        = true
-  lambda_at_edge = true
-
-  create_package         = false
-  local_existing_package = local.downloaded
-
-  # @todo: Missing CloudFront as allowed_triggers?
-
-  #    allowed_triggers = {
-  #      AllowExecutionFromAPIGateway = {
-  #        service = "apigateway"
-  #        arn     = module.api_gateway.apigatewayv2_api_execution_arn
-  #      }
-  #    }
-}
 
 data "aws_iam_policy_document" "s3_policy" {
   # Origin Access Identities
