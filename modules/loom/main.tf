@@ -355,7 +355,7 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
     access_control_allow_credentials = true
 
     access_control_allow_headers {
-      items = ["test"]
+      items = ["test", "Set-Cookie"]
     }
 
     access_control_allow_methods {
