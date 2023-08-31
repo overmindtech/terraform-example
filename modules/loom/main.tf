@@ -37,6 +37,9 @@ module "cloudfront" {
   }
 
   origin = {
+    # views = {
+    #   domain_name = aws_route53_record.visit_counter.name
+    # }
     appsync = {
       domain_name = "appsync.${local.domain_name}"
       custom_origin_config = {
@@ -422,6 +425,21 @@ resource "aws_lb" "main" {
   enable_deletion_protection = false 
 }
 
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Nothing here..."
+      status_code  = "200"
+    }
+  }
+}
+
 data "aws_route53_zone" "demo" {
   name         = "overmind-terraform-example.com."
 }
@@ -436,7 +454,7 @@ resource "aws_ecs_task_definition" "face" {
 
   container_definitions = jsonencode([
     {
-      name      = "face-recognition"
+      name      = "facial-recognition"
       image     = "harshmanvar/face-detection-tensorjs:slim-amd"
       cpu       = 256
       memory    = 512
@@ -481,24 +499,29 @@ resource "aws_ecs_service" "face" {
   load_balancer {
     target_group_arn = aws_lb_target_group.face.arn
     container_name   = "facial-recognition"
-    container_port   = 80
+    container_port   = 1234
   }
 }
 
-resource "aws_lb_listener" "face" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = "80"
-  protocol          = "HTTP"
+resource "aws_lb_listener_rule" "face" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 99
 
-  default_action {
+  action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.face.arn
+  }
+
+  condition {
+    host_header {
+      values = [aws_route53_record.face.name]
+    }
   }
 }
 
 resource "aws_lb_target_group" "face" {
   name     = "facial-recognition"
-  port     = 80
+  port     = 1234
   protocol = "HTTP"
   target_type = "ip"
   vpc_id      = module.vpc.vpc_id
@@ -571,14 +594,19 @@ resource "aws_ecs_service" "visit_counter" {
   }
 }
 
-resource "aws_lb_listener" "visit_counter" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = "80"
-  protocol          = "HTTP"
+resource "aws_lb_listener_rule" "visit_counter" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 100
 
-  default_action {
+  action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.visit_counter.arn
+  }
+
+  condition {
+    host_header {
+      values = [aws_route53_record.visit_counter.name]
+    }
   }
 }
 
