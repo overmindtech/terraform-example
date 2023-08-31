@@ -384,7 +384,28 @@ module "vpc" {
     {
       from_port   = 0
       to_port     = 0
-      protocol    = "-1"
+      protocol    = "ALL"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+
+  default_security_group_ingress = [
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      from_port   = 1234
+      to_port     = 1234
+      protocol    = "tcp"
       cidr_blocks = "0.0.0.0/0"
     }
   ]
@@ -418,11 +439,11 @@ module "ecs" {
 }
 
 resource "aws_lb" "main" {
-  name               = "main"
-  internal           = false
-  load_balancer_type = "application"
-  subnets            = module.vpc.public_subnets
-  enable_deletion_protection = false 
+  name                       = "main"
+  internal                   = false
+  load_balancer_type         = "application"
+  subnets                    = module.vpc.public_subnets
+  enable_deletion_protection = false
 }
 
 resource "aws_lb_listener" "http" {
@@ -431,7 +452,7 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
-    type             = "fixed-response"
+    type = "fixed-response"
     fixed_response {
       content_type = "text/plain"
       message_body = "Nothing here..."
@@ -441,7 +462,7 @@ resource "aws_lb_listener" "http" {
 }
 
 data "aws_route53_zone" "demo" {
-  name         = "overmind-terraform-example.com."
+  name = "overmind-terraform-example.com."
 }
 
 
@@ -449,31 +470,31 @@ resource "aws_ecs_task_definition" "face" {
   family                   = "facial-recognition"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = 256
-  memory                   = 512
+  cpu                      = 1024
+  memory                   = 2048
 
   container_definitions = jsonencode([
     {
       name      = "facial-recognition"
       image     = "harshmanvar/face-detection-tensorjs:slim-amd"
-      cpu       = 256
-      memory    = 512
+      cpu       = 1024
+      memory    = 2048
       essential = true
       healthCheck = {
-        command = ["CMD-SHELL", "curl -f http://localhost:1234 || exit 1"]
+        command  = ["CMD-SHELL", "wget -q --spider localhost:1234"]
         interval = 30
         retries  = 3
         timeout  = 5
       }
-      mountPoints  = []
-      environment  = []
+      mountPoints = []
+      environment = []
       portMappings = [
         {
           containerPort = 1234
           appProtocol   = "http"
         }
       ]
-      volumesFrom  = []
+      volumesFrom = []
     },
   ])
 }
@@ -520,11 +541,18 @@ resource "aws_lb_listener_rule" "face" {
 }
 
 resource "aws_lb_target_group" "face" {
-  name     = "facial-recognition"
-  port     = 1234
-  protocol = "HTTP"
+  name        = "facial-recognition"
+  port        = 1234
+  protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = module.vpc.vpc_id
+
+  health_check {
+    enabled           = true
+    timeout           = 30
+    interval          = 40
+    healthy_threshold = 2
+  }
 }
 
 resource "aws_route53_record" "face" {
@@ -550,24 +578,23 @@ resource "aws_ecs_task_definition" "visit_counter" {
       memory    = 512
       essential = true
       healthCheck = {
-        command = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+        command  = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
         interval = 30
         retries  = 3
         timeout  = 5
       }
-      mountPoints  = []
-      environment  = []
+      mountPoints = []
+      environment = []
       portMappings = [
         {
           containerPort = 80
           appProtocol   = "http"
         }
       ]
-      volumesFrom  = []
+      volumesFrom = []
     },
   ])
 }
-
 
 resource "aws_ecs_service" "visit_counter" {
   name            = "visit-counter"
@@ -576,9 +603,9 @@ resource "aws_ecs_service" "visit_counter" {
   desired_count   = 1
 
   network_configuration {
-    assign_public_ip = true
+    assign_public_ip = false
     security_groups  = [module.vpc.default_security_group_id]
-    subnets          = module.vpc.public_subnets
+    subnets          = module.vpc.private_subnets
   }
 
   capacity_provider_strategy {
@@ -611,9 +638,9 @@ resource "aws_lb_listener_rule" "visit_counter" {
 }
 
 resource "aws_lb_target_group" "visit_counter" {
-  name     = "visit-counter"
-  port     = 80
-  protocol = "HTTP"
+  name        = "visit-counter"
+  port        = 80
+  protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = module.vpc.vpc_id
 }
@@ -624,4 +651,53 @@ resource "aws_route53_record" "visit_counter" {
   type    = "CNAME"
   ttl     = 300
   records = [aws_lb.main.dns_name]
+}
+
+resource "aws_cloudfront_distribution" "visit_counter" {
+  enabled             = true
+  is_ipv6_enabled     = true
+  default_root_object = "index.html"
+
+  origin {
+    domain_name = aws_route53_record.visit_counter.name
+    origin_id   = "visit-counter-ecs"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.1", "TLSv1.2"]
+    }
+  }
+
+  default_cache_behavior {
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "visit-counter-ecs"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy     = "allow-all"
+    min_ttl                    = 0
+    default_ttl                = 3600
+    max_ttl                    = 86400
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.headers-policy.id
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+      locations        = []
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
 }
