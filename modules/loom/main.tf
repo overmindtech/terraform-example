@@ -414,6 +414,19 @@ module "ecs" {
   }
 }
 
+resource "aws_lb" "main" {
+  name               = "main"
+  internal           = false
+  load_balancer_type = "application"
+  subnets            = module.vpc.public_subnets
+  enable_deletion_protection = false 
+}
+
+data "aws_route53_zone" "demo" {
+  name         = "overmind-terraform-example.com."
+}
+
+
 resource "aws_ecs_task_definition" "face" {
   family                   = "facial-recognition"
   requires_compatibilities = ["FARGATE"]
@@ -430,11 +443,19 @@ resource "aws_ecs_task_definition" "face" {
       essential = true
       healthCheck = {
         command = ["CMD-SHELL", "curl -f http://localhost:1234 || exit 1"]
+        interval = 30
+        retries  = 3
+        timeout  = 5
       }
-      portMapping = {
-        containerPort = 1234
-        appProtocol   = "http"
-      }
+      mountPoints  = []
+      environment  = []
+      portMappings = [
+        {
+          containerPort = 1234
+          appProtocol   = "http"
+        }
+      ]
+      volumesFrom  = []
     },
   ])
 }
@@ -451,11 +472,44 @@ resource "aws_ecs_service" "face" {
     subnets          = module.vpc.private_subnets
   }
 
-  # load_balancer {
-  #   target_group_arn = aws_lb_target_group.foo.arn
-  #   container_name   = "mongo"
-  #   container_port   = 8080
-  # }
+  capacity_provider_strategy {
+    base              = 0
+    capacity_provider = "FARGATE"
+    weight            = 100
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.face.arn
+    container_name   = "facial-recognition"
+    container_port   = 80
+  }
+}
+
+resource "aws_lb_listener" "face" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.face.arn
+  }
+}
+
+resource "aws_lb_target_group" "face" {
+  name     = "facial-recognition"
+  port     = 80
+  protocol = "HTTP"
+  target_type = "ip"
+  vpc_id      = module.vpc.vpc_id
+}
+
+resource "aws_route53_record" "face" {
+  zone_id = data.aws_route53_zone.demo.zone_id
+  name    = "face.${data.aws_route53_zone.demo.name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_lb.main.dns_name]
 }
 
 resource "aws_ecs_task_definition" "visit_counter" {
@@ -474,11 +528,19 @@ resource "aws_ecs_task_definition" "visit_counter" {
       essential = true
       healthCheck = {
         command = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+        interval = 30
+        retries  = 3
+        timeout  = 5
       }
-      portMapping = {
-        containerPort = 80
-        appProtocol   = "http"
-      }
+      mountPoints  = []
+      environment  = []
+      portMappings = [
+        {
+          containerPort = 80
+          appProtocol   = "http"
+        }
+      ]
+      volumesFrom  = []
     },
   ])
 }
@@ -491,14 +553,47 @@ resource "aws_ecs_service" "visit_counter" {
   desired_count   = 1
 
   network_configuration {
-    assign_public_ip = false
+    assign_public_ip = true
     security_groups  = [module.vpc.default_security_group_id]
-    subnets          = module.vpc.private_subnets
+    subnets          = module.vpc.public_subnets
   }
 
-  # load_balancer {
-  #   target_group_arn = aws_lb_target_group.foo.arn
-  #   container_name   = "mongo"
-  #   container_port   = 8080
-  # }
+  capacity_provider_strategy {
+    base              = 0
+    capacity_provider = "FARGATE"
+    weight            = 100
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.visit_counter.arn
+    container_name   = "visit-counter"
+    container_port   = 80
+  }
+}
+
+resource "aws_lb_listener" "visit_counter" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.visit_counter.arn
+  }
+}
+
+resource "aws_lb_target_group" "visit_counter" {
+  name     = "visit-counter"
+  port     = 80
+  protocol = "HTTP"
+  target_type = "ip"
+  vpc_id      = module.vpc.vpc_id
+}
+
+resource "aws_route53_record" "visit_counter" {
+  zone_id = data.aws_route53_zone.demo.zone_id
+  name    = "visits.${data.aws_route53_zone.demo.name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_lb.main.dns_name]
 }
