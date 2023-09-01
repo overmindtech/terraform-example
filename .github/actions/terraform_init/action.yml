@@ -20,7 +20,7 @@ runs:
         terraform_wrapper: false
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
+      uses: aws-actions/configure-aws-credentials@v3
       with:
         audience: sts.amazonaws.com # set default value to work around https://github.com/aws-actions/configure-aws-credentials/issues/271#issuecomment-1401481855
         aws-region: eu-west-2
