@@ -355,7 +355,7 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
     access_control_allow_credentials = true
 
     access_control_allow_headers {
-      items = ["test", "X-Example-Header"]
+      items = ["test", "X-Example-Header", "Custom-Header-1"]
     }
 
     access_control_allow_methods {
@@ -481,7 +481,7 @@ resource "aws_ecs_task_definition" "face" {
       memory    = 2048
       essential = true
       healthCheck = {
-        command  = ["CMD-SHELL", "wget -q --spider localhost:8000"]
+        command  = ["CMD-SHELL", "wget -q --spider localhost:8080"]
         interval = 30
         retries  = 3
         timeout  = 5
