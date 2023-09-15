@@ -103,7 +103,8 @@ resource "aws_iam_policy" "state_access" {
         Sid    = "TFStateList",
         Effect = "Allow"
         Action = [
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetEncryptionConfiguration"
         ]
         Resource = aws_s3_bucket.terraform-example-state-bucket.arn,
       },
