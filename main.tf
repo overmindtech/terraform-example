@@ -1,5 +1,5 @@
 locals {
-  include_loom_example = true
+  include_loom_example = false
 }
 
 # Example of Loom outage configuration
