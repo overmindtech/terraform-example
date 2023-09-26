@@ -9,7 +9,7 @@ module "cloudfront" {
 
   #   aliases = ["${local.subdomain}.${local.domain_name}"]
 
-  comment             = "My awesome CloudFront"
+  comment             = "Here we go"
   enabled             = true
   http_version        = "http2and3"
   is_ipv6_enabled     = true
