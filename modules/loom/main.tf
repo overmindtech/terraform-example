@@ -352,7 +352,7 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
   comment = "This inforces some appliction-source security headers"
 
   cors_config {
-    access_control_allow_credentials = true
+    access_control_allow_credentials = false
 
     access_control_allow_headers {
       items = ["X-Example-Header"]
