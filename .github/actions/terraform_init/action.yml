@@ -15,7 +15,7 @@ runs:
         path: .terraform
         key: ${{ runner.os }}-${{ inputs.environment }}-${{ hashFiles('**/.terraform.lock.hcl') }}
 
-    - uses: hashicorp/setup-terraform@v2
+    - uses: hashicorp/setup-terraform@v3
       with:
         terraform_wrapper: false
 
