@@ -481,7 +481,7 @@ resource "aws_ecs_task_definition" "face" {
       memory    = 2048
       essential = true
       healthCheck = {
-        command  = ["CMD-SHELL", "wget -q --spider localhost:8080"]
+        command  = ["CMD-SHELL", "wget -q --spider localhost:8888"]
         interval = 30
         retries  = 3
         timeout  = 5
@@ -578,7 +578,7 @@ resource "aws_ecs_task_definition" "visit_counter" {
       memory    = 512
       essential = true
       healthCheck = {
-        command  = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+        command  = ["CMD-SHELL", "curl -f http://localhost:8888 || exit 1"]
         interval = 30
         retries  = 3
         timeout  = 5
