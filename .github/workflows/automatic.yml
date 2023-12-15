@@ -50,7 +50,7 @@ jobs:
 
       - name: upload tfplan
         if: github.event.action != 'closed'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: tfplan
