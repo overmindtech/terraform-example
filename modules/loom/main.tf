@@ -5,7 +5,7 @@ locals {
 
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
-  version = "2.9.3"
+  version = "~> 3.0"
 
   #   aliases = ["${local.subdomain}.${local.domain_name}"]
 
@@ -46,7 +46,7 @@ module "cloudfront" {
         http_port              = 80
         https_port             = 443
         origin_protocol_policy = "match-viewer"
-        origin_ssl_protocols   = ["TLSv1", "TLSv1.1", "TLSv1.2"]
+        origin_ssl_protocols   = ["TLSv1", "TLSv1.2"]
       }
 
       custom_header = [
