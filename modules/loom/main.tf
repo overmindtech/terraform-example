@@ -5,7 +5,7 @@ locals {
 
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
-  version = "~> 3.0"
+  version = "2.9.3"
 
   #   aliases = ["${local.subdomain}.${local.domain_name}"]
 
