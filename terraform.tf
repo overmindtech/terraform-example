@@ -85,7 +85,7 @@ resource "aws_iam_role" "deploy_role" {
 # these permissions called out separately for hosting tfstate in a separate locked down account
 resource "aws_iam_policy" "state_access" {
   name        = "TerraformStateAccess-terraform-example"
-  path        = "/"
+  path        = "/something"
   description = "Allows access to everything terraform needs (state, lock, deploy role) to deploy"
 
   policy = jsonencode({
