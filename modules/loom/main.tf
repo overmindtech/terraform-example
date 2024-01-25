@@ -152,7 +152,7 @@ data "aws_cloudfront_log_delivery_canonical_user_id" "cloudfront" {}
 
 module "s3_one" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "~> 3.0"
+  version = "~> 4.0"
 
   bucket        = "s3-one-${random_pet.this.id}"
   force_destroy = true
