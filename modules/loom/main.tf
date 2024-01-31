@@ -105,7 +105,7 @@ module "cloudfront" {
 
   ordered_cache_behavior = [
     {
-      path_pattern           = "/static/*"
+      path_pattern           = "*"
       target_origin_id       = "s3_one"
       viewer_protocol_policy = "redirect-to-https"
 
