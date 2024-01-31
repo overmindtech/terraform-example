@@ -17,15 +17,19 @@
 </p>
 
 <p align="center">
-  <a href="https://overmind.tech/how-it-work">📖 How it works</a> | <a href="https://app.overmind.tech/api/auth/signup">🚀 Sign up</a> | <a href="https://app.overmind.tech/playground">💻 Playground</a> | <a href="https://www.linkedin.com/company/overmindtech/">🙌 Follow us</a>
+  <a href="https://vimeo.com/903381683">🎥 Watch a demo</a> | <a href="https://overmind.tech/how-it-work">📖 How it works</a> | <a href="https://app.overmind.tech/api/auth/signup">🚀 Sign up</a> | <a href="https://app.overmind.tech/playground">💻 Playground</a> | <a href="https://www.linkedin.com/company/overmindtech/">🙌 Follow us</a>
 </p>
 
+<br/>
+
+This example repo shows how to run terraform on GitHub Actions and automatically submit each PR's changes to [Overmind](https://overmind.tech), reporting back the blast radius as a comment on the PR. You can see that in action in [this PR](https://github.com/overmindtech/terraform-example/pull/57).
+
+<br/>
+
+![Example Overmind report showing the expected changes and timeline for the example PR](https://github.com/overmindtech/terraform-example/blob/6d7240aec15b0992901fabe56be25c789b636cbb/assets/overmind%20risk%20.gif)
+
 <br>
 
-This example repo shows how to run terraform on GitHub Actions and automatically submit each PR's changes to [Overmind](https://overmind.tech), reporting back the blast radius as a comment on the PR. You can see that in action in [this PR](https://github.com/overmindtech/terraform-example/pull/5).
-<br>
-![Example Overmind report showing the expected changes and timeline for the example PR](https://github.com/overmindtech/terraform-example/assets/122231433/2674702f-5b39-4f24-8fba-1e0f8d8bdcb6)
-<br>
 Please note: You are unable to view the change in Overmind as it is a change tied to our personal account.
 
 # Forking this repo
