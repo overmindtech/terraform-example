@@ -53,10 +53,12 @@ module "cloudfront" {
         {
           name  = "X-Forwarded-Scheme"
           value = "https"
+          override = true
         },
         {
           name  = "X-Frame-Options"
           value = "SAMEORIGIN"
+          override = true
         }
       ]
 
