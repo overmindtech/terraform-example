@@ -543,7 +543,7 @@ resource "aws_lb_target_group" "face" {
   name        = "facial-recognition"
   port        = 1234
   protocol    = "HTTP"
-  target_type = "ip"
+  target_type = "instance"  # Change to "instance" for IPv6
   vpc_id      = module.vpc.vpc_id
 
   health_check {
@@ -557,7 +557,7 @@ resource "aws_lb_target_group" "face" {
 resource "aws_route53_record" "face" {
   zone_id = data.aws_route53_zone.demo.zone_id
   name    = "face.${data.aws_route53_zone.demo.name}"
-  type    = "CNAME"
+  type    = "AAAA" # Create an IPv6 record
   ttl     = 300
   records = [aws_lb.main.dns_name]
 }
