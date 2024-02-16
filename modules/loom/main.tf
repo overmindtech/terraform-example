@@ -586,7 +586,7 @@ resource "aws_ecs_task_definition" "visit_counter" {
       environment = []
       portMappings = [
         {
-          containerPort = 80
+          containerPort = 8080
           appProtocol   = "http"
         }
       ]
