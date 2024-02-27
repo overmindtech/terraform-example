@@ -587,7 +587,7 @@ resource "aws_ecs_task_definition" "visit_counter" {
       portMappings = [
         {
           containerPort = 8080
-          appProtocol   = "http"
+          appProtocol   = "https"
         }
       ]
       volumesFrom = []
