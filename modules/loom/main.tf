@@ -198,7 +198,7 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
 }
 
 ########
-# Test
+# Test 1
 ########
 
 resource "aws_s3_bucket_notification" "prod-bucket-notification" {
@@ -209,6 +209,20 @@ resource "aws_s3_bucket_notification" "prod-bucket-notification" {
     events        = ["s3:ObjectCreated:*"]
     filter_prefix = "input/"
     filter_suffix = ".csv"
+  }
+}
+########
+# Test 2
+########
+
+resource "aws_s3_bucket_notification" "prod-bucket-notification-new" {
+  bucket   = module.s3_one.s3_bucket_id
+
+  queue {
+    queue_arn     = "queue-arn"
+    events        = ["s3:ObjectCreated:*"]
+    filter_prefix = "input/"
+    filter_suffix = ".txt"
   }
 }
 
