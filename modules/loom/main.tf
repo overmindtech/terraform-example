@@ -448,7 +448,7 @@ resource "aws_vpc" "vpc2" {
   # Other VPC settings...
 }
 
-resource "aws_vpc" "vpc3" {
+resource "aws_vpc" "new_vpc3" {
   cidr_block = "10.2.0.0/16"
   # Other VPC settings...
 }
@@ -461,8 +461,7 @@ resource "aws_vpc_peering_connection" "vpc1_to_vpc2" {
 
 resource "aws_vpc_peering_connection" "vpc1_to_vpc3" {
   vpc_id        = aws_vpc.vpc1.id
-  peer_vpc_id   = aws_vpc.vpc3.id
-  # peer_owner_id = "540044833068" 
+  peer_vpc_id   = aws_vpc.vpc2.id
   auto_accept   = true
 }
 
