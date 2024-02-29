@@ -701,3 +701,40 @@ resource "aws_cloudfront_distribution" "visit_counter" {
     cloudfront_default_certificate = true
   }
 }
+
+module "web_server_security_group" {
+  source      = "terraform-aws-modules/security-group/aws"
+  name        = "web_server_security_group"
+  description = "Security group for web server instances"
+  vpc_id      = module.vpc.vpc_id # Replace with your VPC ID
+
+  # Ingress rules (allow incoming traffic)
+  ingress_cidr_blocks = ["0.0.0.0/0"]  # Example: Allow all incoming traffic
+  ingress_rules = [
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      description = "HTTP traffic"
+    },
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      description = "HTTPS traffic"
+    },
+    # Add more rules as needed
+  ]
+
+  # Egress rules (allow outgoing traffic)
+  egress_cidr_blocks = ["0.0.0.0/0"]  # Example: Allow all outgoing traffic
+  egress_rules = [
+    {
+      from_port   = 0
+      to_port     = 65535
+      protocol    = "-1"  # All protocols
+      description = "Allow all outbound traffic"
+    },
+    # Add more rules as needed
+  ]
+}
