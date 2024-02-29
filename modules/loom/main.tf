@@ -710,7 +710,7 @@ resource "aws_launch_template" "my_launch_template" {
 }
 
 # Create a Target Group
-resource "aws_lb_target_group" "my_target_group" {
+resource "aws_lb_target_group" "my_new_target_group" {
   name        = "my-new-target-group"
   port        = 80
   protocol    = "HTTP"
