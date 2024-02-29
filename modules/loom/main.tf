@@ -453,6 +453,19 @@ resource "aws_vpc" "vpc3" {
   # Other VPC settings...
 }
 
+resource "aws_vpc_peering_connection" "vpc1_to_vpc2" {
+  vpc_id        = aws_vpc.vpc1.id
+  peer_vpc_id   = aws_vpc.vpc2.id
+  auto_accept   = true
+}
+
+resource "aws_vpc_peering_connection" "vpc1_to_vpc3" {
+  vpc_id        = aws_vpc.vpc1.id
+  peer_vpc_id   = aws_vpc.vpc3.id
+  # peer_owner_id = "540044833068" 
+  auto_accept   = true
+}
+
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
 
