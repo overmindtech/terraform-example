@@ -701,27 +701,3 @@ resource "aws_cloudfront_distribution" "visit_counter" {
     cloudfront_default_certificate = true
   }
 }
-
-module "web_server_security_group" {
-  source      = "terraform-aws-modules/security-group/aws"
-  name        = "web_server_security_group"
-  description = "Security group for web server instances"
-  vpc_id      = "vpc-04eb3a738ef8488db"
-
-  # Ingress rules (allow incoming traffic)
-  ingress_cidr_blocks      = ["10.10.0.0/16"]
-  ingress_rules            = ["https-443-tcp"]
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 8080
-      to_port     = 8090
-      protocol    = "tcp"
-      description = "User-service ports"
-      cidr_blocks = "10.10.0.0/16"
-    },
-    {
-      rule        = "postgresql-tcp"
-      cidr_blocks = "0.0.0.0/0"
-    },
-  ]
-}
