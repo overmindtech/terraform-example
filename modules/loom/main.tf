@@ -709,6 +709,17 @@ resource "aws_launch_template" "my_launch_template" {
   instance_type = "t2.micro"
 }
 
+# Create a Target Group
+resource "aws_lb_target_group" "my_target_group" {
+  name        = "my-new-target-group"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = "vpc-12345678"  # Replaced with VPC ID
+  
+  health_check {
+    path = "/"
+    }
+  }
 
 # Create an Auto Scaling Group
 resource "aws_autoscaling_group" "my_asg" {
