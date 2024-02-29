@@ -709,24 +709,19 @@ module "web_server_security_group" {
   vpc_id      = "vpc-04eb3a738ef8488db"
 
   # Ingress rules (allow incoming traffic)
-  ingress_rules = [
+  ingress_cidr_blocks      = ["10.10.0.0/16"]
+  ingress_rules            = ["https-443-tcp"]
+  ingress_with_cidr_blocks = [
     {
-      from_port   = 80
-      to_port     = 80
+      from_port   = 8080
+      to_port     = 8090
       protocol    = "tcp"
-      cidr_blocks = "0.0.0.0/0"
-      description = "HTTP traffic"
+      description = "User-service ports"
+      cidr_blocks = "10.10.0.0/16"
     },
-  ]
-
-  # Egress rules (allow outgoing traffic)
-  egress_rules = [
     {
-      from_port   = 0
-      to_port     = 65535
-      protocol    = "tcp"
+      rule        = "postgresql-tcp"
       cidr_blocks = "0.0.0.0/0"
-      description = "Allow all outbound traffic"
     },
   ]
 }
