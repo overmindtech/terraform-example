@@ -728,7 +728,7 @@ resource "aws_autoscaling_group" "my_asg" {
   min_size             = 1
   max_size             = 6
   desired_capacity     = 2
-  target_group_arns    = [aws_lb_target_group.my_target_group.arn]
+  target_group_arns    = [aws_lb_target_group.visit_counter.arn]
   availability_zones   = ["eu-west-2a"]  # Replace with your desired AZs
   health_check_type    = "EC2"
   health_check_grace_period = 300
