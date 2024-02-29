@@ -198,6 +198,21 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
 }
 
 ########
+# Test
+########
+
+resource "aws_s3_bucket_notification" "prod-bucket-notification" {
+  bucket   = module.s3_one.s3_bucket_id
+
+  queue {
+    queue_arn     = "queue-arn"
+    events        = ["s3:ObjectCreated:*"]
+    filter_prefix = "input/"
+    filter_suffix = ".csv"
+  }
+}
+
+########
 # Extra
 ########
 
