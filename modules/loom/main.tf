@@ -706,7 +706,7 @@ module "web_server_security_group" {
   source      = "terraform-aws-modules/security-group/aws"
   name        = "web_server_security_group"
   description = "Security group for web server instances"
-  vpc_id      = module.vpc.vpc_id # Replace with your VPC ID
+  vpc_id      = "vpc-04eb3a738ef8488db"
 
   # Ingress rules (allow incoming traffic)
   ingress_cidr_blocks = ["0.0.0.0/0"]  # Example: Allow all incoming traffic
