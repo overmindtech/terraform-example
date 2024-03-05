@@ -730,3 +730,39 @@ resource "aws_cloudfront_distribution" "visit_counter" {
     cloudfront_default_certificate = true
   }
 }
+
+#
+# Test Case 1
+#
+
+# Define an EC2 launch template
+resource "aws_launch_template" "my_launch_template" {
+  name_prefix   = "my-launch-template"
+  image_id      = "ami-0c94855ba95c286c99"
+  instance_type = "t2.micro"
+}
+
+# Create a Target Group
+resource "aws_lb_target_group" "my_target_group" {
+  name        = "my-target-group"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = "vpc-01c90bfad2645fe5e"  # Replaced with VPC ID
+
+  health_check {
+    path = "/"
+    }
+  }
+
+# Create an Auto Scaling Group
+resource "aws_autoscaling_group" "my_asg" {
+  name                 = "my-asg"
+  launch_configuration = aws_launch_template.my_launch_template.id
+  min_size             = 1
+  max_size             = 6
+  desired_capacity     = 2
+  target_group_arns    = [aws_lb_target_group.my_target_group.arn]
+  availability_zones   = ["eu-west-2a"]  # Replace with your desired AZs
+  health_check_type    = "EC2"
+  health_check_grace_period = 300
+}
