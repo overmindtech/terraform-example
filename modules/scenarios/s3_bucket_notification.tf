@@ -16,6 +16,19 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
     # filter_suffix = ".log"
   }
 }
+
+resource "aws_s3_bucket_notification" "new_bucket_notification" {
+  bucket = aws_s3_bucket.my_bucket.id
+
+  queue {
+    queue_arn     = aws_sqs_queue.my_queue.arn
+    events        = ["s3:ObjectCreated:*"]
+    # Optionally specify a filter
+    # filter_prefix = "logs/"
+    # filter_suffix = ".log"
+  }
+}
+
 resource "aws_sqs_queue_policy" "my_queue_policy" {
   queue_url = aws_sqs_queue.my_queue.id
 
