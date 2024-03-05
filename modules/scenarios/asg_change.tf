@@ -21,7 +21,7 @@ resource "aws_lb_target_group" "my_target_group" {
     }
   }
 
-# Create a second Target Group
+  # Create a second Target Group
 resource "aws_lb_target_group" "my_new_target_group" {
   name        = "asg-new-change-tg"
   port        = 80
@@ -39,7 +39,7 @@ resource "aws_autoscaling_group" "my_asg" {
   min_size             = 0
   max_size             = 2
   desired_capacity     = 1
-  target_group_arns    = [aws_lb_target_group.my_new_target_group.arn]
+  target_group_arns    = [aws_lb_target_group.my_target_group.arn]
   availability_zones   = ["eu-west-2a"]  # Replace with your desired AZs
   health_check_type    = "EC2"
   health_check_grace_period = 300
