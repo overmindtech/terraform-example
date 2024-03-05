@@ -747,7 +747,7 @@ resource "aws_lb_target_group" "my_target_group" {
   name        = "my-target-group"
   port        = 80
   protocol    = "HTTP"
-  vpc_id      = "vpc-12345678"  # Replaced with VPC ID
+  vpc_id      = "vpc-01c90bfad2645fe5e"  # Replaced with VPC ID
 
   health_check {
     path = "/"
@@ -757,6 +757,7 @@ resource "aws_lb_target_group" "my_target_group" {
 # Create an Auto Scaling Group
 resource "aws_autoscaling_group" "my_asg" {
   name                 = "my-asg"
+  launch_configuration = aws_launch_template.my_launch_template.id
   min_size             = 1
   max_size             = 6
   desired_capacity     = 2
