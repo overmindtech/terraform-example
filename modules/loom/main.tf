@@ -738,7 +738,7 @@ resource "aws_cloudfront_distribution" "visit_counter" {
 # Define an EC2 launch template
 resource "aws_launch_template" "my_launch_template" {
   name_prefix   = "my-launch-template"
-  image_id      = "ami-0c94855ba95c286c99"
+  image_id      = "ami-0171207a7acd2a570"
   instance_type = "t2.micro"
 }
 
