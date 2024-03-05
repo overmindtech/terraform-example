@@ -19,21 +19,6 @@ resource "aws_security_group" "allow_access" {
   }
 }
 
-# Get the amazon linux AMI ID
-data "aws_ami" "amazon_linux" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-ebs"]
-  }
-
-  filter {
-    name   = "owner-alias"
-    values = ["amazon"]
-  }
-}
-
 resource "aws_instance" "example_1" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = "t3.micro"               # Make sure this is in the free tier in your region
