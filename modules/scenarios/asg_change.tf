@@ -21,6 +21,18 @@ resource "aws_lb_target_group" "my_target_group" {
     }
   }
 
+  # Create a second Target Group
+resource "aws_lb_target_group" "my_new_target_group" {
+  name        = "asg-new-change-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = data.aws_vpc.default.id
+
+  health_check {
+    path = "/"
+    }
+  }
+
 # Create an Auto Scaling Group
 resource "aws_autoscaling_group" "my_asg" {
   name                 = "asg-change-test-asg"
