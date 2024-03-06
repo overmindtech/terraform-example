@@ -1,3 +1,7 @@
+# This example is to detect that we can show that Overmind will be able to
+# detect that removing an SNS topic will affect a lambda even if it's not
+# managed in terraform
+
 data "archive_file" "lambda_zip" {
   type        = "zip"
   output_path = "${path.module}/tmp/lambda_function.zip"
@@ -40,7 +44,7 @@ resource "aws_lambda_function" "example" {
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   role          = aws_iam_role.lambda_iam_role.arn
   handler       = "index.handler"
-  runtime       = "nodejs14.x"
+  runtime       = "nodejs20.x"
 }
 
 resource "aws_sns_topic" "example_topic" {
