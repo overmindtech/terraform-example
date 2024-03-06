@@ -47,10 +47,6 @@ resource "aws_lambda_function" "example" {
   runtime       = "nodejs20.x"
 }
 
-resource "aws_sns_topic" "example_topic" {
-  name = "example-topic"
-}
-
 # resource "aws_lambda_permission" "allow_sns" {
 #   statement_id  = "AllowExecutionFromSNS"
 #   action        = "lambda:InvokeFunction"
