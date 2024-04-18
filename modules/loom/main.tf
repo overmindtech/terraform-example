@@ -349,14 +349,20 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 }
 
 resource "aws_cloudfront_response_headers_policy" "headers-policy" {
-  name    = "security-policy"
-  comment = "This inforces some appliction-source security headers"
+  name    = "baseline"
+  comment = "This controls which headers are cached for baseline applications. This includes headers that are safe to cache and won't change from the backend"
 
   cors_config {
     access_control_allow_credentials = false
 
     access_control_allow_headers {
-      items = ["X-Example-Header"]
+      items = [
+        "Accept",
+        "Accept-Encoding",
+        "Content-Encoding",
+        "Content-Length",
+        "Content-Type",
+      ]
     }
 
     access_control_allow_methods {
@@ -364,7 +370,7 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
     }
 
     access_control_allow_origins {
-      items = ["test.example.comtest"]
+      items = ["storage.overmind-demo.com"]
     }
 
     origin_override = true
