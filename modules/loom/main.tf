@@ -356,7 +356,7 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
     access_control_allow_credentials = false
 
     access_control_allow_headers {
-      items = ["X-Example-Header"]
+      items = ["*"]
     }
 
     access_control_allow_methods {
