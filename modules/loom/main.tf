@@ -350,7 +350,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 
 resource "aws_cloudfront_response_headers_policy" "headers-policy" {
   name    = "baseline"
-  comment = "This controls which headers are cached for baseline applications. This includes headers that are safe to cache and won't change from the backend"
+  comment = "This controls which headers are cached for baseline applications. This includes headers that are safe to cache"
 
   cors_config {
     access_control_allow_credentials = false
