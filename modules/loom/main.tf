@@ -357,11 +357,7 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
 
     access_control_allow_headers {
       items = [
-        "Accept",
-        "Accept-Encoding",
-        "Content-Encoding",
-        "Content-Length",
-        "Content-Type",
+        "*",
       ]
     }
 
