@@ -497,7 +497,7 @@ resource "aws_ecs_task_definition" "face" {
       environment = []
       portMappings = [
         {
-          containerPort = 1234
+          containerPort = 8080
           appProtocol   = "http"
         }
       ]
