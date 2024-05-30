@@ -38,7 +38,7 @@ resource "aws_dynamodb_table" "terraform-example-lock-table" {
 
 resource "aws_iam_role" "deploy_role" {
   name        = "terraform-example"
-  description = "This is the role used by terraform running on github actions to deploy."
+  description = "This is the role used by terraform running on github actions or Terraform Cloud to deploy."
 
   inline_policy {
     // this is required if any part of the deployment accesses public ECR resources
@@ -75,6 +75,20 @@ resource "aws_iam_role" "deploy_role" {
           },
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+        }
+      },
+      {
+        Sid    = "AllowTerraformOIDC",
+        Effect = "Allow",
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.tfc_provider.arn
+        },
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "app.terraform.io" = "aws.workload.identity"
+            "app.terraform.io" = "organization:Overmind:project:Example:workspace:terraform-example:run_phase:*"
           }
         }
       }
@@ -149,4 +163,20 @@ resource "aws_iam_openid_connect_provider" "github" {
   ]
 
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1", ]
+}
+
+# Data source used to grab the TLS certificate for Terraform Cloud.
+#
+# https://registry.terraform.io/providers/hashicorp/tls/latest/docs/data-sources/certificate
+data "tls_certificate" "tfc_certificate" {
+  url = "https://app.terraform.io"
+}
+
+# Creates an OIDC provider which is restricted to
+#
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_openid_connect_provider
+resource "aws_iam_openid_connect_provider" "tfc_provider" {
+  url             = data.tls_certificate.tfc_certificate.url
+  client_id_list  = ["aws.workload.identity"]
+  thumbprint_list = [data.tls_certificate.tfc_certificate.certificates[0].sha1_fingerprint]
 }
