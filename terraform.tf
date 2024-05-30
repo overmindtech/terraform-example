@@ -87,8 +87,8 @@ resource "aws_iam_role" "deploy_role" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "app.terraform.io" = "aws.workload.identity"
-            "app.terraform.io" = "organization:Overmind:project:Example:workspace:terraform-example:run_phase:*"
+            "app.terraform.io:aud" = "aws.workload.identity"
+            "app.terraform.io:sub" = "organization:Overmind:project:Example:workspace:terraform-example:run_phase:*"
           }
         }
       }
