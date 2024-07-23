@@ -488,7 +488,7 @@ resource "aws_ecs_task_definition" "face" {
       memory    = 2048
       essential = true
       healthCheck = {
-        command  = ["CMD-SHELL", "wget -q --spider localhost:1234"]
+        command  = ["CMD-SHELL", "wget -q --spider localhost:8888"]
         interval = 30
         retries  = 3
         timeout  = 5
