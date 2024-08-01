@@ -63,7 +63,8 @@ resource "aws_iam_role" "deploy_role" {
   managed_policy_arns = [aws_iam_policy.state_access.arn, "arn:aws:iam::aws:policy/AdministratorAccess"]
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    # Ensure that there is a valid federated principal, even on the non-default environments
+    Statement = var.example_env == "terraform-example" ? [
       {
         Sid    = "AllowGithubOIDC",
         Effect = "Allow",
@@ -84,8 +85,7 @@ resource "aws_iam_role" "deploy_role" {
         Sid    = "AllowTerraformOIDC",
         Effect = "Allow",
         Principal = {
-          # Ensure that there is a valid federated principal, even on the non default environments
-          Federated = var.example_env == "terraform-example" ? aws_iam_openid_connect_provider.tfc_provider[0].arn : "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
+          Federated = aws_iam_openid_connect_provider.tfc_provider[0].arn
         },
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
@@ -94,6 +94,23 @@ resource "aws_iam_role" "deploy_role" {
           },
           StringEquals = {
             "app.terraform.io:aud" = "aws.workload.identity"
+          }
+        }
+      }
+      ] : [
+      {
+        Sid    = "AllowGithubOIDC",
+        Effect = "Allow",
+        Principal = {
+          Federated = "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
+        },
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringLike = {
+            "token.actions.githubusercontent.com:sub" = "repo:overmindtech/terraform-example:*"
+          },
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
         }
       }

@@ -28,7 +28,7 @@ module "cloudfront" {
 
   create_origin_access_control = true
   origin_access_control = {
-    s3_oac = {
+    (var.example_env) = {
       description      = "CloudFront access to S3"
       origin_type      = "s3"
       signing_behavior = "always"
@@ -76,7 +76,7 @@ module "cloudfront" {
 
     s3_oac = { # with origin access control settings (recommended)
       domain_name           = module.s3_one.s3_bucket_bucket_regional_domain_name
-      origin_access_control = "s3_oac" # key in `origin_access_control`
+      origin_access_control = var.example_env # key in `origin_access_control`
       #      origin_access_control_id = "E345SXM82MIOSU" # external OAС resource
     }
   }
@@ -349,7 +349,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 }
 
 resource "aws_cloudfront_response_headers_policy" "headers-policy" {
-  name    = "baseline"
+  name    = "baseline-${var.example_env}"
   comment = "This controls which headers are cached for baseline applications. This includes headers that are safe to cache"
 
   cors_config {
