@@ -547,7 +547,7 @@ resource "aws_lb_listener_rule" "face" {
 }
 
 resource "aws_lb_target_group" "face" {
-  name        = "facial-recognition-${var.example_env}"
+  name        = "facerec-${var.example_env}"
   port        = 1234
   protocol    = "HTTP"
   target_type = "ip"
