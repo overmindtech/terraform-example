@@ -1,5 +1,5 @@
 locals {
-  domain_name = "terraform-aws-modules.modules.tf" # trimsuffix(data.aws_route53_zone.this.name, ".")
+  domain_name = "${var.example_env}.modules.tf" # trimsuffix(data.aws_route53_zone.this.name, ".")
   subdomain   = "cdn"
 }
 
@@ -154,7 +154,7 @@ module "s3_one" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "~> 4.0"
 
-  bucket        = "s3-one-${random_pet.this.id}"
+  bucket_prefix = "s3-one-${random_pet.this.id}"
   force_destroy = true
 }
 
@@ -211,7 +211,7 @@ resource "random_pet" "second" {
 }
 
 resource "aws_cloudfront_function" "example" {
-  name    = "example-${random_pet.this.id}"
+  name    = "${var.example_env}-${random_pet.this.id}"
   runtime = "cloudfront-js-1.0"
   code    = file("example-function.js")
 }
@@ -219,7 +219,7 @@ resource "aws_cloudfront_function" "example" {
 # Second resource
 
 resource "aws_s3_bucket" "b" {
-  bucket = "second-example-${random_pet.second.id}"
+  bucket_prefix = "second-example-${random_pet.second.id}"
 
   tags = {
     Name = "Second example bucket"
@@ -384,7 +384,7 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = "workloads"
+  name = "workloads-${var.example_env}"
   cidr = "10.0.0.0/16"
 
   default_security_group_egress = [
@@ -433,7 +433,7 @@ module "vpc" {
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
 
-  cluster_name = "example"
+  cluster_name = "example-${var.example_env}"
 
   # Capacity provider
   fargate_capacity_providers = {
@@ -446,7 +446,7 @@ module "ecs" {
 }
 
 resource "aws_lb" "main" {
-  name                       = "main"
+  name                       = var.example_env
   internal                   = false
   load_balancer_type         = "application"
   subnets                    = module.vpc.public_subnets
@@ -472,9 +472,8 @@ data "aws_route53_zone" "demo" {
   name = "overmind-terraform-example.com."
 }
 
-
 resource "aws_ecs_task_definition" "face" {
-  family                   = "facial-recognition"
+  family                   = "facial-recognition-${var.example_env}"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = 1024
@@ -564,14 +563,14 @@ resource "aws_lb_target_group" "face" {
 
 resource "aws_route53_record" "face" {
   zone_id = data.aws_route53_zone.demo.zone_id
-  name    = "face.${data.aws_route53_zone.demo.name}"
+  name    = "face-${var.example_env}.${data.aws_route53_zone.demo.name}"
   type    = "CNAME"
   ttl     = 300
   records = [aws_lb.main.dns_name]
 }
 
 resource "aws_ecs_task_definition" "visit_counter" {
-  family                   = "visit-counter"
+  family                   = "visit-counter-${var.example_env}"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = 256
@@ -654,7 +653,7 @@ resource "aws_lb_target_group" "visit_counter" {
 
 resource "aws_route53_record" "visit_counter" {
   zone_id = data.aws_route53_zone.demo.zone_id
-  name    = "visits.${data.aws_route53_zone.demo.name}"
+  name    = "visits-${var.example_env}.${data.aws_route53_zone.demo.name}"
   type    = "CNAME"
   ttl     = 300
   records = [aws_lb.main.dns_name]

@@ -1,16 +1,16 @@
 resource "aws_s3_bucket" "my_bucket" {
-  bucket = "bucket-notification-test-example"
-  acl    = "private"
+  bucket_prefix = "bucket-notification-${var.example_env}"
+  acl           = "private"
 }
 resource "aws_sqs_queue" "my_queue" {
-  name = "example-notifications-from-s3"
+  name = "-${var.example_env}-notifications-from-s3"
 }
 resource "aws_s3_bucket_notification" "bucket_notification" {
   bucket = aws_s3_bucket.my_bucket.id
 
   queue {
-    queue_arn     = aws_sqs_queue.my_queue.arn
-    events        = ["s3:ObjectCreated:*"]
+    queue_arn = aws_sqs_queue.my_queue.arn
+    events    = ["s3:ObjectCreated:*"]
     # Optionally specify a filter
     # filter_prefix = "logs/"
     # filter_suffix = ".log"
