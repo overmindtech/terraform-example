@@ -84,7 +84,8 @@ resource "aws_iam_role" "deploy_role" {
         Sid    = "AllowTerraformOIDC",
         Effect = "Allow",
         Principal = {
-          Federated = aws_iam_openid_connect_provider.tfc_provider.arn
+          # Ensure that there is a valid federated principal, even on the non default environments
+          Federated = var.example_env == "terraform-example" ? aws_iam_openid_connect_provider.tfc_provider[0].arn : "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
         },
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
@@ -160,6 +161,8 @@ resource "aws_iam_policy" "state_access" {
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
+  count = var.example_env == "terraform-example" ? 1 : 0
+
   url = "https://token.actions.githubusercontent.com"
 
   client_id_list = [
@@ -180,6 +183,7 @@ data "tls_certificate" "tfc_certificate" {
 #
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_openid_connect_provider
 resource "aws_iam_openid_connect_provider" "tfc_provider" {
+  count           = var.example_env == "terraform-example" ? 1 : 0
   url             = data.tls_certificate.tfc_certificate.url
   client_id_list  = ["aws.workload.identity"]
   thumbprint_list = [data.tls_certificate.tfc_certificate.certificates[0].sha1_fingerprint]

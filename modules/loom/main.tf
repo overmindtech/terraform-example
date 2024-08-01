@@ -244,7 +244,7 @@ locals {
 }
 
 resource "aws_cloudfront_origin_access_control" "b" {
-  name                              = "example"
+  name                              = "example-${var.example_env}"
   description                       = "Example Policy"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
@@ -547,7 +547,7 @@ resource "aws_lb_listener_rule" "face" {
 }
 
 resource "aws_lb_target_group" "face" {
-  name        = "facial-recognition"
+  name        = "facerec-${var.example_env}"
   port        = 1234
   protocol    = "HTTP"
   target_type = "ip"
@@ -644,7 +644,7 @@ resource "aws_lb_listener_rule" "visit_counter" {
 }
 
 resource "aws_lb_target_group" "visit_counter" {
-  name        = "visit-counter"
+  name        = "visit-counter-${var.example_env}"
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
