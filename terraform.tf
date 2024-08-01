@@ -8,6 +8,8 @@ provider "aws" {}
 # been deployed
 terraform {
   backend "s3" {
+    # note that this configuration is only used on the github actions demo
+    # example. HCP Terraform ignores this.
     bucket         = "replaceme-with-a-unique-bucket-name"
     dynamodb_table = "overmind-tf-example-state"
     key            = "terraform-example.tfstate"
@@ -23,11 +25,11 @@ locals {
 }
 
 resource "aws_s3_bucket" "terraform-example-state-bucket" {
-  bucket = "replaceme-with-a-unique-bucket-name"
+  bucket = var.example_env == "terraform-example" ? "replaceme-with-a-unique-bucket-name" : "7f8e2ff0-5018-11ef-97d9-2795780b78ce"
 }
 
 resource "aws_dynamodb_table" "terraform-example-lock-table" {
-  name         = "overmind-tf-example-state"
+  name         = var.example_env == "terraform-example" ? "overmind-tf-example-state" : "8919e910-5018-11ef-bfa0-87fc68fc8aa5"
   billing_mode = "PAY_PER_REQUEST"
   attribute {
     name = "LockID"
@@ -37,7 +39,7 @@ resource "aws_dynamodb_table" "terraform-example-lock-table" {
 }
 
 resource "aws_iam_role" "deploy_role" {
-  name        = "terraform-example"
+  name        = var.example_env
   description = "This is the role used by terraform running on github actions or Terraform Cloud to deploy."
 
   inline_policy {
@@ -100,7 +102,7 @@ resource "aws_iam_role" "deploy_role" {
 
 # these permissions called out separately for hosting tfstate in a separate locked down account
 resource "aws_iam_policy" "state_access" {
-  name        = "TerraformStateAccess-terraform-example"
+  name        = "TerraformStateAccess-${var.example_env}"
   path        = "/"
   description = "Allows access to everything terraform needs (state, lock, deploy role) to deploy"
 
@@ -113,7 +115,7 @@ resource "aws_iam_policy" "state_access" {
         Action = [
           "sts:AssumeRole",
         ]
-        Resource = "arn:aws:iam::${local.account_id}:role/terraform-example", # aws_iam_role.deploy_role.arn, except that it would create a dependency loop
+        Resource = "arn:aws:iam::${local.account_id}:role/${var.example_env}", # aws_iam_role.deploy_role.arn, except that it would create a dependency loop
       },
       {
         Sid    = "TFStateList",
@@ -131,7 +133,7 @@ resource "aws_iam_policy" "state_access" {
           "s3:PutObject",
           "s3:GetObject"
         ]
-        Resource = "${aws_s3_bucket.terraform-example-state-bucket.arn}/terraform-example.tfstate",
+        Resource = "${aws_s3_bucket.terraform-example-state-bucket.arn}/${var.example_env}.tfstate",
       },
       {
         Sid    = "TFLock",
