@@ -463,6 +463,9 @@ resource "aws_rds_cluster" "face_database" {
   master_password      = "must_be_eight_characters"
   storage_encrypted    = true
   db_subnet_group_name = aws_db_subnet_group.default.name
+  skip_final_snapshot  = true
+  
+  final_snapshot_identifier = "test"
 
   serverlessv2_scaling_configuration {
     max_capacity = 1
@@ -475,6 +478,7 @@ resource "aws_rds_cluster_instance" "face_database" {
   instance_class     = "db.serverless"
   engine             = aws_rds_cluster.face_database.engine
   engine_version     = aws_rds_cluster.face_database.engine_version
+  apply_immediately  = true
 }
 
 resource "aws_ecs_task_definition" "face" {
