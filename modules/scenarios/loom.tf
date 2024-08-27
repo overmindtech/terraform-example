@@ -445,11 +445,11 @@ data "aws_route53_zone" "demo" {
 # and that database URL is provided as a raw DNS name, we should still be able
 # to discover this relationship and therefore tell people about it
 resource "aws_db_subnet_group" "default" {
-  name       = "main"
+  name       = "main-${var.example_env}"
   subnet_ids = module.vpc.private_subnets
 
   tags = {
-    Name = "Default DB Subnet Group"
+    Name = "Default DB Subnet Group for ${var.example_env}"
   }
 }
 
