@@ -13,6 +13,51 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-data "aws_vpc" "default" {
-  default = true
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+
+  name = "workloads-${var.example_env}"
+  cidr = "10.0.0.0/16"
+
+  default_security_group_egress = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "ALL"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+
+  default_security_group_ingress = [
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      from_port   = 1234
+      to_port     = 1234
+      protocol    = "tcp"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+
+  azs             = ["eu-west-2a", "eu-west-2b"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+
+  enable_nat_gateway = true
+  enable_vpn_gateway = false
+
+  tags = {
+    Terraform   = "true"
+    Environment = "dev"
+  }
 }

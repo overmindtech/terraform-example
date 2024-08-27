@@ -3,6 +3,22 @@ locals {
   subdomain   = "cdn"
 }
 
+#######################
+# Loom Outage Example #
+#######################
+#
+# The purpose of this example is to show how complex cloudfront can be even in a
+# simple scenario. It consists of:
+#
+# - Multiple cloudfront distributions
+# - Multiple S3 buckets
+# - Multiple headers policies, some of which are used by many distributions
+# - A load balancer that serves two ECS services
+#
+# A good demo here is changing the headers in one of the headers policies and
+# showing people the blast radius and risks. You can see the full blog here:
+# https://overmind.tech/blog/looms-nightmare-aws-outage
+
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
   version = "~> 3.0"
@@ -380,55 +396,6 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
 #
 # ECS & Workloads
 #
-
-module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-
-  name = "workloads-${var.example_env}"
-  cidr = "10.0.0.0/16"
-
-  default_security_group_egress = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "ALL"
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
-
-  default_security_group_ingress = [
-    {
-      from_port   = 80
-      to_port     = 80
-      protocol    = "tcp"
-      cidr_blocks = "0.0.0.0/0"
-    },
-    {
-      from_port   = 443
-      to_port     = 443
-      protocol    = "tcp"
-      cidr_blocks = "0.0.0.0/0"
-    },
-    {
-      from_port   = 1234
-      to_port     = 1234
-      protocol    = "tcp"
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
-
-  azs             = ["eu-west-2a", "eu-west-2b"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
-
-  enable_nat_gateway = true
-  enable_vpn_gateway = false
-
-  tags = {
-    Terraform   = "true"
-    Environment = "dev"
-  }
-}
 
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
