@@ -439,6 +439,44 @@ data "aws_route53_zone" "demo" {
   name = "overmind-terraform-example.com."
 }
 
+# This database exists so that we can prove that we can discover relationships
+# between resources that technically don't know about one another. The example
+# here being that there is an ECS service that needs to know the database URL,
+# and that database URL is provided as a raw DNS name, we should still be able
+# to discover this relationship and therefore tell people about it
+resource "aws_db_subnet_group" "default" {
+  name       = "main"
+  subnet_ids = module.vpc.private_subnets
+
+  tags = {
+    Name = "Default DB Subnet Group"
+  }
+}
+
+resource "aws_rds_cluster" "face_database" {
+  cluster_identifier   = "facial-recognition-${var.example_env}"
+  engine               = "aurora-postgresql"
+  engine_mode          = "provisioned"
+  engine_version       = "16.3"
+  database_name        = "test"
+  master_username      = "test"
+  master_password      = "must_be_eight_characters"
+  storage_encrypted    = true
+  db_subnet_group_name = aws_db_subnet_group.default.name
+
+  serverlessv2_scaling_configuration {
+    max_capacity = 1
+    min_capacity = 0.5
+  }
+}
+
+resource "aws_rds_cluster_instance" "face_database" {
+  cluster_identifier = aws_rds_cluster.face_database.id
+  instance_class     = "db.serverless"
+  engine             = aws_rds_cluster.face_database.engine
+  engine_version     = aws_rds_cluster.face_database.engine_version
+}
+
 resource "aws_ecs_task_definition" "face" {
   family                   = "facial-recognition-${var.example_env}"
   requires_compatibilities = ["FARGATE"]
@@ -460,7 +498,12 @@ resource "aws_ecs_task_definition" "face" {
         timeout  = 5
       }
       mountPoints = []
-      environment = []
+      environment = [
+        {
+          name  = "DATABASE_URL"
+          value = aws_rds_cluster_instance.face_database.endpoint
+        }
+      ]
       portMappings = [
         {
           containerPort = 1234
@@ -557,7 +600,12 @@ resource "aws_ecs_task_definition" "visit_counter" {
         timeout  = 5
       }
       mountPoints = []
-      environment = []
+      environment = [
+        {
+          name  = "FACIAL_RECOGNITION_SERVICE"
+          value = aws_route53_record.face.name
+        }
+      ]
       portMappings = [
         {
           containerPort = 80
