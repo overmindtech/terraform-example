@@ -1,5 +1,5 @@
 locals {
-  include_scenarios    = false
+  include_scenarios = true
 }
 
 module "scenarios" {

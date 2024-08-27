@@ -1,8 +1,12 @@
 # This example creates a security group and two instances, we will associate the
 # SG with the instances manually in the GUI, then try to delete it via Terraform
+#
+# This should be manually associated with the "Webserver" and "App Server"
+# instances
 resource "aws_security_group" "allow_access" {
   name        = "allow_access-${var.example_env}"
   description = "Allow access security group"
+  vpc_id      = module.vpc.vpc_id
 
   ingress {
     from_port   = 22
@@ -19,36 +23,58 @@ resource "aws_security_group" "allow_access" {
   }
 }
 
-resource "aws_instance" "example_1" {
-  ami           = data.aws_ami.amazon_linux.id
-  instance_type = "t3.micro" # Make sure this is in the free tier in your region
-
-  tags = {
-    Name = "SG Removal Example Instance 1"
-  }
-}
-
-resource "aws_instance" "example_2" {
-  ami           = data.aws_ami.amazon_linux.id
-  instance_type = "t3.micro" # Ensure this instance type is eligible for the free tier in your region
-
-  tags = {
-    Name = "SG Removal Example Instance 1"
-  }
-}
-
-resource "aws_subnet" "restricted" {
+# The remainder of this example sets up two instances that are not allowed to
+# talk to each other on port 8080. The reason for this being denied however is
+# not obvious because the security groups explicitly allow communication on that
+# port. The idea is that in order to understand why this isn't working you need
+# to dig deeper and see that there is a network ACL which is preventing the
+# communication. In fairness, the reachability analyser can answer this
+# question.
+resource "aws_subnet" "restricted-2a" {
   vpc_id            = module.vpc.vpc_id
   cidr_block        = "10.0.9.0/24"
   availability_zone = "eu-west-2a"
+
+  tags = {
+    Name = "Restricted 2a"
+  }
 }
 
-resource "aws_network_acl" "acl" {
-  vpc_id = module.vpc.vpc_id
+resource "aws_subnet" "restricted-2b" {
+  vpc_id            = module.vpc.vpc_id
+  cidr_block        = "10.0.10.0/24"
+  availability_zone = "eu-west-2b"
+
+  tags = {
+    Name = "Restricted 2b"
+  }
+}
+
+// Create a route so that the instances can communicate with the internet. Use
+// the internet gateway created by the VPC module
+resource "aws_route_table_association" "restricted-2a" {
+  subnet_id      = aws_subnet.restricted-2a.id
+  route_table_id = module.vpc.public_route_table_ids[0]
+}
+resource "aws_route_table_association" "restricted-2b" {
+  subnet_id      = aws_subnet.restricted-2b.id
+  route_table_id = module.vpc.public_route_table_ids[0]
+}
+
+resource "aws_network_acl" "restricted" {
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = [
+    aws_subnet.restricted-2a.id,
+    aws_subnet.restricted-2b.id
+  ]
+
+  tags = {
+    "Name" = "Restricted Example"
+  }
 }
 
 resource "aws_network_acl_rule" "allow_http" {
-  network_acl_id = aws_network_acl.acl.id
+  network_acl_id = aws_network_acl.restricted.id
   rule_number    = 100
   protocol       = "tcp"
   rule_action    = "allow"
@@ -57,9 +83,19 @@ resource "aws_network_acl_rule" "allow_http" {
   to_port        = 80
 }
 
+resource "aws_network_acl_rule" "allow_ssh" {
+  network_acl_id = aws_network_acl.restricted.id
+  rule_number    = 102
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 22
+  to_port        = 22
+}
+
 resource "aws_network_acl_rule" "allow_ephemeral" {
-  network_acl_id = aws_network_acl.acl.id
-  rule_number    = 101
+  network_acl_id = aws_network_acl.restricted.id
+  rule_number    = 300
   protocol       = "tcp"
   rule_action    = "allow"
   cidr_block     = "0.0.0.0/0"
@@ -68,7 +104,7 @@ resource "aws_network_acl_rule" "allow_ephemeral" {
 }
 
 resource "aws_network_acl_rule" "deny_high_ports" {
-  network_acl_id = aws_network_acl.acl.id
+  network_acl_id = aws_network_acl.restricted.id
   rule_number    = 200
   protocol       = "tcp"
   rule_action    = "deny"
@@ -77,11 +113,23 @@ resource "aws_network_acl_rule" "deny_high_ports" {
   to_port        = 8100
 }
 
+resource "aws_network_acl_rule" "allow_outbound" {
+  network_acl_id = aws_network_acl.restricted.id
+  egress         = true
+  rule_number    = 100
+  protocol       = "all"
+  rule_action    = "allow"
+  cidr_block     = "0.0.0.0/0"
+}
+
 resource "aws_instance" "webserver" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = "t3.micro"
-  subnet_id     = aws_subnet.restricted.id
-  security_groups = [aws_security_group.instance_sg.name]
+  subnet_id     = aws_subnet.restricted-2a.id
+  key_name      = "Demo Key Pair"
+  
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
   tags = {
     Name = "Webserver"
@@ -91,14 +139,20 @@ resource "aws_instance" "webserver" {
 resource "aws_instance" "app_server" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = "t3.micro"
-  subnet_id     = aws_subnet.restricted.id
-  security_groups = [aws_security_group.instance_sg.name]
+  subnet_id     = aws_subnet.restricted-2b.id
+  key_name      = "Demo Key Pair"
+  
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
   tags = {
     Name = "App Server"
   }
 }
 
+# This group is used to allow communication between the instances, or at least
+# that's what you'd expect. However, the network ACL is blocking the
+# communication
 resource "aws_security_group" "instance_sg" {
   vpc_id = module.vpc.vpc_id
 
