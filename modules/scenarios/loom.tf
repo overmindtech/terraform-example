@@ -464,7 +464,7 @@ resource "aws_rds_cluster" "face_database" {
   storage_encrypted    = true
   db_subnet_group_name = aws_db_subnet_group.default.name
   skip_final_snapshot  = true
-  
+
   final_snapshot_identifier = "test"
 
   serverlessv2_scaling_configuration {
@@ -608,6 +608,10 @@ resource "aws_ecs_task_definition" "visit_counter" {
         {
           name  = "FACIAL_RECOGNITION_SERVICE"
           value = aws_route53_record.face.name
+        },
+        {
+          name  = "FACIAL_RECOGNITION_SERVICE_USER"
+          value = "visit-counter"
         }
       ]
       portMappings = [
