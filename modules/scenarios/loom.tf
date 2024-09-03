@@ -611,7 +611,7 @@ resource "aws_ecs_task_definition" "visit_counter" {
         },
         {
           name  = "FACIAL_RECOGNITION_SERVICE_USER"
-          value = "face-rec"
+          value = "visit-counter"
         }
       ]
       portMappings = [
