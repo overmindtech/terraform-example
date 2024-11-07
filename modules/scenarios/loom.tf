@@ -510,7 +510,7 @@ resource "aws_ecs_task_definition" "face" {
       ]
       portMappings = [
         {
-          containerPort = 1234
+          containerPort = 8080
           appProtocol   = "http"
         }
       ]
@@ -540,7 +540,7 @@ resource "aws_ecs_service" "face" {
   load_balancer {
     target_group_arn = aws_lb_target_group.face.arn
     container_name   = "facial-recognition"
-    container_port   = 1234
+    container_port   = 8080
   }
 }
 
@@ -562,7 +562,7 @@ resource "aws_lb_listener_rule" "face" {
 
 resource "aws_lb_target_group" "face" {
   name        = "facerec-${var.example_env}"
-  port        = 1234
+  port        = 8080
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = module.vpc.vpc_id
