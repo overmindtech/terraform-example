@@ -17,7 +17,7 @@ resource "aws_network_acl" "block_high_ports" {
     protocol   = "tcp"
     action     = "deny"
     cidr_block = "0.0.0.0/0"
-    from_port  = 20000
+    from_port  = 10000
     to_port    = 65535
   }
 
