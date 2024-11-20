@@ -34,22 +34,22 @@ resource "aws_network_acl" "block_high_ports" {
   }
 }
 
-resource "aws_network_acl_association" "associate" {
+resource "aws_network_acl_association" "subnet_0f0702af871e6a71f" {
   subnet_id      = "subnet-0f0702af871e6a71f"
   network_acl_id = aws_network_acl.block_high_ports.id
 }
 
-resource "aws_network_acl_association" "associate" {
+resource "aws_network_acl_association" "subnet_05ef77bb39c151e08" {
   subnet_id      = "subnet-05ef77bb39c151e08"
   network_acl_id = aws_network_acl.block_high_ports.id
 }
 
-resource "aws_network_acl_association" "associate" {
+resource "aws_network_acl_association" "subnet_07e9f4f746f63ed3d" {
   subnet_id      = "subnet-07e9f4f746f63ed3d"
   network_acl_id = aws_network_acl.block_high_ports.id
 }
 
-resource "aws_network_acl_association" "associate" {
+resource "aws_network_acl_association" "subnet_0482035a966810071" {
   subnet_id      = "subnet-0482035a966810071"
   network_acl_id = aws_network_acl.block_high_ports.id
 }
