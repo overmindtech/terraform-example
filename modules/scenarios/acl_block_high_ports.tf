@@ -1,5 +1,5 @@
 resource "aws_network_acl" "block_high_ports" {
-  vpc_id = "<your-vpc-id>"  # Replace with your VPC ID
+  vpc_id = "vpc-0be4b791e20954fea"
 
   # Allow inbound SSH
   ingress {
@@ -27,6 +27,8 @@ resource "aws_network_acl" "block_high_ports" {
     protocol   = "-1"
     action     = "allow"
     cidr_block = "0.0.0.0/0"
+    from_port  = 1
+    to_port    = 65535
   }
 
   tags = {
