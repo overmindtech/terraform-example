@@ -1,10 +1,10 @@
 # Get the specific Amazon Linux 2 AMI ID
 data "aws_ami" "amazon_linux" {
-  most_recent = false
+  most_recent = true
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-2.0.20241001.0-x86_64-ebs"]
+    values = ["amzn2-ami-hvm-*-x86_64-ebs"]
   }
 
   filter {
