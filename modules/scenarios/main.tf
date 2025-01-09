@@ -61,3 +61,90 @@ module "vpc" {
     Environment = "dev"
   }
 }
+
+# Launch template that uses the existing AMI
+resource "aws_launch_template" "web_lt" {
+  name_prefix   = "web-template"
+  image_id      = data.aws_ami.amazon_linux.id
+  instance_type = "t3.micro"
+
+  network_interfaces {
+    associate_public_ip_address = false
+    security_groups            = [module.vpc.default_security_group_id]
+  }
+
+  user_data = base64encode(<<-EOF
+              #!/bin/bash
+              echo "Hello, World!"
+              EOF
+  )
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name        = "web-server"
+      Terraform   = "true"
+      Environment = "dev"
+    }
+  }
+}
+
+# Auto Scaling Group using the VPC private subnets
+resource "aws_autoscaling_group" "web_asg" {
+  name                = "web-asg-${var.example_env}"
+  desired_capacity    = 3
+  max_size           = 5
+  min_size           = 1
+  vpc_zone_identifier = module.vpc.private_subnets
+
+  # Launch template configuration
+  launch_template {
+    id      = aws_launch_template.web_lt.id
+    version = "$Latest"
+  }
+
+  # Adding instance refresh configuration - this is the only new change
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50
+      instance_warmup       = 300
+    }
+  }
+
+  tag {
+    key                 = "Environment"
+    value              = var.example_env
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Terraform"
+    value              = "true"
+    propagate_at_launch = true
+  }
+
+  lifecycle {
+    ignore_changes = [
+      tag,
+    ]
+  }
+}
+
+# Trigger for instance refresh - this is the only other new change
+resource "null_resource" "trigger_refresh" {
+  triggers = {
+    refresh_trigger = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = <<EOF
+      aws autoscaling start-instance-refresh \
+        --auto-scaling-group-name ${aws_autoscaling_group.web_asg.name} \
+        --region ${data.aws_region.current.name}
+    EOF
+  }
+}
+
+# Data source for current region
+data "aws_region" "current" {}
