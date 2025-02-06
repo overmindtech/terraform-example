@@ -57,7 +57,7 @@ jobs:
 
       - uses: overmindtech/actions/install-cli@main
         with:
-          version: latest
+          version: v1.6.0
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: overmindtech/actions/submit-plan@main
