@@ -31,7 +31,7 @@ jobs:
       - uses: overmindtech/actions/install-cli@main
         continue-on-error: true
         with:
-          version: v1.6.0
+          version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: overmindtech/actions/submit-plan@main
