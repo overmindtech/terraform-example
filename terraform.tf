@@ -7,6 +7,15 @@ provider "aws" {}
 # -migrate-state` to migrate the local state into S3 after all resources have
 # been deployed
 terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+      # version 6 is breaking change across multiple AWS module # versions, so we pin to < 6.0 see https://github.com/terraform-aws-modules/terraform-aws-ecs/issues/291
+      # another pin was added to modules/scenarios/main.tf for the VPC module
+      # we expect this to be fixed over the coming weeks, as of 23/6/2025
+      version = "< 6.0"
+    }
+  }
   backend "s3" {
     # note that this configuration is only used on the github actions demo
     # example. HCP Terraform ignores this.
