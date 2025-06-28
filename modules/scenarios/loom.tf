@@ -668,7 +668,7 @@ resource "aws_lb_listener_rule" "visit_counter" {
 
 resource "aws_lb_target_group" "visit_counter" {
   name        = "visit-counter-${var.example_env}"
-  port        = 80
+  port        = 8080
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = module.vpc.vpc_id
