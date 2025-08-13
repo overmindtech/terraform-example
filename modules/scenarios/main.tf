@@ -1,6 +1,7 @@
 # Get the specific Amazon Linux 2 AMI ID
 data "aws_ami" "amazon_linux" {
   most_recent = true
+  owners      = ["amazon"]
 
   filter {
     name   = "name"
