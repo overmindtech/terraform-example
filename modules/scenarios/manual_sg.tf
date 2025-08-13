@@ -62,7 +62,7 @@ resource "aws_route_table_association" "restricted-2b" {
 }
 
 resource "aws_network_acl" "restricted" {
-  vpc_id     = module.vpc.vpc_id
+  vpc_id = module.vpc.vpc_id
   subnet_ids = [
     aws_subnet.restricted-2a.id,
     aws_subnet.restricted-2b.id
@@ -127,7 +127,7 @@ resource "aws_instance" "webserver" {
   instance_type = "t3.micro"
   subnet_id     = aws_subnet.restricted-2a.id
   key_name      = "Demo Key Pair"
-  
+
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
@@ -141,7 +141,7 @@ resource "aws_instance" "app_server" {
   instance_type = "t3.micro"
   subnet_id     = aws_subnet.restricted-2b.id
   key_name      = "Demo Key Pair"
-  
+
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 

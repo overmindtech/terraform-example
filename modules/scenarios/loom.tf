@@ -229,7 +229,7 @@ resource "random_pet" "second" {
 resource "aws_cloudfront_function" "example" {
   name    = "${var.example_env}-${random_pet.this.id}"
   runtime = "cloudfront-js-1.0"
-  code    = file("../../example-function.js")
+  code    = file("${path.root}/example-function.js")
 }
 
 # Second resource

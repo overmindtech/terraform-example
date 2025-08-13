@@ -10,10 +10,8 @@ terraform {
   required_providers {
     aws = {
       source = "hashicorp/aws"
-      # version 6 is breaking change across multiple AWS module # versions, so we pin to < 6.0 see https://github.com/terraform-aws-modules/terraform-aws-ecs/issues/291
-      # another pin was added to modules/scenarios/main.tf for the VPC module
-      # we expect this to be fixed over the coming weeks, as of 23/6/2025
-      version = "< 6.0"
+      # Updated to allow version 6.x as ECS module now requires it
+      version = "~> 6.0"
     }
   }
   backend "s3" {
