@@ -229,7 +229,7 @@ resource "random_pet" "second" {
 resource "aws_cloudfront_function" "example" {
   name    = "${var.example_env}-${random_pet.this.id}"
   runtime = "cloudfront-js-1.0"
-  code    = file("example-function.js")
+  code    = file("../../example-function.js")
 }
 
 # Second resource
@@ -447,19 +447,6 @@ module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
 
   cluster_name = "example-${var.example_env}"
-
-  # Capacity provider strategy
-  default_capacity_provider_strategy = {
-    fargate = {
-      name   = "FARGATE"
-      weight = 70
-      base   = 1
-    }
-    fargate_spot = {
-      name   = "FARGATE_SPOT"
-      weight = 30
-    }
-  }
 }
 
 resource "aws_lb" "main" {
@@ -1060,6 +1047,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "data_lake" {
     id     = "delete_old_versions"
     status = "Enabled"
 
+    filter {
+      prefix = ""
+    }
+
     noncurrent_version_expiration {
       noncurrent_days = 30
     }
@@ -1072,6 +1063,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "data_lake" {
   rule {
     id     = "transition_to_ia"
     status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
 
     transition {
       days          = 30
