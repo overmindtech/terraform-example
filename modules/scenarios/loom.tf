@@ -398,7 +398,8 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
 #
 
 module "ecs" {
-  source = "terraform-aws-modules/ecs/aws"
+  source  = "terraform-aws-modules/ecs/aws"
+  version = "5.12.1"
 
   cluster_name = "example-${var.example_env}"
 
