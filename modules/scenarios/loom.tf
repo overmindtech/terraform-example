@@ -378,6 +378,13 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
         "Content-Encoding",
         "Content-Length",
         "Content-Type",
+        "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Methods",
+        "Access-Control-Allow-Headers",
+        "User-Agent",
+        # required for S3 pass-through authentication
+        "Cookie",
+        "Set-Cookie",
       ]
     }
 
