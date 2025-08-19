@@ -285,6 +285,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
+    cache_policy_id  = aws_cloudfront_cache_policy.headers_based_policy.id
 
     forwarded_values {
       query_string = false
@@ -294,7 +295,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
       }
     }
 
-    viewer_protocol_policy = "allow-all"
+    viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
     max_ttl                = 86400
@@ -330,6 +331,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
+    cache_policy_id  = aws_cloudfront_cache_policy.headers_based_policy.id
 
     forwarded_values {
       query_string = false
@@ -392,6 +394,38 @@ resource "aws_cloudfront_response_headers_policy" "headers-policy" {
     origin_override = true
   }
 }
+
+resource "aws_cloudfront_cache_policy" "headers_based_policy" {
+  name        = "CacheHeadersBasedPolicy"
+  comment     = "Cache policy that forwards Authorization and Accept-Language headers"
+  default_ttl = 86400    # Cache for 1 day by default
+  max_ttl     = 31536000 # Max TTL of 1 year
+  min_ttl     = 60       # Min TTL of 1 minute
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    enable_accept_encoding_gzip   = true
+    enable_accept_encoding_brotli = true
+
+    # Configure which headers are part of the cache key 🔑
+    headers_config {
+      header_behavior = "whitelist" # Other options: "none", "allViewer"
+      headers {
+        # List the specific headers to forward to the origin and include in the cache key.
+        items = ["Authorization", "Accept-Language"]
+      }
+    }
+
+    # For this example, we are not caching based on cookies or query strings.
+    cookies_config {
+      cookie_behavior = "none"
+    }
+
+    query_strings_config {
+      query_string_behavior = "none"
+    }
+  }
+}
+
 
 #
 # ECS & Workloads
@@ -704,6 +738,7 @@ resource "aws_cloudfront_distribution" "visit_counter" {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "visit-counter-ecs"
+    cache_policy_id  = aws_cloudfront_cache_policy.headers_based_policy.id
 
     forwarded_values {
       query_string = false
@@ -713,7 +748,7 @@ resource "aws_cloudfront_distribution" "visit_counter" {
       }
     }
 
-    viewer_protocol_policy     = "allow-all"
+    viewer_protocol_policy     = "redirect-to-https"
     min_ttl                    = 0
     default_ttl                = 3600
     max_ttl                    = 86400
