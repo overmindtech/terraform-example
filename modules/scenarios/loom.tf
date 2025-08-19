@@ -286,7 +286,8 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
 
-    cache_policy_id = aws_cloudfront_cache_policy.headers_based_policy.id
+    cache_policy_id          = aws_cloudfront_cache_policy.headers_based_policy.id
+    origin_request_policy_id = aws_cloudfront_origin_request_policy.headers_based_policy.id
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
@@ -325,7 +326,8 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
 
-    cache_policy_id = aws_cloudfront_cache_policy.headers_based_policy.id
+    cache_policy_id          = aws_cloudfront_cache_policy.headers_based_policy.id
+    origin_request_policy_id = aws_cloudfront_origin_request_policy.headers_based_policy.id
 
     min_ttl                = 0
     default_ttl            = 3600
@@ -409,6 +411,25 @@ resource "aws_cloudfront_cache_policy" "headers_based_policy" {
     query_strings_config {
       query_string_behavior = "none"
     }
+  }
+}
+
+resource "aws_cloudfront_origin_request_policy" "headers_based_policy" {
+  name    = "OriginHeadersBasedPolicy"
+  comment = "This policy forwards specific headers to the origin"
+  headers_config {
+    header_behavior = "whitelist"
+    headers {
+      items = ["User-Agent"]
+    }
+  }
+
+  cookies_config {
+    cookie_behavior = "none"
+  }
+
+  query_strings_config {
+    query_string_behavior = "none"
   }
 }
 
@@ -725,7 +746,8 @@ resource "aws_cloudfront_distribution" "visit_counter" {
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "visit-counter-ecs"
 
-    cache_policy_id = aws_cloudfront_cache_policy.headers_based_policy.id
+    cache_policy_id          = aws_cloudfront_cache_policy.headers_based_policy.id
+    origin_request_policy_id = aws_cloudfront_origin_request_policy.headers_based_policy.id
 
     viewer_protocol_policy     = "redirect-to-https"
     min_ttl                    = 0
