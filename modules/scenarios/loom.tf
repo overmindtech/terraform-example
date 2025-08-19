@@ -115,6 +115,8 @@ module "cloudfront" {
 
     # This is id for SecurityHeadersPolicy copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
     response_headers_policy_id = "67f7725c-6f97-4210-82d7-5512b31e9d03"
+    cache_policy_id            = aws_cloudfront_cache_policy.headers_based_policy.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.headers_based_policy.id
   }
 
   ordered_cache_behavior = [
