@@ -115,6 +115,8 @@ module "cloudfront" {
 
     # This is id for SecurityHeadersPolicy copied from https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
     response_headers_policy_id = "67f7725c-6f97-4210-82d7-5512b31e9d03"
+    cache_policy_id            = aws_cloudfront_cache_policy.headers_based_policy.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.headers_based_policy.id
   }
 
   ordered_cache_behavior = [
@@ -290,9 +292,6 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     origin_request_policy_id = aws_cloudfront_origin_request_policy.headers_based_policy.id
 
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
   }
 
   # Cache behavior with precedence 0
@@ -312,9 +311,6 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
       }
     }
 
-    min_ttl                = 0
-    default_ttl            = 86400
-    max_ttl                = 31536000
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
   }
@@ -329,9 +325,6 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     cache_policy_id          = aws_cloudfront_cache_policy.headers_based_policy.id
     origin_request_policy_id = aws_cloudfront_origin_request_policy.headers_based_policy.id
 
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
   }
@@ -750,9 +743,6 @@ resource "aws_cloudfront_distribution" "visit_counter" {
     origin_request_policy_id = aws_cloudfront_origin_request_policy.headers_based_policy.id
 
     viewer_protocol_policy     = "redirect-to-https"
-    min_ttl                    = 0
-    default_ttl                = 3600
-    max_ttl                    = 86400
     response_headers_policy_id = aws_cloudfront_response_headers_policy.headers-policy.id
   }
 
