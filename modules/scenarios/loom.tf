@@ -285,15 +285,8 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
-    cache_policy_id  = aws_cloudfront_cache_policy.headers_based_policy.id
 
-    forwarded_values {
-      query_string = false
-
-      cookies {
-        forward = "none"
-      }
-    }
+    cache_policy_id = aws_cloudfront_cache_policy.headers_based_policy.id
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
@@ -331,15 +324,8 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
-    cache_policy_id  = aws_cloudfront_cache_policy.headers_based_policy.id
 
-    forwarded_values {
-      query_string = false
-
-      cookies {
-        forward = "none"
-      }
-    }
+    cache_policy_id = aws_cloudfront_cache_policy.headers_based_policy.id
 
     min_ttl                = 0
     default_ttl            = 3600
@@ -738,15 +724,8 @@ resource "aws_cloudfront_distribution" "visit_counter" {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "visit-counter-ecs"
-    cache_policy_id  = aws_cloudfront_cache_policy.headers_based_policy.id
 
-    forwarded_values {
-      query_string = false
-
-      cookies {
-        forward = "none"
-      }
-    }
+    cache_policy_id = aws_cloudfront_cache_policy.headers_based_policy.id
 
     viewer_protocol_policy     = "redirect-to-https"
     min_ttl                    = 0
