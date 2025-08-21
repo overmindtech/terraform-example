@@ -10,10 +10,8 @@ terraform {
   required_providers {
     aws = {
       source = "hashicorp/aws"
-      # version 6 is breaking change across multiple AWS module # versions, so we pin to < 6.0 see https://github.com/terraform-aws-modules/terraform-aws-ecs/issues/291
-      # another pin was added to modules/scenarios/main.tf for the VPC module
-      # we expect this to be fixed over the coming weeks, as of 23/6/2025
-      version = "< 6.0"
+      # Updated to allow version 6.x as ECS module now requires it
+      version = "~> 6.0"
     }
   }
   backend "s3" {
@@ -51,25 +49,6 @@ resource "aws_iam_role" "deploy_role" {
   name        = var.example_env
   description = "This is the role used by terraform running on github actions or Terraform Cloud to deploy."
 
-  inline_policy {
-    // this is required if any part of the deployment accesses public ECR resources
-    name = "AllowPublicECR"
-
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [
-        {
-          Action = [
-            "ecr-public:GetAuthorizationToken",
-            "sts:GetServiceBearerToken"
-          ]
-          Effect   = "Allow"
-          Resource = "*"
-        },
-      ]
-    })
-  }
-  managed_policy_arns = [aws_iam_policy.state_access.arn, "arn:aws:iam::aws:policy/AdministratorAccess"]
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     # Ensure that there is a valid federated principal, even on the non-default environments
@@ -181,6 +160,36 @@ resource "aws_iam_policy" "state_access" {
             ]
           }
         }
+      },
+    ]
+  })
+}
+
+# IAM role policy attachments
+resource "aws_iam_role_policy_attachment" "deploy_role_state_access" {
+  role       = aws_iam_role.deploy_role.name
+  policy_arn = aws_iam_policy.state_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "deploy_role_admin_access" {
+  role       = aws_iam_role.deploy_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+resource "aws_iam_role_policy" "deploy_role_ecr_policy" {
+  name = "AllowPublicECR"
+  role = aws_iam_role.deploy_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ecr-public:GetAuthorizationToken",
+          "sts:GetServiceBearerToken"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
       },
     ]
   })

@@ -125,7 +125,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   role       = aws_iam_role.lambda_role.name
 }
 
-data "archive_file" "simple_lambda_zip" {
+data "archive_file" "lambda_zip" {
   type        = "zip"
   output_path = "${path.module}/tmp/simple_lambda.zip"
 
@@ -146,8 +146,8 @@ EOF
 
 resource "aws_lambda_function" "processor" {
   function_name    = "simple-processor-${var.example_env}"
-  filename         = data.archive_file.simple_lambda_zip.output_path
-  source_code_hash = data.archive_file.simple_lambda_zip.output_base64sha256
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.9"

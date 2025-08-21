@@ -1,6 +1,7 @@
 # Get the specific Amazon Linux 2 AMI ID
 data "aws_ami" "amazon_linux" {
   most_recent = true
+  owners      = ["amazon"]
 
   filter {
     name   = "name"
@@ -14,11 +15,9 @@ data "aws_ami" "amazon_linux" {
 }
 
 module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  # version 6 is breaking change across multiple AWS module so we pin to < 6.0 see https://github.com/terraform-aws-modules/terraform-aws-ecs/issues/291
-  # another pin was added to terraform.tf for the S3 module
-  # we expect this to be fixed over the coming weeks, as of 23/6/2025
-  version = "< 6.0"
+  source = "terraform-aws-modules/vpc/aws"
+  # Updated to be compatible with AWS provider 6.x
+  version = "~> 6.0"
 
   name = "workloads-${var.example_env}"
   cidr = "10.0.0.0/16"
