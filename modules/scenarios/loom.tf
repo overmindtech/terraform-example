@@ -411,10 +411,7 @@ resource "aws_cloudfront_origin_request_policy" "headers_based_policy" {
   name    = "OriginHeadersBasedPolicy"
   comment = "This policy forwards specific headers to the origin"
   headers_config {
-    header_behavior = "whitelist"
-    headers {
-      items = ["User-Agent"]
-    }
+    header_behavior = "allViewer"
   }
 
   cookies_config {
