@@ -35,7 +35,7 @@ jobs:
       - name: Generate Plan for Policies
         id: policy-plan
         run: |
-          terraform plan -no-color -input=false -out tfplan.policies
+          terraform plan -no-color -input=false -lock=false -out tfplan.policies
           terraform show -json tfplan.policies > tfplan.json
 
       - uses: overmindtech/policy-signals-action@v1
