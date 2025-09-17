@@ -38,7 +38,7 @@ jobs:
           terraform plan -no-color -input=false -lock=false -out tfplan.policies
           terraform show -json tfplan.policies > tfplan.json
 
-      - uses: overmindtech/policy-signals-action@main
+      - uses: overmindtech/policy-signals-action@v1
         with:
           policies-path: './policies'
           terraform-plan-json: './tfplan.json'
