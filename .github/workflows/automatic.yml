@@ -16,34 +16,6 @@ jobs:
         id: fmt
         run: terraform fmt -check -diff
 
-  # NEW: Policy checks job running in parallel
-  policy-checks:
-    runs-on: ubuntu-latest
-    if: github.event.action != 'closed'
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Terraform Init (for policies)
-        uses: ./.github/actions/terraform_init/
-        with:
-          terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
-
-      - name: Generate Plan for Policies
-        id: policy-plan
-        run: |
-          terraform plan -no-color -input=false -lock=false -out tfplan.policies
-          terraform show -json tfplan.policies > tfplan.json
-
-      - uses: overmindtech/policy-signals-action@v1
-        with:
-          policies-path: './policies'
-          terraform-plan-json: './tfplan.json'
-          overmind-api-key: ${{ secrets.OVM_API_KEY }}
-
   execute:
     runs-on: ubuntu-latest
     permissions:
@@ -94,6 +66,14 @@ jobs:
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
           plan-json: ./tfplan.json
+
+      # Run policy checks after plan submission
+      - uses: overmindtech/policy-signals-action@v1
+        if: github.event.action != 'closed'
+        with:
+          policies-path: './policies'
+          terraform-plan-json: './tfplan.json'
+          overmind-api-key: ${{ secrets.OVM_API_KEY }}
 
       - name: Install prerequisites
         if: github.event.pull_request.merged == true
