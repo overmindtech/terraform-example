@@ -41,8 +41,8 @@ jobs:
       - uses: overmindtech/policy-signals-action@main
         with:
           policies-path: './policies'
-          overmind-api-key: ${{ secrets.OVM_API_KEY }}
           terraform-plan-json: './tfplan.json'
+          overmind-api-key: ${{ secrets.OVM_API_KEY }}
 
   execute:
     runs-on: ubuntu-latest
