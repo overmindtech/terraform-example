@@ -1,106 +1,126 @@
 package main
 
-import rego.v1
-
 # Cost Control Policy
 # Checks for expensive instance types and configurations
 
 # Get all EC2 instances from terraform plan
-ec2_instances contains instance if {
+ec2_instances[instance] {
 	instance := input.resource_changes[_]
 	instance.type == "aws_instance"
 }
 
 # Get all RDS instances from terraform plan
-rds_instances contains instance if {
+rds_instances[instance] {
 	instance := input.resource_changes[_]
 	instance.type == "aws_db_instance"
 }
 
 # Get all RDS clusters from terraform plan
-rds_clusters contains cluster if {
+rds_clusters[cluster] {
 	cluster := input.resource_changes[_]
 	cluster.type == "aws_rds_cluster"
 }
 
-# Expensive EC2 instance types
+# List of expensive EC2 instance types
 expensive_ec2_types := {
 	"m5.24xlarge", "m5.16xlarge", "m5.12xlarge",
-	"c5.24xlarge", "c5.18xlarge", "c5.12xlarge",
 	"r5.24xlarge", "r5.16xlarge", "r5.12xlarge",
-	"x1.32xlarge", "x1.16xlarge", "x1e.32xlarge",
-	"p3.16xlarge", "p3.8xlarge", "p2.16xlarge",
-	"g3.16xlarge", "g3.8xlarge", "g4dn.16xlarge"
+	"c5.24xlarge", "c5.18xlarge", "c5.12xlarge",
+	"x1.32xlarge", "x1.16xlarge",
+	"r4.16xlarge", "r4.8xlarge",
+	"m4.16xlarge", "m4.10xlarge",
+	"c4.8xlarge",
+	"p3.16xlarge", "p3.8xlarge", "p3.2xlarge",
+	"p2.16xlarge", "p2.8xlarge",
+	"g3.16xlarge", "g3.8xlarge"
 }
 
-# Expensive RDS instance types
+# List of expensive RDS instance types
 expensive_rds_types := {
-	"db.m5.24xlarge", "db.m5.16xlarge", "db.m5.12xlarge",
 	"db.r5.24xlarge", "db.r5.16xlarge", "db.r5.12xlarge",
-	"db.x1.32xlarge", "db.x1.16xlarge", "db.x1e.32xlarge"
+	"db.r4.16xlarge", "db.r4.8xlarge",
+	"db.m5.24xlarge", "db.m5.16xlarge", "db.m5.12xlarge",
+	"db.m4.16xlarge", "db.m4.10xlarge",
+	"db.x1.32xlarge", "db.x1.16xlarge"
+}
+
+# High-cost regions (typically more expensive than us-east-1)
+high_cost_regions := {
+	"ap-northeast-1", "ap-northeast-2", "ap-southeast-1", "ap-southeast-2",
+	"eu-central-1", "eu-west-1", "eu-west-2", "eu-west-3",
+	"sa-east-1"
 }
 
 # Deny expensive EC2 instance types
-deny contains msg if {
+deny[msg] {
 	instance := ec2_instances[_]
-	instance.change.after.instance_type in expensive_ec2_types
+	expensive_ec2_types[instance.change.after.instance_type]
 	msg := sprintf("EC2 instance '%s' uses expensive instance type '%s' - consider using a smaller instance type", [instance.address, instance.change.after.instance_type])
 }
 
 # Deny expensive RDS instance types
-deny contains msg if {
+deny[msg] {
 	instance := rds_instances[_]
-	instance.change.after.instance_class in expensive_rds_types
-	msg := sprintf("RDS instance '%s' uses expensive instance class '%s' - consider using a smaller instance class", [instance.address, instance.change.after.instance_class])
+	expensive_rds_types[instance.change.after.instance_class]
+	msg := sprintf("RDS instance '%s' uses expensive instance type '%s' - consider using a smaller instance type", [instance.address, instance.change.after.instance_class])
 }
 
-# Deny RDS clusters without cost-effective configurations
-deny contains msg if {
+# Deny RDS clusters without deletion protection in production
+deny[msg] {
 	cluster := rds_clusters[_]
+	cluster.change.after.tags.Environment == "prod"
 	not cluster.change.after.deletion_protection
-	msg := sprintf("RDS cluster '%s' does not have deletion protection enabled - this could lead to accidental expensive data loss", [cluster.address])
+	msg := sprintf("RDS cluster '%s' in production does not have deletion protection enabled", [cluster.address])
 }
 
-# Warn about instances without cost control tags
-warn contains msg if {
+deny[msg] {
+	cluster := rds_clusters[_]
+	cluster.change.after.tags.Environment == "production"
+	not cluster.change.after.deletion_protection
+	msg := sprintf("RDS cluster '%s' in production does not have deletion protection enabled", [cluster.address])
+}
+
+# Warn about missing cost tracking tags
+warn[msg] {
 	instance := ec2_instances[_]
 	not instance.change.after.tags.CostCenter
 	msg := sprintf("EC2 instance '%s' is missing 'CostCenter' tag for cost tracking", [instance.address])
 }
 
-warn contains msg if {
+warn[msg] {
 	instance := rds_instances[_]
 	not instance.change.after.tags.CostCenter
 	msg := sprintf("RDS instance '%s' is missing 'CostCenter' tag for cost tracking", [instance.address])
 }
 
-# Warn about production instances in expensive regions
-warn contains msg if {
+# Warn about instances in high-cost regions for production workloads
+warn[msg] {
 	instance := ec2_instances[_]
 	instance.change.after.tags.Environment == "prod"
-	# This is a simplified check - in practice you'd check the provider region
+	provider_region := input.configuration.provider_config.aws.expressions.region.constant_value
+	high_cost_regions[provider_region]
 	msg := sprintf("Production EC2 instance '%s' - ensure you're using the most cost-effective region", [instance.address])
 }
 
-# Warn about instances without scheduled start/stop for dev environments
-warn contains msg if {
+warn[msg] {
+	instance := ec2_instances[_]
+	instance.change.after.tags.Environment == "production"
+	provider_region := input.configuration.provider_config.aws.expressions.region.constant_value
+	high_cost_regions[provider_region]
+	msg := sprintf("Production EC2 instance '%s' - ensure you're using the most cost-effective region", [instance.address])
+}
+
+# Warn about dev instances without auto-shutdown
+warn[msg] {
 	instance := ec2_instances[_]
 	instance.change.after.tags.Environment == "dev"
-	not instance.change.after.tags.Schedule
-	msg := sprintf("Development EC2 instance '%s' is missing 'Schedule' tag - consider auto-shutdown to reduce costs", [instance.address])
+	not instance.change.after.tags.AutoShutdown
+	msg := sprintf("Development EC2 instance '%s' should have 'AutoShutdown' tag to reduce costs", [instance.address])
 }
 
-# Warn about RDS instances without backup retention optimization
-warn contains msg if {
-	instance := rds_instances[_]
-	instance.change.after.backup_retention_period > 7
-	instance.change.after.tags.Environment == "dev"
-	msg := sprintf("Development RDS instance '%s' has backup retention > 7 days - consider reducing for cost savings", [instance.address])
-}
-
-# Warn about instances with high storage allocation
-warn contains msg if {
-	instance := rds_instances[_]
-	instance.change.after.allocated_storage > 1000
-	msg := sprintf("RDS instance '%s' has high storage allocation (%d GB) - ensure this is necessary", [instance.address, instance.change.after.allocated_storage])
+warn[msg] {
+	instance := ec2_instances[_]
+	instance.change.after.tags.Environment == "development"
+	not instance.change.after.tags.AutoShutdown
+	msg := sprintf("Development EC2 instance '%s' should have 'AutoShutdown' tag to reduce costs", [instance.address])
 }
