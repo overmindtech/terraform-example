@@ -16,10 +16,10 @@ jobs:
         id: fmt
         run: terraform fmt -check -diff
 
-  # NEW: Policy checks job running in parallel
   policy-checks:
     runs-on: ubuntu-latest
     if: github.event.action != 'closed'
+    needs: execute
     permissions:
       contents: read
       id-token: write
@@ -32,20 +32,26 @@ jobs:
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
 
-      - name: Generate Plan for Policies
-        id: policy-plan
+      - name: Download terraform plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+
+      - name: Convert plan to JSON
         run: |
-          terraform plan -no-color -input=false -out tfplan.policies
-          terraform show -json tfplan.policies > tfplan.json
+          terraform show -json tfplan > tfplan.json
 
       - uses: overmindtech/policy-signals-action@v1
         with:
           policies-path: './policies'
-          overmind-api-key: ${{ secrets.OVM_API_KEY }}
           terraform-plan-json: './tfplan.json'
+          overmind-api-key: ${{ secrets.OVM_API_KEY }}
+          ticket-link: ${{ needs.execute.outputs.run-url }}
 
   execute:
     runs-on: ubuntu-latest
+    outputs:
+      run-url: ${{ steps.submit-plan.outputs.run-url }}
     permissions:
       contents: read # required for checkout
       id-token: write # mint AWS credentials through OIDC
