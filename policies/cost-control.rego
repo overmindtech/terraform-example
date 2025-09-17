@@ -3,8 +3,6 @@ package terraform.cost
 # Cost Control Policy
 # Checks for expensive instance types, RDS configurations, and high-cost regions
 
-import rego.v1
-
 # Expensive EC2 instance types (anything larger than t3.large)
 expensive_ec2_types := {
 	"m5.xlarge", "m5.2xlarge", "m5.4xlarge", "m5.8xlarge", "m5.12xlarge", "m5.16xlarge", "m5.24xlarge",
@@ -47,80 +45,102 @@ expensive_regions := {
 }
 
 # Get all EC2 instance resources from terraform plan
-ec2_instances contains resource if {
-	some resource in input.resource_changes
+ec2_instances[resource] {
+	resource := input.resource_changes[_]
 	resource.type == "aws_instance"
-	resource.change.actions[_] in ["create", "update"]
+	resource.change.actions[_] == "create"
+}
+
+ec2_instances[resource] {
+	resource := input.resource_changes[_]
+	resource.type == "aws_instance"
+	resource.change.actions[_] == "update"
 }
 
 # Get all RDS instance resources from terraform plan
-rds_instances contains resource if {
-	some resource in input.resource_changes
+rds_instances[resource] {
+	resource := input.resource_changes[_]
 	resource.type == "aws_db_instance"
-	resource.change.actions[_] in ["create", "update"]
+	resource.change.actions[_] == "create"
+}
+
+rds_instances[resource] {
+	resource := input.resource_changes[_]
+	resource.type == "aws_db_instance"
+	resource.change.actions[_] == "update"
 }
 
 # Get all RDS cluster resources from terraform plan
-rds_clusters contains resource if {
-	some resource in input.resource_changes
+rds_clusters[resource] {
+	resource := input.resource_changes[_]
 	resource.type == "aws_rds_cluster"
-	resource.change.actions[_] in ["create", "update"]
+	resource.change.actions[_] == "create"
+}
+
+rds_clusters[resource] {
+	resource := input.resource_changes[_]
+	resource.type == "aws_rds_cluster"
+	resource.change.actions[_] == "update"
 }
 
 # Get provider configuration to determine region
-provider_region := region if {
-	some provider in input.configuration.provider_config.aws
+provider_region = region {
+	provider := input.configuration.provider_config.aws[_]
 	region := provider.expressions.region.constant_value
-} else := "us-east-1"  # Default to us-east-1 if not specified
+}
+
+provider_region = "us-east-1" {
+	not input.configuration.provider_config.aws[_].expressions.region.constant_value
+}
 
 # Check for expensive EC2 instance types
-deny contains msg if {
-	some instance in ec2_instances
+deny[msg] {
+	instance := ec2_instances[_]
 	instance_type := instance.change.after.instance_type
-	instance_type in expensive_ec2_types
+	expensive_ec2_types[instance_type]
 	msg := sprintf("EC2 instance '%s' uses expensive instance type '%s' - consider using t3.large or smaller for cost optimization", [instance.address, instance_type])
 }
 
 # Check for expensive RDS instance classes
-deny contains msg if {
-	some rds in rds_instances
+deny[msg] {
+	rds := rds_instances[_]
 	instance_class := rds.change.after.instance_class
-	instance_class in expensive_rds_classes
+	expensive_rds_classes[instance_class]
 	msg := sprintf("RDS instance '%s' uses expensive instance class '%s' - consider using db.t3.medium or smaller for cost optimization", [rds.address, instance_class])
 }
 
 # Warn about expensive regions for EC2 instances
-warn contains msg if {
-	some instance in ec2_instances
-	provider_region in expensive_regions
+warn[msg] {
+	instance := ec2_instances[_]
+	expensive_regions[provider_region]
 	msg := sprintf("EC2 instance '%s' will be created in expensive region '%s' - consider using us-east-1 or us-west-2 for lower costs", [instance.address, provider_region])
 }
 
 # Warn about expensive regions for RDS instances
-warn contains msg if {
-	some rds in rds_instances
-	provider_region in expensive_regions
+warn[msg] {
+	rds := rds_instances[_]
+	expensive_regions[provider_region]
 	msg := sprintf("RDS instance '%s' will be created in expensive region '%s' - consider using us-east-1 or us-west-2 for lower costs", [rds.address, provider_region])
 }
 
 # Check for RDS instances without appropriate backup retention (cost vs compliance)
-warn contains msg if {
-	some rds in rds_instances
+warn[msg] {
+	rds := rds_instances[_]
 	backup_retention := rds.change.after.backup_retention_period
 	backup_retention > 7
 	msg := sprintf("RDS instance '%s' has backup retention period of %d days - consider if this is necessary for cost optimization", [rds.address, backup_retention])
 }
 
 # Check for RDS instances with multi-AZ enabled (higher cost)
-warn contains msg if {
-	some rds in rds_instances
+warn[msg] {
+	rds := rds_instances[_]
 	rds.change.after.multi_az == true
 	msg := sprintf("RDS instance '%s' has Multi-AZ enabled - ensure this is required for your availability needs as it doubles the cost", [rds.address])
 }
 
 # Warn about high IOPS provisioned storage
-warn contains msg if {
-	some rds in rds_instances
+warn[msg] {
+	rds := rds_instances[_]
 	storage_type := rds.change.after.storage_type
 	storage_type == "io1"
 	iops := rds.change.after.iops
@@ -129,17 +149,17 @@ warn contains msg if {
 }
 
 # Check for large allocated storage
-warn contains msg if {
-	some rds in rds_instances
+warn[msg] {
+	rds := rds_instances[_]
 	allocated_storage := rds.change.after.allocated_storage
 	allocated_storage > 100
 	msg := sprintf("RDS instance '%s' has %d GB allocated storage - ensure this storage size is necessary", [rds.address, allocated_storage])
 }
 
 # Check for RDS clusters with expensive instance classes
-deny contains msg if {
-	some cluster in rds_clusters
+deny[msg] {
+	cluster := rds_clusters[_]
 	instance_class := cluster.change.after.instance_class
-	instance_class in expensive_rds_classes
+	expensive_rds_classes[instance_class]
 	msg := sprintf("RDS cluster '%s' uses expensive instance class '%s' - consider using db.t3.medium or smaller for cost optimization", [cluster.address, instance_class])
 }
