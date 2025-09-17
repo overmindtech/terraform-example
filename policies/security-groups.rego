@@ -200,5 +200,3 @@ warn[msg] {
 	"0.0.0.0/0" == ingress.cidr_blocks[k]
 	msg := sprintf("Security group '%s' allows application port %d access from anywhere (0.0.0.0/0) - ensure this is intended for public access", [sg.address, ingress.from_port])
 }
-	msg := sprintf("Security group '%s' allows application port %d access from anywhere (0.0.0.0/0) - ensure this is intended for public access", [sg.address, ingress.from_port])
-}
