@@ -38,7 +38,7 @@ jobs:
           terraform plan -no-color -input=false -lock=false -out tfplan.policies
           terraform show -json tfplan.policies > tfplan.json
 
-      - uses: overmindtech/policy-signals-action@v1
+      - uses: overmindtech/policy-signals-action@main
         with:
           policies-path: './policies'
           overmind-api-key: ${{ secrets.OVM_API_KEY }}
