@@ -16,8 +16,42 @@ jobs:
         id: fmt
         run: terraform fmt -check -diff
 
+  policy-checks:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    needs: execute
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Terraform Init (for policies)
+        uses: ./.github/actions/terraform_init/
+        with:
+          terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Download terraform plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+
+      - name: Convert plan to JSON
+        run: |
+          terraform show -json tfplan > tfplan.json
+
+      - uses: overmindtech/policy-signals-action@v1
+        with:
+          policies-path: './policies'
+          terraform-plan-json: './tfplan.json'
+          overmind-api-key: ${{ secrets.OVM_API_KEY }}
+          ticket-link: ${{ needs.execute.outputs.run-url }}
+
   execute:
     runs-on: ubuntu-latest
+    outputs:
+      run-url: ${{ steps.submit-plan.outputs.run-url }}
     permissions:
       contents: read # required for checkout
       id-token: write # mint AWS credentials through OIDC
