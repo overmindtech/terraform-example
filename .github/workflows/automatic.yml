@@ -133,3 +133,31 @@ jobs:
         if: (success() || failure() || cancelled()) && github.event.pull_request.merged == true
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+  cost-analysis:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Terraform Init
+        uses: ./.github/actions/terraform_init/
+        with:
+          terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Terraform Plan for Cost Analysis
+        id: plan-cost
+        run: |
+          set -o pipefail -ex
+          terraform plan -compact-warnings -no-color -input=false -lock-timeout=5m -out tfplan-cost 2>&1
+          terraform show -json tfplan-cost > tfplan-cost.json
+
+      - uses: overmindtech/cost-signals-action@v1
+        with:
+          overmind-api-key: ${{ secrets.OVM_API_KEY }}
+          infracost-api-key: ${{ secrets.INFRACOST_API_KEY }}
+          terraform-plan-json: ./tfplan-cost.json
