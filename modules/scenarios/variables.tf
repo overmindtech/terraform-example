@@ -5,27 +5,37 @@ variable "example_env" {
   type        = string
 }
 
-# Memory optimization demo variables
+# Java application memory optimization settings
 variable "enable_memory_optimization_demo" {
-  description = "Enable the memory optimization demo scenario"
+  description = "Enable the Java application memory optimization in production"
   type        = bool
-  default     = true  # Enable demo infrastructure
+  default     = true
 }
 
 variable "memory_optimization_container_memory" {
-  description = "Memory allocation for containers in the demo (2048 = safe, 1024 = breaks)"
+  description = "Memory allocation per ECS container in MB. Based on monitoring analysis showing 800MB average usage."
   type        = number
-  default     = 1024  # Reduced from 2048MB to save costs
+  default     = 1024
+  
+  validation {
+    condition     = var.memory_optimization_container_memory >= 512 && var.memory_optimization_container_memory <= 4096
+    error_message = "Container memory must be between 512MB and 4GB."
+  }
 }
 
 variable "memory_optimization_container_count" {
-  description = "Number of containers to run in the memory optimization demo"
+  description = "Number of ECS service instances for load distribution"
   type        = number
-  default     = 3  # Reduced from 15 to 3 for cost optimization
+  default     = 3
+  
+  validation {
+    condition     = var.memory_optimization_container_count >= 1 && var.memory_optimization_container_count <= 50
+    error_message = "Container count must be between 1 and 50."
+  }
 }
 
 variable "days_until_black_friday" {
-  description = "Days until Black Friday (demo context)"
+  description = "Business context: Days remaining until Black Friday peak traffic period"
   type        = number
   default     = 7
 }

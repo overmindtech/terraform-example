@@ -1,7 +1,6 @@
 # monitoring.tf
-# Following guide.md requirements for memory optimization demo
-# Create CloudWatch alarms that will fire when containers OOM
-# Reference the memory optimization scenario from guide.md
+# CloudWatch monitoring and alerting for Java application performance
+# Production-grade monitoring for ECS service health and resource utilization
 
 # SNS Topic for alarm notifications
 resource "aws_sns_topic" "alerts" {

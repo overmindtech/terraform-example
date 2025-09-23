@@ -1,7 +1,6 @@
 # ecs.tf
-# Following guide.md requirements for memory optimization demo
-# Create ECS resources showing Java heap trap from guide.md
-# Java needs 1536MB heap but container will only have 1024MB after change
+# ECS infrastructure for Java Tomcat application
+# Production configuration with optimized memory allocation
 
 # ECS Cluster with container insights
 resource "aws_ecs_cluster" "main" {

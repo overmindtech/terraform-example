@@ -1,21 +1,21 @@
 # variables.tf
-# Following guide.md requirements for memory optimization demo
-# Create variables for memory optimization demo as specified in guide.md
+# ECS Java application memory allocation configuration
+# Infrastructure variables for production memory optimization
 
 variable "enabled" {
-  description = "Toggle module on/off"
+  description = "Enable the ECS service and associated infrastructure"
   type        = bool
   default     = true
 }
 
 variable "name_prefix" {
-  description = "Unique prefix for resources"
+  description = "Resource naming prefix for consistent identification"
   type        = string
-  default     = "memory-opt-demo"
+  default     = "java-app"
 }
 
 variable "container_memory" {
-  description = "Memory in MB allocated to each container (will change from 2048 to 1024 to break)"
+  description = "Memory allocation per container in MB. Current monitoring shows 800MB average usage."
   type        = number
   default     = 2048
   
@@ -26,7 +26,7 @@ variable "container_memory" {
 }
 
 variable "number_of_containers" {
-  description = "ECS service desired count - number of containers to run"
+  description = "ECS service desired count for high availability and load distribution"
   type        = number
   default     = 15
   
