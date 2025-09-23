@@ -41,11 +41,11 @@ resource "aws_sqs_queue" "image_processing_dlq" {
 
 # Lambda function for processing images
 resource "aws_lambda_function" "image_processor" {
-  filename         = data.archive_file.lambda_zip.output_path
+  filename         = "${path.module}/lambda_function.zip"
   function_name    = "image-processor-${var.example_env}"
   role            = aws_iam_role.lambda_role.arn
   handler         = "lambda_function.lambda_handler"
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  source_code_hash = filebase64sha256("${path.module}/lambda_function.zip")
   runtime         = "python3.9"
   timeout         = var.lambda_timeout
   
