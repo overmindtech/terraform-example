@@ -49,7 +49,7 @@ resource "aws_lb_target_group" "app" {
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-tg"
-    Description = "Target group with ${var.deregistration_delay}s deregistration - NO TIME FOR ROLLBACK!"
+    Description = "Target group with ${var.deregistration_delay}s deregistration - NO TIME FOR ROLLBACK"
     
     # Risk warning tags
     "risk:deregistration-delay"    = "${var.deregistration_delay}s"
