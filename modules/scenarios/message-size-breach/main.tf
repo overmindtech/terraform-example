@@ -53,7 +53,6 @@ resource "aws_lambda_function" "image_processor" {
   memory_size = 1024
   
   depends_on = [
-    data.archive_file.lambda_zip,
     aws_iam_role.lambda_role
   ]
   
