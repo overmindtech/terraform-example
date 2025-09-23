@@ -10,7 +10,7 @@ resource "aws_sqs_queue" "image_processing_queue" {
   
   # Standard queue configuration
   message_retention_seconds  = 1209600  # 14 days
-  visibility_timeout_seconds = 30
+  visibility_timeout_seconds = 1080     # 18 minutes (6x Lambda timeout of 180 seconds)
   receive_wait_time_seconds  = 20       # Long polling
   
   # Dead letter queue for failed messages
