@@ -35,3 +35,5 @@ terraform.rc
 
 downloaded_package_*
 MEMORY-DEMO-QUICKSTART.md
+
+.idea/
