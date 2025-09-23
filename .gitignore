@@ -34,3 +34,4 @@ override.tf.json
 terraform.rc
 
 downloaded_package_*
+MEMORY-DEMO-QUICKSTART.md
