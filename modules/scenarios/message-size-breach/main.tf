@@ -74,8 +74,7 @@ resource "aws_lambda_event_source_mapping" "sqs_trigger" {
   
   # These settings make the failure more dramatic
   maximum_batching_window_in_seconds = 5
-  maximum_retry_attempts            = 3
-  
+
   depends_on = [aws_iam_role_policy_attachment.lambda_sqs_policy]
 }
 
