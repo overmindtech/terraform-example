@@ -1,4 +1,4 @@
-# Data source for Lambda function zip file (inline code)
+# Create Lambda function zip file using archive_file data source
 data "archive_file" "lambda_zip" {
   type        = "zip"
   output_path = "${path.module}/lambda_function.zip"
