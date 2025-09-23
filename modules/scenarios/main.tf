@@ -97,7 +97,7 @@ module "message_size_breach" {
   example_env = var.example_env
   
   # The configuration that looks innocent but will break Lambda
-  max_message_size = var.message_size_breach_max_size  # 256KB (safe) vs 1MB (dangerous)
+  max_message_size = var.message_size_breach_max_size  # 25KB (safe) vs 100KB (dangerous)
   batch_size       = var.message_size_breach_batch_size  # 10 messages
   lambda_timeout   = var.message_size_breach_lambda_timeout
   lambda_memory    = var.message_size_breach_lambda_memory

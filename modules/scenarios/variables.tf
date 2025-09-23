@@ -50,7 +50,7 @@ variable "enable_message_size_breach_demo" {
 variable "message_size_breach_max_size" {
   description = "Maximum message size for SQS queue in bytes. 25KB (25600) is safe, 100KB (102400) will break Lambda batch processing. Based on AWS Lambda async payload limit of 256KB."
   type        = number
-  default     = 25600  # 25KB - safe default
+  default     = 102400  # 100KB - DANGEROUS! Will exceed Lambda payload limit
   
   validation {
     condition     = var.message_size_breach_max_size >= 1024 && var.message_size_breach_max_size <= 1048576
