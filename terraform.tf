@@ -15,6 +15,10 @@ terraform {
       # we expect this to be fixed over the coming weeks, as of 23/6/2025
       version = "< 6.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
   }
   backend "s3" {
     # note that this configuration is only used on the github actions demo
