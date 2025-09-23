@@ -9,13 +9,13 @@ variable "example_env" {
 variable "enable_memory_optimization_demo" {
   description = "Enable the memory optimization demo scenario"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "memory_optimization_container_memory" {
   description = "Memory allocation for containers in the demo (2048 = safe, 1024 = breaks)"
   type        = number
-  default     = 2048
+  default     = 1024  # Reduced from 2048MB to save costs
 }
 
 variable "memory_optimization_container_count" {
