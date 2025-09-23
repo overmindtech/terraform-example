@@ -35,13 +35,13 @@ resource "aws_cloudwatch_metric_alarm" "high_memory_utilization" {
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-memory-alarm"
-    Description = "Memory alarm - will trigger when Java heap (${var.java_heap_size_mb}MB) exceeds container limit (${var.container_memory}MB)"
+    Description = "Memory utilization alarm for Java application"
     
-    # Alarm context tags
-    "alarm:trigger-condition"     = "memory > 80%"
-    "alarm:java-heap-configured"  = "${var.java_heap_size_mb}MB"
-    "alarm:container-memory"      = "${var.container_memory}MB"
-    "alarm:will-fire-after-change" = tostring(var.container_memory < var.java_heap_size_mb + 256)
+    # Alarm metadata
+    AlarmTrigger       = "memory-over-80-percent"
+    JavaHeapMB         = tostring(var.java_heap_size_mb)
+    ContainerMemoryMB  = tostring(var.container_memory)
+    WillFireAfterChange = tostring(var.container_memory < var.java_heap_size_mb + 256)
   })
 }
 
@@ -67,13 +67,13 @@ resource "aws_cloudwatch_metric_alarm" "low_task_count" {
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-task-count-alarm"
-    Description = "Task count alarm - will trigger when containers crash after memory reduction"
+    Description = "Task count alarm for container health monitoring"
     
-    # Alarm context tags
-    "alarm:expected-tasks"        = tostring(var.number_of_containers)
-    "alarm:threshold-tasks"       = tostring(var.number_of_containers * 0.8)
-    "alarm:crash-cause"          = "OOM when memory reduced to ${var.container_memory}MB"
-    "alarm:black-friday-impact"  = "service degradation ${var.days_until_black_friday} days before peak"
+    # Alarm metadata
+    ExpectedTasks      = tostring(var.number_of_containers)
+    ThresholdTasks     = tostring(var.number_of_containers * 0.8)
+    CrashCause         = "OOM-when-memory-reduced"
+    BusinessImpact     = "service-degradation"
   })
 }
 
@@ -98,12 +98,12 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-cpu-alarm"
-    Description = "CPU alarm - will spike when JVM struggles with insufficient memory for garbage collection"
+    Description = "CPU utilization alarm for Java application performance"
     
-    # Technical explanation tags
-    "technical:gc-pressure"      = "high when heap approaches container limit"
-    "technical:jvm-behavior"     = "CPU spikes before OOM crash"
-    "technical:memory-thrashing" = "frequent GC when memory constrained"
+    # Technical metadata
+    GCPressure         = "high-when-heap-approaches-limit"
+    JVMBehavior        = "CPU-spikes-before-OOM"
+    MemoryThrashing    = "frequent-GC-when-constrained"
   })
 }
 
@@ -128,12 +128,13 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_targets" {
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-unhealthy-targets-alarm"
-    Description = "Unhealthy targets alarm - will fire when containers fail health checks after OOM"
+    Description = "ALB target health monitoring for application availability"
     
-    # Impact tags
-    "impact:user-experience"     = "failed requests during container crashes"
-    "impact:deregistration-time" = "${var.deregistration_delay}s (no rollback time)"
-    "impact:business-risk"       = "outage ${var.days_until_black_friday} days before Black Friday"
+    # Impact metadata
+    UserExperience     = "failed-requests-during-crashes"
+    DeregistrationTime = "${var.deregistration_delay}s"
+    RollbackCapability = "insufficient"
+    BusinessRisk       = "outage-before-peak-season"
   })
 }
 

@@ -146,14 +146,14 @@ resource "aws_ecs_task_definition" "app" {
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-task"
-    Description = "Task definition showing Java heap trap - needs ${var.java_heap_size_mb + 256}MB but will get ${var.container_memory}MB"
+    Description = "ECS task definition with Java heap configuration"
     
-    # Critical warning tags
-    "warning:java-heap-size"     = "${var.java_heap_size_mb}MB"
-    "warning:memory-overhead"    = "256MB (metaspace + OS)"
-    "warning:total-required"     = "${var.java_heap_size_mb + 256}MB"
-    "warning:container-memory"   = "${var.container_memory}MB"
-    "warning:will-oom-on-1024"  = "true"
+    # Technical metadata
+    JavaHeapSizeMB     = tostring(var.java_heap_size_mb)
+    MemoryOverheadMB   = "256"
+    TotalRequiredMB    = tostring(var.java_heap_size_mb + 256)
+    ContainerMemoryMB  = tostring(var.container_memory)
+    MemoryOptimized    = "true"
   })
 }
 
@@ -194,12 +194,12 @@ resource "aws_ecs_service" "app" {
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-service"
-    Description = "ECS service with ${var.number_of_containers} containers - ALL will restart when memory changes"
+    Description = "ECS service running Java application containers"
     
-    # Impact warning tags
-    "impact:containers-affected" = tostring(var.number_of_containers)
-    "impact:deployment-type"     = "rolling"
-    "impact:black-friday-risk"   = "all containers restart during peak season"
+    # Impact metadata
+    ContainersAffected = tostring(var.number_of_containers)
+    DeploymentType     = "rolling"
+    BusinessContext    = "cost-optimization"
   })
 }
 

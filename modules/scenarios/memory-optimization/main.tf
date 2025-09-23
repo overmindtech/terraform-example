@@ -95,9 +95,9 @@ resource "aws_route_table_association" "standalone" {
 
 # Local calculations and configurations
 locals {
-  # Resource naming with random suffix
+  # Resource naming with random suffix (shortened for AWS limits)
   random_suffix = var.enabled ? random_id.suffix[0].hex : ""
-  name_prefix   = "${var.name_prefix}-${local.random_suffix}"
+  name_prefix   = "${substr(var.name_prefix, 0, 10)}-${local.random_suffix}"
 
   # VPC configuration based on mode
   vpc_id = var.enabled ? (
@@ -130,22 +130,20 @@ locals {
   required_memory_mb = local.java_heap_mb + local.java_overhead_mb
   will_it_work = var.container_memory >= local.required_memory_mb
 
-  # Common tags for all resources
+  # Common tags for all resources (AWS compliant)
   common_tags = {
     Environment = "demo"
-    Project     = "memory-optimization-trap"
-    Scenario    = "friday-afternoon-optimization"
+    Project     = "memory-optimization"
+    Scenario    = "cost-reduction"
     CreatedBy   = "terraform"
-    Purpose     = "demonstrate-hidden-risks"
+    Purpose     = "production-optimization"
     
-    # Context tags that tell the story
-    "demo:current-memory"           = "${var.container_memory}MB"
-    "demo:java-heap-size"          = "${local.java_heap_mb}MB"
-    "demo:required-total-memory"   = "${local.required_memory_mb}MB"
-    "demo:will-optimization-work"  = tostring(local.will_it_work)
-    "demo:monthly-savings"         = "$${local.monthly_savings}"
-    "demo:days-until-black-friday" = tostring(var.days_until_black_friday)
-    "demo:last-memory-change"      = "${var.days_since_last_memory_change} days ago"
-    "demo:risk-level"              = local.will_it_work ? "low" : "CRITICAL"
+    # Context tags (AWS compliant format)
+    MemoryMB           = tostring(var.container_memory)
+    JavaHeapMB         = tostring(local.java_heap_mb)
+    RequiredMemoryMB   = tostring(local.required_memory_mb)
+    OptimizationWorks  = tostring(local.will_it_work)
+    DaysUntilBF        = tostring(var.days_until_black_friday)
+    RiskLevel          = local.will_it_work ? "low" : "high"
   }
 }
