@@ -52,6 +52,11 @@ resource "aws_lambda_function" "image_processor" {
   # This will fail when batch size × message size > 256KB (Lambda async limit)
   memory_size = 1024
   
+  depends_on = [
+    data.archive_file.lambda_zip,
+    aws_iam_role.lambda_role
+  ]
+  
   
   tags = {
     Name        = "Image Processor"
