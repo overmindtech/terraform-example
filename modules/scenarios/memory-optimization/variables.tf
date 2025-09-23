@@ -82,7 +82,7 @@ variable "java_heap_size_mb" {
 variable "enable_container_insights" {
   description = "Enable CloudWatch Container Insights for the ECS cluster"
   type        = bool
-  default     = true
+  default     = false  # Disabled for cost optimization
 }
 
 variable "health_check_grace_period" {
@@ -106,7 +106,7 @@ variable "application_port" {
 variable "cpu_units" {
   description = "CPU units for ECS task (1024 = 1 vCPU)"
   type        = number
-  default     = 1024
+  default     = 512  # Reduced from 1024 for cost savings
 }
 
 # Tags

@@ -71,7 +71,7 @@ resource "aws_iam_role" "ecs_task_role" {
 resource "aws_cloudwatch_log_group" "app" {
   count             = var.enabled ? 1 : 0
   name              = "/ecs/${local.name_prefix}"
-  retention_in_days = 7
+  retention_in_days = 1  # Reduced from 7 days for cost optimization
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-logs"
