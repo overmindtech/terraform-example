@@ -111,7 +111,7 @@ module "message_size_demo" {
   example_env = "demo"
   
   # The "optimization" that kills production
-  max_message_size = 1048576  # 1MB - seems reasonable!
+  max_message_size = 102400   # 100KB - seems reasonable!
   batch_size       = 10       # Same batch size
   lambda_timeout   = 180      # Same timeout
 }
