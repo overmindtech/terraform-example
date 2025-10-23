@@ -13,9 +13,9 @@ variable "enable_memory_optimization_demo" {
 }
 
 variable "memory_optimization_container_memory" {
-  description = "Memory allocation per ECS container in MB. Production baseline for Java applications with adequate headroom."
+  description = "Memory allocation per ECS container in MB. Optimized based on monitoring data showing 800MB average usage with 950MB peaks."
   type        = number
-  default     = 2048
+  default     = 1024
   
   validation {
     condition     = var.memory_optimization_container_memory >= 512 && var.memory_optimization_container_memory <= 4096
