@@ -100,6 +100,7 @@ jobs:
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
           plan-json: ./tfplan.json
+          tags: 'risks_v6'
 
       - name: Install prerequisites
         if: github.event.pull_request.merged == true
