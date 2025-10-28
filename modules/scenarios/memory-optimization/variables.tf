@@ -82,13 +82,13 @@ variable "java_heap_size_mb" {
 variable "enable_container_insights" {
   description = "Enable CloudWatch Container Insights for the ECS cluster"
   type        = bool
-  default     = false  # Disabled for cost optimization
+  default     = true  # Enabled for better monitoring
 }
 
 variable "health_check_grace_period" {
   description = "Health check grace period in seconds (JVM needs time to start)"
   type        = number
-  default     = 120
+  default     = 180 # Changed from 120
 }
 
 variable "deregistration_delay" {
