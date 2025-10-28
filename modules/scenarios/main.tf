@@ -63,6 +63,7 @@ module "vpc" {
   tags = {
     Terraform   = "true"
     Environment = "development"
+    Project     = "risk-testing"
   }
 }
 
