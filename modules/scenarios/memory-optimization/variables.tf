@@ -100,7 +100,7 @@ variable "deregistration_delay" {
 variable "application_port" {
   description = "Port the Tomcat application listens on"
   type        = number
-  default     = 8080
+  default     = 9090
 }
 
 variable "cpu_units" {
