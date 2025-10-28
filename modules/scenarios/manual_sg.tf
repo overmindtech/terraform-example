@@ -133,6 +133,7 @@ resource "aws_instance" "webserver" {
 
   tags = {
     Name = "Webserver"
+    Description = "Primary web server instance for application hosting"
   }
 }
 

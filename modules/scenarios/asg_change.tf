@@ -39,7 +39,7 @@ resource "aws_autoscaling_group" "my_asg" {
   name                      = "asg-change-test-asg-${var.example_env}"
   min_size                  = 0
   max_size                  = 2
-  desired_capacity          = 1
+  desired_capacity          = 1  # Maintain single instance for cost optimization
   target_group_arns         = [aws_lb_target_group.my_target_group.arn]
   vpc_zone_identifier       = module.vpc.public_subnets
   health_check_type         = "EC2"

@@ -88,7 +88,7 @@ variable "enable_container_insights" {
 variable "health_check_grace_period" {
   description = "Health check grace period in seconds (JVM needs time to start)"
   type        = number
-  default     = 120
+  default     = 180
 }
 
 variable "deregistration_delay" {
