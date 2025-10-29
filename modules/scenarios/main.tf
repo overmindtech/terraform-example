@@ -21,7 +21,7 @@ module "vpc" {
   version = "< 6.0"
 
   name = "workloads-${var.example_env}"
-  cidr = "10.0.0.0/16"
+  cidr = "172.16.0.0/16"
 
   default_security_group_egress = [
     {
