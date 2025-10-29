@@ -66,27 +66,27 @@ module "vpc" {
   }
 }
 
-# Memory optimization demo scenario - DISABLED for clean VPC testing
-# module "memory_optimization" {
-#   source = "./memory-optimization"
-#   
-#   # Control whether this scenario is enabled
-#   enabled = var.enable_memory_optimization_demo
-#   
-#   # Use the VPC created above instead of default VPC
-#   use_default_vpc = false
-#   vpc_id = module.vpc.vpc_id
-#   subnet_ids = module.vpc.public_subnets
-#   
-#   # Demo configuration
-#   name_prefix = "scenarios-memory-demo"
-#   container_memory = var.memory_optimization_container_memory
-#   number_of_containers = var.memory_optimization_container_count
-#   
-#   # Context for the demo
-#   days_until_black_friday = var.days_until_black_friday
-#   days_since_last_memory_change = 423
-# }
+# Memory optimization demo scenario - ENABLED with clean defaults
+module "memory_optimization" {
+  source = "./memory-optimization"
+  
+  # Control whether this scenario is enabled
+  enabled = var.enable_memory_optimization_demo
+  
+  # Use the VPC created above instead of default VPC
+  use_default_vpc = false
+  vpc_id = module.vpc.vpc_id
+  subnet_ids = module.vpc.public_subnets
+  
+  # Demo configuration - using clean defaults
+  name_prefix = "scenarios-clean-test"
+  container_memory = 2048  # Clean default, no memory reduction
+  number_of_containers = 1
+  
+  # Context for the demo
+  days_until_black_friday = var.days_until_black_friday
+  days_since_last_memory_change = 423
+}
 
 # Message size limit breach demo scenario
 module "message_size_breach" {

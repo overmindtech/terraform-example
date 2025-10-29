@@ -1,26 +1,26 @@
 # outputs.tf
 # Outputs for the scenarios module
 
-# Memory optimization demo outputs - DISABLED for clean VPC testing
-# output "memory_optimization_demo_status" {
-#   description = "Status and analysis of the memory optimization demo"
-#   value       = var.enable_memory_optimization_demo ? module.memory_optimization.demo_status : null
-# }
+# Memory optimization demo outputs
+output "memory_optimization_demo_status" {
+  description = "Status and analysis of the memory optimization demo"
+  value       = var.enable_memory_optimization_demo ? module.memory_optimization.demo_status : null
+}
 
-# output "memory_optimization_demo_url" {
-#   description = "URL to access the memory optimization demo application"
-#   value       = var.enable_memory_optimization_demo ? module.memory_optimization.alb_url : null
-# }
+output "memory_optimization_demo_url" {
+  description = "URL to access the memory optimization demo application"
+  value       = var.enable_memory_optimization_demo ? module.memory_optimization.alb_url : null
+}
 
-# output "memory_optimization_demo_instructions" {
-#   description = "Instructions for running the memory optimization demo"
-#   value       = var.enable_memory_optimization_demo ? module.memory_optimization.instructions : null
-# }
+output "memory_optimization_demo_instructions" {
+  description = "Instructions for running the memory optimization demo"
+  value       = var.enable_memory_optimization_demo ? module.memory_optimization.instructions : null
+}
 
-# output "memory_optimization_cost_analysis" {
-#   description = "Cost analysis for the memory optimization scenario"
-#   value       = var.enable_memory_optimization_demo ? module.memory_optimization.cost_analysis : null
-# }
+output "memory_optimization_cost_analysis" {
+  description = "Cost analysis for the memory optimization scenario"
+  value       = var.enable_memory_optimization_demo ? module.memory_optimization.cost_analysis : null
+}
 
 # VPC information (useful for other integrations)
 output "vpc_id" {
