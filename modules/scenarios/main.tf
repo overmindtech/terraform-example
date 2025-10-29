@@ -20,7 +20,7 @@ module "vpc" {
   # we expect this to be fixed over the coming weeks, as of 23/6/2025
   version = "< 6.0"
 
-  name = "workloads-${var.example_env}"
+  name = "workloads-clean-test"
   cidr = "172.16.0.0/16"
 
   default_security_group_egress = [
