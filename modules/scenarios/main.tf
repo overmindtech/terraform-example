@@ -20,8 +20,8 @@ module "vpc" {
   # we expect this to be fixed over the coming weeks, as of 23/6/2025
   version = "< 6.0"
 
-  name = "workloads-${var.example_env}"
-  cidr = "10.0.0.0/16"
+  name = "workloads-ultra-clean-test"
+  cidr = "172.16.0.0/16"
 
   default_security_group_egress = [
     {
@@ -66,27 +66,27 @@ module "vpc" {
   }
 }
 
-# Memory optimization demo scenario
-module "memory_optimization" {
-  source = "./memory-optimization"
-  
-  # Control whether this scenario is enabled
-  enabled = var.enable_memory_optimization_demo
-  
-  # Use the VPC created above instead of default VPC
-  use_default_vpc = false
-  vpc_id = module.vpc.vpc_id
-  subnet_ids = module.vpc.public_subnets
-  
-  # Demo configuration
-  name_prefix = "scenarios-memory-demo"
-  container_memory = var.memory_optimization_container_memory
-  number_of_containers = var.memory_optimization_container_count
-  
-  # Context for the demo
-  days_until_black_friday = var.days_until_black_friday
-  days_since_last_memory_change = 423
-}
+# Memory optimization demo scenario - DISABLED for clean VPC testing
+# module "memory_optimization" {
+#   source = "./memory-optimization"
+#   
+#   # Control whether this scenario is enabled
+#   enabled = var.enable_memory_optimization_demo
+#   
+#   # Use the VPC created above instead of default VPC
+#   use_default_vpc = false
+#   vpc_id = module.vpc.vpc_id
+#   subnet_ids = module.vpc.public_subnets
+#   
+#   # Demo configuration
+#   name_prefix = "scenarios-memory-demo"
+#   container_memory = var.memory_optimization_container_memory
+#   number_of_containers = var.memory_optimization_container_count
+#   
+#   # Context for the demo
+#   days_until_black_friday = var.days_until_black_friday
+#   days_since_last_memory_change = 423
+# }
 
 # Message size limit breach demo scenario
 module "message_size_breach" {
