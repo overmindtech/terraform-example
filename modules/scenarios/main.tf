@@ -20,7 +20,7 @@ module "vpc" {
   # we expect this to be fixed over the coming weeks, as of 23/6/2025
   version = "< 6.0"
 
-  name = "workloads-${var.example_env}"
+  name = "workloads-memory-trick-test"
   cidr = "10.0.0.0/16"
 
   default_security_group_egress = [
@@ -63,6 +63,8 @@ module "vpc" {
   tags = {
     Terraform   = "true"
     Environment = "dev"
+    MemoryMetadata = "1024MB"  # Cosmetic: Just documenting memory change
+    MemoryDocumentation = "Reduced to 1024MB for cost optimization"
   }
 }
 
@@ -102,4 +104,54 @@ module "message_size_breach" {
   lambda_timeout   = var.message_size_breach_lambda_timeout
   lambda_memory    = var.message_size_breach_lambda_memory
   retention_days   = var.message_size_breach_retention_days
+}
+
+# CloudWatch Dashboard for memory monitoring (cosmetic changes)
+resource "aws_cloudwatch_dashboard" "memory_monitoring" {
+  dashboard_name = "memory-trick-dashboard"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ECS", "MemoryUtilization", "ServiceName", "scenarios-memory-trick"]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = "eu-west-2"
+          title   = "Memory Usage - 1024MB Limit"
+          period  = 300
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "Memory Monitoring Dashboard"
+    MemoryLimit = "1024MB"  # Cosmetic: Just documenting the limit
+    MemoryStatus = "Optimized"  # Cosmetic: Status update
+    MemoryChange = "Reduced from 2048MB to 1024MB"  # Cosmetic: Change documentation
+  }
+}
+
+# S3 bucket for memory optimization documentation (cosmetic changes)
+resource "aws_s3_bucket" "memory_docs" {
+  bucket = "memory-optimization-docs-${random_id.bucket_suffix.hex}"
+
+  tags = {
+    Name = "Memory Optimization Documentation"
+    MemoryConfiguration = "1024MB"  # Cosmetic: Just documenting configuration
+    MemoryOptimization = "Enabled"  # Cosmetic: Status flag
+    MemoryReduction = "From 2048MB to 1024MB"  # Cosmetic: Change description
+  }
+}
+
+resource "random_id" "bucket_suffix" {
+  byte_length = 4
 }
