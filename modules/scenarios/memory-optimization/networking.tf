@@ -40,7 +40,7 @@ resource "aws_lb_target_group" "app" {
     healthy_threshold   = 2
     unhealthy_threshold = 2
     timeout             = 5
-    interval            = 30
+    interval            = 60
     path                = "/"
     matcher             = "200"
     port                = "traffic-port"
@@ -49,7 +49,7 @@ resource "aws_lb_target_group" "app" {
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-tg"
-    Description = "Target group with ${var.deregistration_delay}s deregistration - NO TIME FOR ROLLBACK"
+    Description = "Target group with ${var.deregistration_delay}s deregistration - minimal rollback window"
     
     # Risk warning tags
     "risk:deregistration-delay"    = "${var.deregistration_delay}s"
