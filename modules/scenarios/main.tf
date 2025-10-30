@@ -71,7 +71,7 @@ module "memory_optimization" {
   source = "./memory-optimization"
   
   # Control whether this scenario is enabled
-  enabled = var.enable_memory_optimization_demo
+  enabled = false
   
   # Use the VPC created above instead of default VPC
   use_default_vpc = false
