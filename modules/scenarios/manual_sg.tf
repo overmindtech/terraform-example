@@ -137,6 +137,7 @@ resource "aws_instance" "webserver" {
 
   tags = {
     Name = "Webserver"
+    Environment = "dev"
   }
 }
 
@@ -151,6 +152,7 @@ resource "aws_instance" "app_server" {
 
   tags = {
     Name = "App Server"
+    Environment = "dev"
   }
 }
 
