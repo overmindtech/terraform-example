@@ -58,6 +58,34 @@ resource "aws_lb_target_group" "app" {
   })
 }
 
+# Blackhole Target Group - Empty target group for DNS outage simulation
+resource "aws_lb_target_group" "blackhole" {
+  count       = var.enabled ? 1 : 0
+  name        = "${local.name_prefix}-tg-blackhole"
+  port        = var.application_port
+  protocol    = "HTTP"
+  vpc_id      = local.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 5
+    unhealthy_threshold = 2
+    timeout             = 5
+    interval            = 60
+    path                = "/"
+    matcher             = "200"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+  }
+
+  tags = merge(local.common_tags, {
+    Name    = "${local.name_prefix}-tg-blackhole"
+    Purpose = "risk-test"
+    Mode    = "blackhole"
+  })
+}
+
 # ALB Listener
 resource "aws_lb_listener" "app" {
   count             = var.enabled ? 1 : 0
@@ -67,12 +95,7 @@ resource "aws_lb_listener" "app" {
 
   default_action {
     type             = "forward"
-    
-    forward {
-      target_group {
-        arn = aws_lb_target_group.app[0].arn
-      }
-    }
+    target_group_arn = aws_lb_target_group.blackhole[0].arn
   }
 
   tags = merge(local.common_tags, {
