@@ -17,12 +17,6 @@ resource "aws_route53_record" "blackhole" {
   # TTL is ignored for alias records but included for documentation
   # High TTL (300s = 5 minutes) indicates no failover capability
   # No health check evaluation - mimics DNS endpoint going dark
-
-  tags = {
-    Name      = "blackhole-dns-record"
-    RiskTest  = "dns-blackhole"
-    Failover  = "disabled"
-    Purpose   = "simulate-endpoint-going-dark"
-  }
+  # Note: Route53 records don't support tags directly
 }
 
