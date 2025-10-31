@@ -17,7 +17,7 @@ variable "name_prefix" {
 variable "container_memory" {
   description = "Memory allocation per container in MB. Optimized based on monitoring data showing 800MB average usage with 950MB peaks."
   type        = number
-  default     = 1024
+  default     = 2048
   
   validation {
     condition = var.container_memory >= 512 && var.container_memory <= 30720
