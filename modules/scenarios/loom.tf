@@ -492,7 +492,7 @@ resource "aws_rds_cluster" "face_database" {
   cluster_identifier   = "facial-recognition-${var.example_env}"
   engine               = "aurora-postgresql"
   engine_mode          = "provisioned"
-  engine_version       = "16.6"
+  engine_version       = "16.8"
   database_name        = "test"
   master_username      = "test"
   master_password      = "must_be_eight_characters"

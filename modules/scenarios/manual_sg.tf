@@ -122,8 +122,13 @@ resource "aws_network_acl_rule" "allow_outbound" {
   cidr_block     = "0.0.0.0/0"
 }
 
+# Use latest Amazon Linux 2 AMI via SSM for security patches
+data "aws_ssm_parameter" "amzn2_latest" {
+  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+}
+
 resource "aws_instance" "webserver" {
-  ami           = data.aws_ami.amazon_linux.id
+  ami           = data.aws_ssm_parameter.amzn2_latest.value
   instance_type = "t3.small"  # Upgraded from t3.micro for cost analysis demo
   subnet_id     = aws_subnet.restricted-2a.id
   key_name      = "Demo Key Pair"
@@ -131,13 +136,20 @@ resource "aws_instance" "webserver" {
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
+  # Root volume will be deleted on termination (default behavior)
+  # This ensures clean state on instance replacement
+  root_block_device {
+    delete_on_termination = true
+  }
+
   tags = {
-    Name = "Webserver"
+    Name        = "Webserver"
+    Environment = "dev"
   }
 }
 
 resource "aws_instance" "app_server" {
-  ami           = data.aws_ami.amazon_linux.id
+  ami           = data.aws_ssm_parameter.amzn2_latest.value
   instance_type = "t3.small"  # Upgraded from t3.micro for cost analysis demo
   subnet_id     = aws_subnet.restricted-2b.id
   key_name      = "Demo Key Pair"
@@ -145,8 +157,15 @@ resource "aws_instance" "app_server" {
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
+  # Root volume will be deleted on termination (default behavior)
+  # This ensures clean state on instance replacement
+  root_block_device {
+    delete_on_termination = true
+  }
+
   tags = {
-    Name = "App Server"
+    Name        = "App Server"
+    Environment = "dev"
   }
 }
 
