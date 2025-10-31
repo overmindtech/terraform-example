@@ -23,7 +23,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory_utilization" {
   namespace           = "AWS/ECS"
   period              = "300"  # 5 minutes for cost optimization
   statistic           = "Average"
-  threshold           = "80"
+  threshold           = "85"
   alarm_description   = "This metric monitors ECS memory utilization - WILL FIRE when containers run out of memory"
   alarm_actions       = [aws_sns_topic.alerts[0].arn]
   ok_actions          = [aws_sns_topic.alerts[0].arn]

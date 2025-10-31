@@ -76,13 +76,13 @@ variable "days_since_last_memory_change" {
 variable "java_heap_size_mb" {
   description = "Java heap size in MB (this is the trap - app is configured with -Xmx1536m)"
   type        = number
-  default     = 1536
+  default     = 1024
 }
 
 variable "enable_container_insights" {
   description = "Enable CloudWatch Container Insights for the ECS cluster"
   type        = bool
-  default     = false  # Disabled for cost optimization
+  default     = true  # Enabled for better monitoring
 }
 
 variable "health_check_grace_period" {
