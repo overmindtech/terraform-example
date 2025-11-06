@@ -78,7 +78,7 @@ jobs:
         id: plan
         run: |
           set -o pipefail -ex
-          terraform plan -compact-warnings -no-color -input=false -lock-timeout=5m -out tfplan 2>&1 \
+          terraform plan -compact-warnings -no-color -input=false -lock=false -out tfplan 2>&1 \
             | tee terraform_log
           terraform show -json tfplan > tfplan.json
 
@@ -154,7 +154,7 @@ jobs:
         id: plan-cost
         run: |
           set -o pipefail -ex
-          terraform plan -compact-warnings -no-color -input=false -lock-timeout=5m -out tfplan-cost 2>&1
+          terraform plan -compact-warnings -no-color -input=false -lock=false -out tfplan-cost 2>&1
           terraform show -json tfplan-cost > tfplan-cost.json
 
       - uses: overmindtech/cost-signals-action@v1
