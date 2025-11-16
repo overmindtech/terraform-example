@@ -1,6 +1,13 @@
 resource "aws_s3_bucket" "my_bucket" {
   bucket_prefix = "bucket-notification-${var.example_env}"
-  acl           = "private"
+}
+
+resource "aws_s3_bucket_ownership_controls" "my_bucket" {
+  bucket = aws_s3_bucket.my_bucket.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
 }
 resource "aws_sqs_queue" "my_queue" {
   name = "-${var.example_env}-notifications-from-s3"

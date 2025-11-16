@@ -32,6 +32,17 @@ This example repo shows how to run terraform on GitHub Actions and automatically
 
 Please note: You are unable to view the change in Overmind as it is a change tied to our personal account.
 
+# Serverless Demo Environment
+
+This repository now also includes a fully self-contained Terraform demo that provisions an interconnected but low-cost AWS architecture:
+
+- Two-AZ VPC with VPC endpoints (S3, DynamoDB, SSM) so the stack avoids NAT gateways.
+- S3 buckets for the SPA, uploads, and processed assets; DynamoDB tables plus Aurora Serverless v2 for structured querying.
+- Lambda-powered HTTP API with a custom Lambda authorizer, presigned upload helper, and an SNS → Step Functions asset pipeline that fans out through EventBridge to Lambda, Slack, and SQS.
+- CloudFront distribution (with WAF and custom domain) that fronts the static site and proxies `/api/*` traffic to API Gateway.
+- Operational guardrails such as CloudWatch alarms, AWS Budgets, and an auto-stopped t4g.nano bastion reachable through SSM.
+
+You can toggle the entire demo via the `enable_demo` variable and customize domains, budgets, or CIDR restrictions in `variables.tf`. Run `terraform init && terraform plan` to inspect the environment, and deploy with `terraform apply` when ready.
 # Forking this repo
 
 If you would like to use this repo as an example. Follow these steps:

@@ -3,6 +3,11 @@
 
 provider "aws" {}
 
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
 # Disable this temporarily during bootstrapping and use `terraform init
 # -migrate-state` to migrate the local state into S3 after all resources have
 # been deployed
@@ -18,6 +23,10 @@ terraform {
     archive = {
       source  = "hashicorp/archive"
       version = "~> 2.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
     }
   }
   backend "s3" {
@@ -55,25 +64,6 @@ resource "aws_iam_role" "deploy_role" {
   name        = var.example_env
   description = "This is the role used by terraform running on github actions or Terraform Cloud to deploy."
 
-  inline_policy {
-    // this is required if any part of the deployment accesses public ECR resources
-    name = "AllowPublicECR"
-
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [
-        {
-          Action = [
-            "ecr-public:GetAuthorizationToken",
-            "sts:GetServiceBearerToken"
-          ]
-          Effect   = "Allow"
-          Resource = "*"
-        },
-      ]
-    })
-  }
-  managed_policy_arns = [aws_iam_policy.state_access.arn, "arn:aws:iam::aws:policy/AdministratorAccess"]
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     # Ensure that there is a valid federated principal, even on the non-default environments
@@ -127,6 +117,35 @@ resource "aws_iam_role" "deploy_role" {
           }
         }
       }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "deploy_role_state_access" {
+  role       = aws_iam_role.deploy_role.name
+  policy_arn = aws_iam_policy.state_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "deploy_role_admin" {
+  role       = aws_iam_role.deploy_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+resource "aws_iam_role_policy" "deploy_allow_public_ecr" {
+  name = "AllowPublicECR"
+  role = aws_iam_role.deploy_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ecr-public:GetAuthorizationToken",
+          "sts:GetServiceBearerToken"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
     ]
   })
 }
