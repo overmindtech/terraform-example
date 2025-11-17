@@ -19,6 +19,7 @@ jobs:
         uses: ./.github/actions/terraform_init/
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+          terraform_workspace: terraform-example
 
       - name: Terraform Plan
         id: plan

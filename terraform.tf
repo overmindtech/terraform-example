@@ -52,8 +52,9 @@ resource "aws_dynamodb_table" "terraform-example-lock-table" {
 }
 
 resource "aws_iam_role" "deploy_role" {
-  name        = var.example_env
-  description = "This is the role used by terraform running on github actions or Terraform Cloud to deploy."
+  name                 = var.example_env
+  description          = "This is the role used by terraform running on github actions or Terraform Cloud to deploy."
+  max_session_duration = 3600
 
   inline_policy {
     // this is required if any part of the deployment accesses public ECR resources
@@ -77,14 +78,14 @@ resource "aws_iam_role" "deploy_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     # Ensure that there is a valid federated principal, even on the non-default environments
-    Statement = var.example_env == "terraform-example" ? [
+    Statement = var.example_env == "terraform-example" ? tolist([
       {
         Sid    = "AllowGithubOIDC",
         Effect = "Allow",
         Principal = {
           Federated = "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
         },
-        Action = "sts:AssumeRoleWithWebIdentity"
+        Action = ["sts:AssumeRoleWithWebIdentity"]
         Condition = {
           StringLike = {
             "token.actions.githubusercontent.com:sub" = "repo:overmindtech/terraform-example:*"
@@ -100,7 +101,7 @@ resource "aws_iam_role" "deploy_role" {
         Principal = {
           Federated = aws_iam_openid_connect_provider.tfc_provider[0].arn
         },
-        Action = "sts:AssumeRoleWithWebIdentity"
+        Action = ["sts:AssumeRoleWithWebIdentity"]
         Condition = {
           StringLike = {
             "app.terraform.io:sub" = "organization:Overmind:project:Example:workspace:terraform-example:run_phase:*"
@@ -109,15 +110,32 @@ resource "aws_iam_role" "deploy_role" {
             "app.terraform.io:aud" = "aws.workload.identity"
           }
         }
+      },
+      {
+        Sid    = "AllowEnv0OIDC",
+        Effect = "Allow",
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.env0[0].arn
+        },
+        Action = [
+          "sts:AssumeRoleWithWebIdentity",
+          "sts:TagSession",
+        ]
+        Condition = {
+          StringEquals = {
+            "login.app.env0.com/:aud" = "hoMiq9PdkRh9LUvVpH4wIErWg50VSG1b",
+            "login.app.env0.com/:sub" = "auth0|691b8530eba074a8989d8726"
+          }
+        }
       }
-      ] : [
+      ]) : tolist([
       {
         Sid    = "AllowGithubOIDC",
         Effect = "Allow",
         Principal = {
           Federated = "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
         },
-        Action = "sts:AssumeRoleWithWebIdentity"
+        Action = ["sts:AssumeRoleWithWebIdentity"]
         Condition = {
           StringLike = {
             "token.actions.githubusercontent.com:sub" = "repo:overmindtech/terraform-example:*"
@@ -127,7 +145,7 @@ resource "aws_iam_role" "deploy_role" {
           }
         }
       }
-    ]
+    ])
   })
 }
 
@@ -164,7 +182,9 @@ resource "aws_iam_policy" "state_access" {
           "s3:PutObject",
           "s3:GetObject"
         ]
-        Resource = "${aws_s3_bucket.terraform-example-state-bucket.arn}/${var.example_env}.tfstate",
+        # Grant access to all state files in the bucket
+        # This allows access to any workspace state files stored in the bucket
+        Resource = "${aws_s3_bucket.terraform-example-state-bucket.arn}/*"
       },
       {
         Sid    = "TFLock",
@@ -180,8 +200,10 @@ resource "aws_iam_policy" "state_access" {
         Condition = {
           "ForAllValues:StringEquals" = {
             "dynamodb:LeadingKeys" = [
-              "overmind-tf-example-state/terraform-example.tfstate",
-              "overmind-tf-example-state/terraform-example.tfstate-md5"
+              # Lock key for "terraform-example" workspace
+              # Use: terraform workspace select terraform-example (both locally and in Env0)
+              "replaceme-with-a-unique-bucket-name/env:/terraform-example/terraform-example.tfstate",
+              "replaceme-with-a-unique-bucket-name/env:/terraform-example/terraform-example.tfstate-md5"
             ]
           }
         }
@@ -209,6 +231,10 @@ data "tls_certificate" "tfc_certificate" {
   url = "https://app.terraform.io"
 }
 
+data "tls_certificate" "env0" {
+  url = "https://login.app.env0.com"
+}
+
 # Creates an OIDC provider which is restricted to
 #
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_openid_connect_provider
@@ -217,4 +243,11 @@ resource "aws_iam_openid_connect_provider" "tfc_provider" {
   url             = data.tls_certificate.tfc_certificate.url
   client_id_list  = ["aws.workload.identity"]
   thumbprint_list = [data.tls_certificate.tfc_certificate.certificates[0].sha1_fingerprint]
+}
+
+resource "aws_iam_openid_connect_provider" "env0" {
+  count           = var.example_env == "terraform-example" ? 1 : 0
+  url             = "https://login.app.env0.com/"
+  client_id_list  = ["hoMiq9PdkRh9LUvVpH4wIErWg50VSG1b"]
+  thumbprint_list = [data.tls_certificate.env0.certificates[0].sha1_fingerprint]
 }

@@ -31,6 +31,7 @@ jobs:
         uses: ./.github/actions/terraform_init/
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+          terraform_workspace: terraform-example
 
       - name: Download terraform plan
         uses: actions/download-artifact@v4
@@ -67,6 +68,7 @@ jobs:
         uses: ./.github/actions/terraform_init/
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+          terraform_workspace: terraform-example
 
       - name: Terraform Validate
         if: github.event.action != 'closed'
@@ -149,6 +151,7 @@ jobs:
         uses: ./.github/actions/terraform_init/
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+          terraform_workspace: terraform-example
 
       - name: Terraform Plan for Cost Analysis
         id: plan-cost

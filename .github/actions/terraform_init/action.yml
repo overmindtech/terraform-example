@@ -4,6 +4,9 @@ inputs:
   terraform_deploy_role:
     description: "The IAM role to deploy as"
     required: true
+  terraform_workspace:
+    description: "The Terraform workspace to use (optional)"
+    required: false
 
 runs:
   using: "composite"
@@ -32,3 +35,8 @@ runs:
       run: |
         terraform version
         terraform init -input=false
+        # Select the specified workspace to ensure Env0 and GitHub Actions share the same state file
+        # This allows both environments to work with the same Terraform state stored in S3
+        if [ -n "${{ inputs.terraform_workspace }}" ]; then
+          terraform workspace select "${{ inputs.terraform_workspace }}" || terraform workspace new "${{ inputs.terraform_workspace }}"
+        fi
