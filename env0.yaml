@@ -9,6 +9,9 @@ deploy:
           inputs:
             action: submit-plan
             api_key: ${OVM_API_KEY}
+        - name: Print Env Vars
+          run: |
+            env
     
     terraformApply:
       before:
@@ -24,4 +27,12 @@ deploy:
           inputs:
             action: end-change
             api_key: ${OVM_API_KEY}
+        - name: Print Env Vars
+          run: |
+            env
 
+    terraformOutput:
+      after:
+        - name: Print Env Vars
+          run: |
+            env
