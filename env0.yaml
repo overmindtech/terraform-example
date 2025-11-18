@@ -1,0 +1,139 @@
+version: 2
+
+deploy:
+  steps:
+    terraformPlan:
+      after:
+        - name: Install Overmind CLI
+          run: |
+            set -xe
+            # Download and install Overmind CLI
+            # Using the same method as the GitHub action: download from releases
+            curl -L https://github.com/overmindtech/cli/releases/latest/download/overmind_cli_Linux_x86_64.tar.gz -o /tmp/overmind.tar.gz
+            mkdir -p ./overmindtech
+            tar -xzf /tmp/overmind.tar.gz -C ./overmindtech
+            chmod +x ./overmindtech/overmind
+            ./overmindtech/overmind --version
+        
+        - name: Convert Terraform Plan to JSON
+          run: |
+            set -xe
+            # Find the plan file created by env0 (common names: terraform.tfplan, tfplan, or plan.out)
+            PLAN_FILE=""
+            for plan in terraform.tfplan tfplan plan.out *.tfplan; do
+              if [ -f "$plan" ]; then
+                PLAN_FILE="$plan"
+                break
+              fi
+            done
+            
+            if [ -z "$PLAN_FILE" ]; then
+              echo "Warning: No plan file found, attempting to use terraform show without file"
+              terraform show -json > tfplan.json
+            else
+              echo "Using plan file: $PLAN_FILE"
+              terraform show -json "$PLAN_FILE" > tfplan.json
+            fi
+            
+            if [ ! -f tfplan.json ] || [ ! -s tfplan.json ]; then
+              echo "Error: Failed to create tfplan.json"
+              exit 1
+            fi
+        
+        - name: Submit Plan to Overmind
+          run: |
+            set -xe
+            # Ensure OVM_API_KEY is set (should be configured as env0 environment variable)
+            if [ -z "$OVM_API_KEY" ]; then
+              echo "Warning: OVM_API_KEY not set. Overmind commands may fail."
+            fi
+            
+            # Construct the env0 deployment URL using available environment variables
+            if [ -n "$ENV0_ORGANIZATION_ID" ] && [ -n "$ENV0_ENVIRONMENT_ID" ] && [ -n "$ENV0_DEPLOYMENT_LOG_ID" ]; then
+              ticket_link="https://app.env0.com/organizations/${ENV0_ORGANIZATION_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}"
+            else
+              ticket_link="https://app.env0.com"
+            fi
+            
+            # Build title with project and workspace info
+            title="Deploying ${ENV0_PROJECT_NAME:-Project}"
+            if [ -n "$ENV0_WORKSPACE_NAME" ]; then
+              title="${title} (workspace: ${ENV0_WORKSPACE_NAME})"
+            fi
+            title="${title} via env0"
+            
+            description="This change was automatically created from env0 deployment"
+            if [ -n "$ENV0_DEPLOYMENT_TYPE" ]; then
+              description="${description} (type: ${ENV0_DEPLOYMENT_TYPE})"
+            fi
+            if [ -n "$ENV0_DEPLOYMENT_REVISION" ]; then
+              description="${description} (revision: ${ENV0_DEPLOYMENT_REVISION})"
+            fi
+            
+            ./overmindtech/overmind changes submit-plan \
+              --title "$title" \
+              --description "$description" \
+              --ticket-link "$ticket_link" \
+              tfplan.json \
+              > ./overmindtech/change-url || true
+            
+            # Store the change URL for later steps
+            if [ -f ./overmindtech/change-url ] && [ -s ./overmindtech/change-url ]; then
+              CHANGE_URL=$(cat ./overmindtech/change-url)
+              echo "CHANGE_URL=$CHANGE_URL" >> $ENV0_ENV
+              echo "Change URL: $CHANGE_URL"
+            else
+              echo "Warning: Failed to get change URL from Overmind"
+            fi
+    
+    terraformApply:
+      before:
+        - name: Mark Change Started
+          run: |
+            set -xe
+            # Ensure OVM_API_KEY is set
+            if [ -z "$OVM_API_KEY" ]; then
+              echo "Warning: OVM_API_KEY not set. Overmind commands may fail."
+            fi
+            
+            # Start the change in Overmind
+            # Use the change URL if available, otherwise use ticket-link
+            if [ -n "$CHANGE_URL" ]; then
+              ./overmindtech/overmind changes start-change \
+                --change "$CHANGE_URL" || true
+            else
+              # Construct the env0 deployment URL using available environment variables
+              if [ -n "$ENV0_ORGANIZATION_ID" ] && [ -n "$ENV0_ENVIRONMENT_ID" ] && [ -n "$ENV0_DEPLOYMENT_LOG_ID" ]; then
+                ticket_link="https://app.env0.com/organizations/${ENV0_ORGANIZATION_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}"
+              else
+                ticket_link="https://app.env0.com"
+              fi
+              ./overmindtech/overmind changes start-change \
+                --ticket-link "$ticket_link" || true
+            fi
+      
+      after:
+        - name: Mark Change Finished
+          run: |
+            set -xe
+            # Ensure OVM_API_KEY is set
+            if [ -z "$OVM_API_KEY" ]; then
+              echo "Warning: OVM_API_KEY not set. Overmind commands may fail."
+            fi
+            
+            # End the change in Overmind
+            # Use the change URL if available, otherwise use ticket-link
+            if [ -n "$CHANGE_URL" ]; then
+              ./overmindtech/overmind changes end-change \
+                --change "$CHANGE_URL" || true
+            else
+              # Construct the env0 deployment URL using available environment variables
+              if [ -n "$ENV0_ORGANIZATION_ID" ] && [ -n "$ENV0_ENVIRONMENT_ID" ] && [ -n "$ENV0_DEPLOYMENT_LOG_ID" ]; then
+                ticket_link="https://app.env0.com/organizations/${ENV0_ORGANIZATION_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}"
+              else
+                ticket_link="https://app.env0.com"
+              fi
+              ./overmindtech/overmind changes end-change \
+                --ticket-link "$ticket_link" || true
+            fi
+
