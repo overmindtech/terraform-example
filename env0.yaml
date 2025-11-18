@@ -7,32 +7,100 @@ deploy:
       after:
         - name: Install Overmind CLI
           run: |
-            set -xe
-            # Create local directory structure for APK installation
-            mkdir -p ~/.overmind
-            
-            # Set up APK configuration in the custom root directory
-            # Create the APK keys directory
-            mkdir -p ~/.overmind/etc/apk/keys
-            
-            # Download and install the GPG key
-            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/rsa.7B6E65C2058FDB78.key' > ~/.overmind/etc/apk/keys/tools@overmind-7B6E65C2058FDB78.rsa.pub
-            
-            # Create the repositories file and add the Overmind repository
-            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/config.alpine.txt?distro=alpine&codename=v3.8' >> ~/.overmind/etc/apk/repositories
-            
-            # Update the package index for the custom root
-            apk --root ~/.overmind update
-            
-            # Install Overmind CLI using apk add --root
-            # The --initdb flag initializes a new package database
-            apk add --root ~/.overmind --initdb overmind-cli
-            
-            # Add the binary location to PATH for this session
-            export PATH="$HOME/.overmind/usr/bin:$PATH"
-            
-            # Verify installation
-            overmind --version
+            #!/bin/sh
+            set -e
+
+            REPO="overmindtech/cli"
+
+            # Detect OS and architecture
+            OS=$(uname -s)
+            ARCH=$(uname -m)
+
+            case "${ARCH}" in
+                x86_64) ARCH="x86_64" ;;
+                aarch64|arm64) ARCH="arm64" ;;
+                i386|i686) ARCH="i386" ;;
+                *) echo "Unsupported architecture: ${ARCH}"; exit 1 ;;
+            esac
+
+            case "${OS}" in
+                Linux|Darwin) ARCHIVE_EXT="tar.gz" ;;
+                MINGW*|MSYS*|CYGWIN*) OS="Windows"; ARCHIVE_EXT="zip" ;;
+                *) echo "Unsupported OS: ${OS}"; exit 1 ;;
+            esac
+
+            # Find first writable directory in PATH
+            INSTALL_DIR=""
+            IFS=':'
+            for dir in $PATH; do
+                # Skip empty entries
+                [ -z "$dir" ] && continue
+                
+                # Check if directory exists and is writable
+                if [ -d "$dir" ] && [ -w "$dir" ]; then
+                    INSTALL_DIR="$dir"
+                    echo "Found writable directory in PATH: ${INSTALL_DIR}"
+                    break
+                fi
+                
+                # If directory doesn't exist but parent is writable, we can create it
+                parent=$(dirname "$dir")
+                if [ ! -d "$dir" ] && [ -d "$parent" ] && [ -w "$parent" ]; then
+                    mkdir -p "$dir" 2>/dev/null && INSTALL_DIR="$dir" && echo "Created directory in PATH: ${INSTALL_DIR}" && break
+                fi
+            done
+            unset IFS
+
+            if [ -z "${INSTALL_DIR}" ]; then
+                echo "Error: No writable directory found in PATH"
+                echo "Current PATH: ${PATH}"
+                exit 1
+            fi
+
+            echo "Detecting latest release..."
+            LATEST_VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+            if [ -z "${LATEST_VERSION}" ]; then
+                echo "Failed to fetch latest version"
+                exit 1
+            fi
+
+            echo "Latest version: ${LATEST_VERSION}"
+            VERSION_NUMBER=$(echo "${LATEST_VERSION}" | sed 's/^v//')
+
+            FILENAME="overmind_cli_${VERSION_NUMBER}_${OS}_${ARCH}.${ARCHIVE_EXT}"
+            DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_VERSION}/${FILENAME}"
+
+            echo "Downloading ${FILENAME}..."
+
+            TMP_DIR=$(mktemp -d)
+            trap "rm -rf ${TMP_DIR}" EXIT
+            cd "${TMP_DIR}"
+
+            curl -fsSL "${DOWNLOAD_URL}" -o archive
+
+            # Extract
+            if [ "${ARCHIVE_EXT}" = "tar.gz" ]; then
+                tar -xzf archive
+            else
+                unzip -q archive
+            fi
+
+            BINARY=$(find . -maxdepth 1 -type f \( -name "overmind-cli*" -o -name "overmind_cli*" \) ! -name "*.txt" | head -n 1)
+
+            if [ -z "${BINARY}" ]; then
+                echo "Error: Could not find binary in archive"
+                ls -la
+                exit 1
+            fi
+
+            cp "${BINARY}" "${INSTALL_DIR}/overmind-cli"
+            chmod +x "${INSTALL_DIR}/overmind-cli"
+
+            echo "✓ Overmind CLI ${LATEST_VERSION} installed to ${INSTALL_DIR}/overmind-cli"
+            echo "✓ Installation directory is already in PATH"
+
+            "${INSTALL_DIR}/overmind-cli" version 2>/dev/null || echo "Installation complete"
     #     
     #     - name: Convert Terraform Plan to JSON
     #       run: |
