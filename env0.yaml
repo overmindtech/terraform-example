@@ -31,6 +31,7 @@ deploy:
             echo "ENV0 ENVIRONMENT VARIABLES"
             echo "=========================================="
             env
+            which bash
       
       after:
         - name: Mark Change Finished
