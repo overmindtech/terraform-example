@@ -116,7 +116,31 @@ deploy:
 
             "${INSTALL_DIR}/overmind" version 2>/dev/null || echo "Installation complete"
      
-        - name: Find Terraform Plan File
+        - name: Display ENV0 Environment Variables
           run: |
-            terraform show -json
+            echo "=========================================="
+            echo "ENV0 ENVIRONMENT VARIABLES"
+            echo "=========================================="
+            echo ""
+            echo "ENV0_ENVIRONMENT_ID=${ENV0_ENVIRONMENT_ID:-not set}"
+            echo "ENV0_PROJECT_ID=${ENV0_PROJECT_ID:-not set}"
+            echo "ENV0_PROJECT_NAME=${ENV0_PROJECT_NAME:-not set}"
+            echo "ENV0_DEPLOYMENT_LOG_ID=${ENV0_DEPLOYMENT_LOG_ID:-not set}"
+            echo "ENV0_DEPLOYMENT_TYPE=${ENV0_DEPLOYMENT_TYPE:-not set}"
+            echo "ENV0_DEPLOYMENT_REVISION=${ENV0_DEPLOYMENT_REVISION:-not set}"
+            echo "ENV0_WORKSPACE_NAME=${ENV0_WORKSPACE_NAME:-not set}"
+            echo "ENV0_ROOT_DIR=${ENV0_ROOT_DIR:-not set}"
+            echo "ENV0_ORGANIZATION_ID=${ENV0_ORGANIZATION_ID:-not set}"
+            echo "ENV0_TEMPLATE_ID=${ENV0_TEMPLATE_ID:-not set}"
+            echo ""
+            echo "=========================================="
+     
+        # - name: Find Terraform Plan File
+        #   run: |
+        #     terraform show -json > tfplan.json
+        #     overmind changes submit-plan \
+        #       tfplan.json \
+        #       --title "Env0 Deployment: ${ENV0_DEPLOYMENT_LOG_ID}"
+
+
      
