@@ -115,125 +115,148 @@ deploy:
             echo "✓ Directory is already in PATH"
 
             "${INSTALL_DIR}/overmind" version 2>/dev/null || echo "Installation complete"
-    #     
-    #     - name: Convert Terraform Plan to JSON
-    #       run: |
-    #         set -xe
-    #         # Find the plan file created by env0 (common names: terraform.tfplan, tfplan, or plan.out)
-    #         PLAN_FILE=""
-    #         for plan in terraform.tfplan tfplan plan.out *.tfplan; do
-    #           if [ -f "$plan" ]; then
-    #             PLAN_FILE="$plan"
-    #             break
-    #           fi
-    #         done
-    #         
-    #         if [ -z "$PLAN_FILE" ]; then
-    #           echo "Warning: No plan file found, attempting to use terraform show without file"
-    #           terraform show -json > tfplan.json
-    #         else
-    #           echo "Using plan file: $PLAN_FILE"
-    #           terraform show -json "$PLAN_FILE" > tfplan.json
-    #         fi
-    #         
-    #         if [ ! -f tfplan.json ] || [ ! -s tfplan.json ]; then
-    #           echo "Error: Failed to create tfplan.json"
-    #           exit 1
-    #         fi
-    #     
-    #     - name: Submit Plan to Overmind
-    #       run: |
-    #         set -xe
-    #         # Ensure OVM_API_KEY is set (should be configured as env0 environment variable)
-    #         if [ -z "$OVM_API_KEY" ]; then
-    #           echo "Warning: OVM_API_KEY not set. Overmind commands may fail."
-    #         fi
-    #         
-    #         # Construct the env0 deployment URL using available environment variables
-    #         if [ -n "$ENV0_ORGANIZATION_ID" ] && [ -n "$ENV0_ENVIRONMENT_ID" ] && [ -n "$ENV0_DEPLOYMENT_LOG_ID" ]; then
-    #           ticket_link="https://app.env0.com/organizations/${ENV0_ORGANIZATION_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}"
-    #         else
-    #           ticket_link="https://app.env0.com"
-    #         fi
-    #         
-    #         # Build title with project and workspace info
-    #         title="Deploying ${ENV0_PROJECT_NAME:-Project}"
-    #         if [ -n "$ENV0_WORKSPACE_NAME" ]; then
-    #           title="${title} (workspace: ${ENV0_WORKSPACE_NAME})"
-    #         fi
-    #         title="${title} via env0"
-    #         
-    #         description="This change was automatically created from env0 deployment"
-    #         if [ -n "$ENV0_DEPLOYMENT_TYPE" ]; then
-    #           description="${description} (type: ${ENV0_DEPLOYMENT_TYPE})"
-    #         fi
-    #         if [ -n "$ENV0_DEPLOYMENT_REVISION" ]; then
-    #           description="${description} (revision: ${ENV0_DEPLOYMENT_REVISION})"
-    #         fi
-    #         
-    #         ./overmindtech/overmind changes submit-plan \
-    #           --title "$title" \
-    #           --description "$description" \
-    #           --ticket-link "$ticket_link" \
-    #           tfplan.json \
-    #           > ./overmindtech/change-url || true
-    #         
-    #         # Store the change URL for later steps
-    #         if [ -f ./overmindtech/change-url ] && [ -s ./overmindtech/change-url ]; then
-    #           CHANGE_URL=$(cat ./overmindtech/change-url)
-    #           echo "CHANGE_URL=$CHANGE_URL" >> $ENV0_ENV
-    #           echo "Change URL: $CHANGE_URL"
-    #         else
-    #           echo "Warning: Failed to get change URL from Overmind"
-    #         fi
-
-    # terraformApply:
-    #   before:
-    #     - name: Mark Change Started
-    #       run: |
-    #         set -xe
-    #         # Ensure OVM_API_KEY is set
-    #         if [ -z "$OVM_API_KEY" ]; then
-    #           echo "Warning: OVM_API_KEY not set. Overmind commands may fail."
-    #         fi
-    #         
-    #         # Start the change in Overmind
-    #         # Use the change URL if available, otherwise use ticket-link
-    #         if [ -n "$CHANGE_URL" ]; then
-    #           ./overmindtech/overmind changes start-change \
-    #             --change "$CHANGE_URL" || true
-    #         else
-    #           # Construct the env0 deployment URL using available environment variables
-    #           if [ -n "$ENV0_ORGANIZATION_ID" ] && [ -n "$ENV0_ENVIRONMENT_ID" ] && [ -n "$ENV0_DEPLOYMENT_LOG_ID" ]; then
-    #             ticket_link="https://app.env0.com/organizations/${ENV0_ORGANIZATION_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}"
-    #           else
-    #             ticket_link="https://app.env0.com"
-    #           fi
-    #           ./overmindtech/overmind changes start-change \
-    #             --ticket-link "$ticket_link" || true
-    #         fi
-    #   
-    #   after:
-    #     - name: Mark Change Finished
-    #       run: |
-    #         set -xe
-    #         # Ensure OVM_API_KEY is set
-    #         if [ -z "$OVM_API_KEY" ]; then
-    #           echo "Warning: OVM_API_KEY not set. Overmind commands may fail."
-    #         fi
-    #         
-    #         # End the change in Overmind
-    #         # Use the change URL if available, otherwise use ticket-link
-    #         if [ -n "$CHANGE_URL" ]; then
-    #           ./overmindtech/overmind changes end-change \
-    #             --change "$CHANGE_URL" || true
-    #         else
-    #           # Construct the env0 deployment URL using available environment variables
-    #           if [ -n "$ENV0_ORGANIZATION_ID" ] && [ -n "$ENV0_ENVIRONMENT_ID" ] && [ -n "$ENV0_DEPLOYMENT_LOG_ID" ]; then
-    #             ticket_link="https://app.env0.com/organizations/${ENV0_ORGANIZATION_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}"
-    #           else
-    #             ticket_link="https://app.env0.com"
-    #           fi
-    #           ./overmindtech/overmind changes end-change \
-    #             --ticket-link "$ticket_link" || true
-    #         fi
+     
+        - name: Find Terraform Plan File
+          run: |
+            set -xe
+            echo "=========================================="
+            echo "SEARCHING FOR TERRAFORM PLAN FILE"
+            echo "=========================================="
+            echo ""
+            
+            # Display environment context
+            echo "=== ENV0 ENVIRONMENT CONTEXT ==="
+            echo "Environment ID: ${ENV0_ENVIRONMENT_ID:-not set}"
+            echo "Project ID: ${ENV0_PROJECT_ID:-not set}"
+            echo "Project Name: ${ENV0_PROJECT_NAME:-not set}"
+            echo "Deployment Log ID: ${ENV0_DEPLOYMENT_LOG_ID:-not set}"
+            echo "Deployment Type: ${ENV0_DEPLOYMENT_TYPE:-not set}"
+            echo "Workspace Name: ${ENV0_WORKSPACE_NAME:-not set}"
+            echo "Root Directory: ${ENV0_ROOT_DIR:-not set}"
+            echo "Current Directory: $(pwd)"
+            echo ""
+            
+            # Common plan file names to search for
+            PLAN_NAMES=(
+              "terraform.tfplan"
+              "tfplan"
+              "plan.out"
+              "plan.tfplan"
+              "*.tfplan"
+            )
+            
+            PLAN_FILE=""
+            PLAN_LOCATION=""
+            
+            # Search in current directory first
+            echo "=== SEARCHING CURRENT DIRECTORY ==="
+            for plan_name in "${PLAN_NAMES[@]}"; do
+              # Handle wildcards
+              if [[ "$plan_name" == *"*"* ]]; then
+                for file in $plan_name; do
+                  if [ -f "$file" ] && [ "$file" != "$plan_name" ]; then
+                    PLAN_FILE="$file"
+                    PLAN_LOCATION="$(pwd)/$file"
+                    echo "Found: $PLAN_LOCATION"
+                    break 2
+                  fi
+                done
+              else
+                if [ -f "$plan_name" ]; then
+                  PLAN_FILE="$plan_name"
+                  PLAN_LOCATION="$(pwd)/$plan_name"
+                  echo "Found: $PLAN_LOCATION"
+                  break
+                fi
+              fi
+            done
+            
+            # If not found, search in common locations
+            if [ -z "$PLAN_FILE" ]; then
+              echo "Not found in current directory, searching common locations..."
+              echo ""
+              
+              SEARCH_DIRS=(
+                "."
+                "${ENV0_ROOT_DIR:-.}"
+                "$HOME"
+                "/tmp"
+                "/var/tmp"
+              )
+              
+              for search_dir in "${SEARCH_DIRS[@]}"; do
+                if [ -d "$search_dir" ]; then
+                  echo "Searching in: $search_dir"
+                  for plan_name in "${PLAN_NAMES[@]}"; do
+                    if [[ "$plan_name" == *"*"* ]]; then
+                      found=$(find "$search_dir" -maxdepth 3 -name "${plan_name}" -type f 2>/dev/null | head -1)
+                    else
+                      found=$(find "$search_dir" -maxdepth 3 -name "$plan_name" -type f 2>/dev/null | head -1)
+                    fi
+                    
+                    if [ -n "$found" ] && [ -f "$found" ]; then
+                      PLAN_FILE=$(basename "$found")
+                      PLAN_LOCATION="$found"
+                      echo "Found: $PLAN_LOCATION"
+                      break 2
+                    fi
+                  done
+                fi
+              done
+            fi
+            
+            # Try to use terraform show to detect plan
+            if [ -z "$PLAN_FILE" ]; then
+              echo ""
+              echo "=== ATTEMPTING TERRAFORM SHOW DETECTION ==="
+              if command -v terraform &> /dev/null; then
+                # Try terraform show without specifying a file (uses last plan)
+                if terraform show -json 2>/dev/null | head -1 | grep -q "format_version"; then
+                  echo "Terraform show detected a plan (using last plan in state)"
+                  PLAN_FILE="(detected via terraform show)"
+                  PLAN_LOCATION="(last plan in terraform state)"
+                else
+                  echo "No plan detected via terraform show"
+                fi
+              else
+                echo "Terraform command not found"
+              fi
+            fi
+            
+            # Display results
+            echo ""
+            echo "=========================================="
+            echo "PLAN FILE SEARCH RESULTS"
+            echo "=========================================="
+            if [ -n "$PLAN_FILE" ] && [ "$PLAN_FILE" != "(detected via terraform show)" ]; then
+              echo "✓ Plan file found: $PLAN_LOCATION"
+              echo "  File name: $PLAN_FILE"
+              echo "  Full path: $PLAN_LOCATION"
+              echo "  File size: $(du -h "$PLAN_LOCATION" | cut -f1)"
+              echo "  File permissions: $(ls -l "$PLAN_LOCATION" | awk '{print $1}')"
+              echo ""
+              echo "Storing plan file location for next steps..."
+              echo "PLAN_FILE=$PLAN_LOCATION" >> $ENV0_ENV
+              echo "PLAN_FILE_NAME=$PLAN_FILE" >> $ENV0_ENV
+            elif [ "$PLAN_FILE" == "(detected via terraform show)" ]; then
+              echo "⚠ Plan detected via terraform show (no file path available)"
+              echo "  Will use 'terraform show -json' without file argument"
+              echo ""
+              echo "PLAN_FILE=" >> $ENV0_ENV
+              echo "PLAN_FILE_NAME=(terraform show)" >> $ENV0_ENV
+            else
+              echo "✗ No plan file found"
+              echo "  Searched for: ${PLAN_NAMES[*]}"
+              echo "  Searched in: current directory and common locations"
+              echo ""
+              echo "Listing current directory contents:"
+              ls -la
+              echo ""
+              echo "WARNING: Plan file not found. Subsequent steps may fail."
+              echo "PLAN_FILE=" >> $ENV0_ENV
+              echo "PLAN_FILE_NAME=" >> $ENV0_ENV
+            fi
+            echo "=========================================="
+     
+        - name: Convert Terraform Plan to JSON
+          run:
