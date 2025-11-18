@@ -12,7 +12,9 @@ deploy:
 
             REPO="overmindtech/cli"
 
-            # Detect OS and architecture
+            # Preferred installation directories (in order of preference)
+            PREFERRED_DIRS="/home/node/.local/bin:${HOME}/.local/bin:/opt/packages/bin:/usr/local/bin"
+
             OS=$(uname -s)
             ARCH=$(uname -m)
 
@@ -29,33 +31,45 @@ deploy:
                 *) echo "Unsupported OS: ${OS}"; exit 1 ;;
             esac
 
-            # Find first writable directory in PATH
-            INSTALL_DIR=""
-            IFS=':'
-            for dir in $PATH; do
-                # Skip empty entries
-                [ -z "$dir" ] && continue
+            # Function to check if directory is writable and in PATH
+            find_install_dir() {
+                # First try preferred directories
+                IFS=':'
+                for dir in $PREFERRED_DIRS; do
+                    [ -z "$dir" ] && continue
+                    
+                    # Create if parent is writable
+                    if [ ! -d "$dir" ]; then
+                        mkdir -p "$dir" 2>/dev/null || continue
+                    fi
+                    
+                    # Check if writable and in PATH
+                    if [ -w "$dir" ] && echo ":${PATH}:" | grep -q ":${dir}:"; then
+                        echo "$dir"
+                        return 0
+                    fi
+                done
                 
-                # Check if directory exists and is writable
-                if [ -d "$dir" ] && [ -w "$dir" ]; then
-                    INSTALL_DIR="$dir"
-                    echo "Found writable directory in PATH: ${INSTALL_DIR}"
-                    break
-                fi
+                # Fall back to any writable directory in PATH
+                for dir in $PATH; do
+                    [ -z "$dir" ] && continue
+                    [ -d "$dir" ] && [ -w "$dir" ] && echo "$dir" && return 0
+                done
+                unset IFS
                 
-                # If directory doesn't exist but parent is writable, we can create it
-                parent=$(dirname "$dir")
-                if [ ! -d "$dir" ] && [ -d "$parent" ] && [ -w "$parent" ]; then
-                    mkdir -p "$dir" 2>/dev/null && INSTALL_DIR="$dir" && echo "Created directory in PATH: ${INSTALL_DIR}" && break
-                fi
-            done
-            unset IFS
+                return 1
+            }
+
+            INSTALL_DIR=$(find_install_dir)
 
             if [ -z "${INSTALL_DIR}" ]; then
                 echo "Error: No writable directory found in PATH"
+                echo "Tried: ${PREFERRED_DIRS}"
                 echo "Current PATH: ${PATH}"
                 exit 1
             fi
+
+            echo "Installing to: ${INSTALL_DIR}"
 
             echo "Detecting latest release..."
             LATEST_VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
@@ -79,14 +93,14 @@ deploy:
 
             curl -fsSL "${DOWNLOAD_URL}" -o archive
 
-            # Extract
             if [ "${ARCHIVE_EXT}" = "tar.gz" ]; then
                 tar -xzf archive
             else
                 unzip -q archive
             fi
 
-            BINARY=$(find . -maxdepth 1 -type f \( -name "overmind-cli*" -o -name "overmind_cli*" \) ! -name "*.txt" | head -n 1)
+            # Look for the binary - it's called 'overmind'
+            BINARY=$(find . -maxdepth 1 -type f -executable -name "overmind*" ! -name "*.txt" ! -name "*.md" ! -name "LICENSE" | head -n 1)
 
             if [ -z "${BINARY}" ]; then
                 echo "Error: Could not find binary in archive"
@@ -94,13 +108,13 @@ deploy:
                 exit 1
             fi
 
-            cp "${BINARY}" "${INSTALL_DIR}/overmind-cli"
-            chmod +x "${INSTALL_DIR}/overmind-cli"
+            cp "${BINARY}" "${INSTALL_DIR}/overmind"
+            chmod +x "${INSTALL_DIR}/overmind"
 
-            echo "✓ Overmind CLI ${LATEST_VERSION} installed to ${INSTALL_DIR}/overmind-cli"
-            echo "✓ Installation directory is already in PATH"
+            echo "✓ Overmind CLI ${LATEST_VERSION} installed to ${INSTALL_DIR}/overmind"
+            echo "✓ Directory is already in PATH"
 
-            "${INSTALL_DIR}/overmind-cli" version 2>/dev/null || echo "Installation complete"
+            "${INSTALL_DIR}/overmind" version 2>/dev/null || echo "Installation complete"
     #     
     #     - name: Convert Terraform Plan to JSON
     #       run: |
