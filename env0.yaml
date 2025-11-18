@@ -135,12 +135,38 @@ deploy:
             echo ""
             echo "=========================================="
      
-        # - name: Find Terraform Plan File
-        #   run: |
-        #     terraform show -json > tfplan.json
-        #     overmind changes submit-plan \
-        #       tfplan.json \
-        #       --title "Env0 Deployment: ${ENV0_DEPLOYMENT_LOG_ID}"
+        - name: Submit Plan to Overmind
+          run: |
+            set -xe
+            # Construct the env0 deployment URL for the ticket-link
+            ticket_link="https://app.env0.com/p/${ENV0_PROJECT_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}?organizationId=${ENV0_ORGANIZATION_ID}"
+            
+            terraform show -json > tfplan.json
+            overmind changes submit-plan \
+              tfplan.json \
+              --title "Env0 Deployment: ${ENV0_DEPLOYMENT_LOG_ID}" \
+              --ticket-link "$ticket_link"
+    
+    terraformApply:
+      before:
+        - name: Mark Change Started
+          run: |
+            set -xe
+            # Construct the env0 deployment URL for the ticket-link
+            ticket_link="https://app.env0.com/p/${ENV0_PROJECT_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}?organizationId=${ENV0_ORGANIZATION_ID}"
+            
+            # Start the change in Overmind
+            overmind changes start-change \
+              --ticket-link "$ticket_link"
+      
+      after:
+        - name: Mark Change Finished
+          run: |
+            set -xe
+            # Construct the env0 deployment URL for the ticket-link
+            ticket_link="https://app.env0.com/p/${ENV0_PROJECT_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}?organizationId=${ENV0_ORGANIZATION_ID}"
+            
+            # End the change in Overmind
+            overmind changes end-change \
+              --ticket-link "$ticket_link"
 
-
-     
