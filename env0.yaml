@@ -3,7 +3,6 @@ version: 2
 deploy:
   steps:
     terraformPlan:
-      before:
       after:
         - name: Submit Plan to Overmind
           use: https://github.com/overmindtech/env0-plugin
