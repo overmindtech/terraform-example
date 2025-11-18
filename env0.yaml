@@ -5,9 +5,34 @@ deploy:
     # COMMENTED OUT: Overmind integration steps
     terraformPlan:
       after:
-        - name: Show the path
+        - name: Install Overmind CLI
           run: |
-            echo $PATH
+            set -xe
+            # Create local directory structure for APK installation
+            mkdir -p ~/.overmind
+            
+            # Set up APK configuration in the custom root directory
+            # Create the APK keys directory
+            mkdir -p ~/.overmind/etc/apk/keys
+            
+            # Download and install the GPG key
+            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/rsa.7B6E65C2058FDB78.key' > ~/.overmind/etc/apk/keys/tools@overmind-7B6E65C2058FDB78.rsa.pub
+            
+            # Create the repositories file and add the Overmind repository
+            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/config.alpine.txt?distro=alpine&codename=v3.8' >> ~/.overmind/etc/apk/repositories
+            
+            # Update the package index for the custom root
+            apk --root ~/.overmind update
+            
+            # Install Overmind CLI using apk add --root
+            # The --initdb flag initializes a new package database
+            apk add --root ~/.overmind --initdb overmind-cli
+            
+            # Add the binary location to PATH for this session
+            export PATH="$HOME/.overmind/usr/bin:$PATH"
+            
+            # Verify installation
+            overmind --version
     #     
     #     - name: Convert Terraform Plan to JSON
     #       run: |
