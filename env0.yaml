@@ -8,10 +8,11 @@ deploy:
         - name: Install Overmind CLI
           run: |
             set -xe
-            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/rsa.7B6E65C2058FDB78.key' > /etc/apk/keys/tools@overmind-7B6E65C2058FDB78.rsa.pub
-            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/config.alpine.txt?distro=alpine&codename=v3.8' >> /etc/apk/repositories
-            apk update
-            apk add overmind-cli
+            # Install Overmind CLI using APK package manager
+            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/rsa.7B6E65C2058FDB78.key' | sudo tee /etc/apk/keys/tools@overmind-7B6E65C2058FDB78.rsa.pub > /dev/null
+            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/config.alpine.txt?distro=alpine&codename=v3.8' | sudo tee -a /etc/apk/repositories > /dev/null
+            sudo apk update
+            sudo apk add overmind-cli
             overmind --version
     #     
     #     - name: Convert Terraform Plan to JSON
