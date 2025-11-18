@@ -465,7 +465,7 @@ resource "aws_lb_listener" "http" {
     fixed_response {
       content_type = "text/plain"
       message_body = "Nothing here..."
-      status_code  = "200"
+      status_code  = "404"
     }
   }
 }
