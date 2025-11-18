@@ -3,6 +3,13 @@ version: 2
 deploy:
   steps:
     terraformPlan:
+      before:
+        - name: Display ENV0 Environment Variables
+          run: |
+            echo "=========================================="
+            echo "ENV0 ENVIRONMENT VARIABLES"
+            echo "=========================================="
+            env
       after:
         - name: Submit Plan to Overmind
           use: https://github.com/overmindtech/env0-plugin
@@ -17,6 +24,13 @@ deploy:
           inputs:
             action: start-change
             api_key: ${OVM_API_KEY}
+
+        - name: Display ENV0 Environment Variables
+          run: |
+            echo "=========================================="
+            echo "ENV0 ENVIRONMENT VARIABLES"
+            echo "=========================================="
+            env
       
       after:
         - name: Mark Change Finished
