@@ -8,7 +8,7 @@ deploy:
           use: https://github.com/overmindtech/env0-plugin
           inputs:
             action: submit-plan
-            api_key: ${OVERMIND_API_KEY}
+            api_key: ${OVM_API_KEY}
     
     terraformApply:
       before:
@@ -16,12 +16,12 @@ deploy:
           use: https://github.com/overmindtech/env0-plugin
           inputs:
             action: start-change
-            api_key: ${OVERMIND_API_KEY}
+            api_key: ${OVM_API_KEY}
       
       after:
         - name: Mark Change Finished
           use: https://github.com/overmindtech/env0-plugin
           inputs:
             action: end-change
-            api_key: ${OVERMIND_API_KEY}
+            api_key: ${OVM_API_KEY}
 
