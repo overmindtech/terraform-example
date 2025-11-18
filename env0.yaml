@@ -10,6 +10,8 @@ deploy:
             echo "ENV0 ENVIRONMENT VARIABLES"
             echo "=========================================="
             env
+            which bash
+
       after:
         - name: Submit Plan to Overmind
           use: https://github.com/overmindtech/env0-plugin
