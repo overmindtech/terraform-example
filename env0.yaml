@@ -134,6 +134,149 @@ deploy:
             echo "ENV0_TEMPLATE_ID=${ENV0_TEMPLATE_ID:-not set}"
             echo ""
             echo "=========================================="
+
+
+        - name: Find plan file
+          run: |
+            #!/bin/sh
+            set -e
+
+            echo "=== Terraform Plan File Search ==="
+            echo "Environment: ${ENV0_WORKSPACE_NAME:-unknown}"
+            echo "Root Directory: ${ENV0_ROOT_DIR:-/tmp}"
+            echo ""
+
+            # Define search root (default to ENV0_ROOT_DIR or current directory)
+            SEARCH_ROOT="${ENV0_ROOT_DIR:-.}"
+
+            echo "Searching from: ${SEARCH_ROOT}"
+            echo ""
+
+            # Function to check if file is JSON
+            is_json() {
+                if command -v jq >/dev/null 2>&1; then
+                    jq empty "$1" >/dev/null 2>&1
+                else
+                    grep -q "^\s*{" "$1" 2>/dev/null || grep -q "^\s*\[" "$1" 2>/dev/null
+                fi
+            }
+
+            # Function to check if file looks like terraform plan JSON
+            is_terraform_plan_json() {
+                if command -v jq >/dev/null 2>&1; then
+                    jq -e '.format_version // .terraform_version // .planned_values // .resource_changes' "$1" >/dev/null 2>&1
+                else
+                    grep -q "terraform_version\|planned_values\|resource_changes\|format_version" "$1" 2>/dev/null
+                fi
+            }
+
+            echo "--- Searching for common plan file names ---"
+            FOUND_FILES=""
+
+            # Search for common binary plan file names
+            for pattern in "tfplan" "terraform.tfplan" "plan.out" "*.tfplan" "*.plan"; do
+                echo "Looking for: $pattern"
+                find "$SEARCH_ROOT" -type f -name "$pattern" 2>/dev/null | while read -r file; do
+                    echo "  ✓ Found: $file"
+                    
+                    # Get file info
+                    size=$(du -h "$file" | cut -f1)
+                    modified=$(ls -lh "$file" | awk '{print $6, $7, $8}')
+                    
+                    echo "    Size: $size"
+                    echo "    Modified: $modified"
+                    
+                    # Check file type
+                    if command -v file >/dev/null 2>&1; then
+                        filetype=$(file -b "$file")
+                        echo "    Type: $filetype"
+                    fi
+                    
+                    # Check if it's binary or text
+                    if file "$file" 2>/dev/null | grep -q "text"; then
+                        echo "    Format: Text/JSON"
+                        if is_terraform_plan_json "$file"; then
+                            echo "    ✓ Appears to be Terraform plan JSON"
+                        fi
+                    else
+                        echo "    Format: Binary"
+                    fi
+                    
+                    echo ""
+                    FOUND_FILES="${FOUND_FILES}${file}\n"
+                done
+            done
+
+            echo "--- Searching for JSON files that might be plans ---"
+            find "$SEARCH_ROOT" -type f -name "*.json" 2>/dev/null | while read -r file; do
+                # Skip files that are too large (>50MB)
+                size_bytes=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo "0")
+                if [ "$size_bytes" -gt 52428800 ]; then
+                    continue
+                fi
+                
+                if is_terraform_plan_json "$file"; then
+                    echo "  ✓ Found Terraform plan JSON: $file"
+                    size=$(du -h "$file" | cut -f1)
+                    echo "    Size: $size"
+                    
+                    # Try to get some plan details
+                    if command -v jq >/dev/null 2>&1; then
+                        resource_changes=$(jq -r '.resource_changes | length' "$file" 2>/dev/null || echo "unknown")
+                        echo "    Resource changes: $resource_changes"
+                    fi
+                    echo ""
+                    FOUND_FILES="${FOUND_FILES}${file}\n"
+                fi
+            done
+
+            echo "--- Searching in common Terraform directories ---"
+            for dir in ".terraform" "terraform.tfstate.d" ".env0"; do
+                if [ -d "$SEARCH_ROOT/$dir" ]; then
+                    echo "Searching in: $SEARCH_ROOT/$dir"
+                    find "$SEARCH_ROOT/$dir" -type f \( -name "*plan*" -o -name "*.tfplan" \) 2>/dev/null | while read -r file; do
+                        echo "  ✓ Found: $file"
+                        FOUND_FILES="${FOUND_FILES}${file}\n"
+                    done
+                fi
+            done
+
+            echo "--- Checking Terraform workspace ---"
+            if [ -f "$SEARCH_ROOT/.terraform/environment" ]; then
+                workspace=$(cat "$SEARCH_ROOT/.terraform/environment")
+                echo "Current workspace: $workspace"
+                
+                # Check for workspace-specific files
+                if [ -d "$SEARCH_ROOT/terraform.tfstate.d/$workspace" ]; then
+                    echo "Searching workspace directory: terraform.tfstate.d/$workspace"
+                    find "$SEARCH_ROOT/terraform.tfstate.d/$workspace" -type f 2>/dev/null | while read -r file; do
+                        echo "  Found: $file"
+                    done
+                fi
+            fi
+
+            echo ""
+            echo "--- Checking current directory contents ---"
+            ls -lha "$SEARCH_ROOT" | grep -E "plan|tfplan" || echo "No plan files in root"
+
+            echo ""
+            echo "--- Summary ---"
+            if [ -n "$FOUND_FILES" ]; then
+                echo "Found potential plan files:"
+                echo "$FOUND_FILES" | grep -v "^$"
+                
+                echo ""
+                echo "To inspect a plan file:"
+                echo "  Binary: terraform show <file>"
+                echo "  JSON: jq . <file> | less"
+                echo "  Convert binary to JSON: terraform show -json <file> > plan.json"
+            else
+                echo "No plan files found."
+                echo ""
+                echo "The plan might not be saved. To create one:"
+                echo "  terraform plan -out=tfplan"
+                echo "  terraform show -json tfplan > plan.json"
+            fi
      
         - name: Submit Plan to Overmind
           run: |
