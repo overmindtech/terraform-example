@@ -4,13 +4,30 @@ deploy:
   steps:
     terraformPlan:
       before:
-        - name: Display ENV0 Environment Variables
+        - name: Display Shell Information
           run: |
             echo "=========================================="
-            echo "ENV0 ENVIRONMENT VARIABLES"
+            echo "SHELL INFORMATION"
             echo "=========================================="
-            env
-            which bash
+            echo "Current Shell: $SHELL"
+            echo "Shell Process: $$"
+            echo "Parent Shell: $0"
+            echo ""
+            echo "Shell Version:"
+            if [ -n "$SHELL" ]; then
+              $SHELL --version 2>&1 || echo "Version command not available"
+            fi
+            echo ""
+            echo "Available Shells:"
+            which sh 2>/dev/null && echo "  sh: $(sh --version 2>&1 | head -1)" || echo "  sh: not found"
+            which bash 2>/dev/null && echo "  bash: $(bash --version 2>&1 | head -1)" || echo "  bash: not found"
+            which zsh 2>/dev/null && echo "  zsh: $(zsh --version 2>&1 | head -1)" || echo "  zsh: not found"
+            which dash 2>/dev/null && echo "  dash: $(dash --version 2>&1 | head -1)" || echo "  dash: not found"
+            echo ""
+            echo "Current Process Info:"
+            ps -p $$ -o comm=,args= 2>/dev/null || ps -p $$ 2>/dev/null || echo "ps command not available"
+            echo ""
+            echo "=========================================="
 
       after:
         - name: Submit Plan to Overmind
@@ -27,13 +44,30 @@ deploy:
             action: start-change
             api_key: ${OVM_API_KEY}
 
-        - name: Display ENV0 Environment Variables
+        - name: Display Shell Information
           run: |
             echo "=========================================="
-            echo "ENV0 ENVIRONMENT VARIABLES"
+            echo "SHELL INFORMATION"
             echo "=========================================="
-            env
-            which bash
+            echo "Current Shell: $SHELL"
+            echo "Shell Process: $$"
+            echo "Parent Shell: $0"
+            echo ""
+            echo "Shell Version:"
+            if [ -n "$SHELL" ]; then
+              $SHELL --version 2>&1 || echo "Version command not available"
+            fi
+            echo ""
+            echo "Available Shells:"
+            which sh 2>/dev/null && echo "  sh: $(sh --version 2>&1 | head -1)" || echo "  sh: not found"
+            which bash 2>/dev/null && echo "  bash: $(bash --version 2>&1 | head -1)" || echo "  bash: not found"
+            which zsh 2>/dev/null && echo "  zsh: $(zsh --version 2>&1 | head -1)" || echo "  zsh: not found"
+            which dash 2>/dev/null && echo "  dash: $(dash --version 2>&1 | head -1)" || echo "  dash: not found"
+            echo ""
+            echo "Current Process Info:"
+            ps -p $$ -o comm=,args= 2>/dev/null || ps -p $$ 2>/dev/null || echo "ps command not available"
+            echo ""
+            echo "=========================================="
       
       after:
         - name: Mark Change Finished
