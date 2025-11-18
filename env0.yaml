@@ -136,85 +136,89 @@ deploy:
             echo "Current Directory: $(pwd)"
             echo ""
             
-            # Common plan file names to search for
-            PLAN_NAMES=(
-              "terraform.tfplan"
-              "tfplan"
-              "plan.out"
-              "plan.tfplan"
-              "*.tfplan"
-            )
+            # Common plan file names to search for (space-separated for sh compatibility)
+            PLAN_NAMES="terraform.tfplan tfplan plan.out plan.tfplan"
             
             PLAN_FILE=""
             PLAN_LOCATION=""
+            FOUND=0
             
             # Search in current directory first
             echo "=== SEARCHING CURRENT DIRECTORY ==="
-            for plan_name in "${PLAN_NAMES[@]}"; do
-              # Handle wildcards
-              if [[ "$plan_name" == *"*"* ]]; then
-                for file in $plan_name; do
-                  if [ -f "$file" ] && [ "$file" != "$plan_name" ]; then
-                    PLAN_FILE="$file"
-                    PLAN_LOCATION="$(pwd)/$file"
-                    echo "Found: $PLAN_LOCATION"
-                    break 2
-                  fi
-                done
-              else
-                if [ -f "$plan_name" ]; then
-                  PLAN_FILE="$plan_name"
-                  PLAN_LOCATION="$(pwd)/$plan_name"
-                  echo "Found: $PLAN_LOCATION"
-                  break
-                fi
+            for plan_name in $PLAN_NAMES; do
+              if [ "$FOUND" -eq 1 ]; then
+                break
+              fi
+              if [ -f "$plan_name" ]; then
+                PLAN_FILE="$plan_name"
+                PLAN_LOCATION="$(pwd)/$plan_name"
+                echo "Found: $PLAN_LOCATION"
+                FOUND=1
+                break
               fi
             done
             
+            # Also check for any .tfplan files
+            if [ "$FOUND" -eq 0 ]; then
+              for file in *.tfplan; do
+                if [ -f "$file" ] && [ "$file" != "*.tfplan" ]; then
+                  PLAN_FILE="$file"
+                  PLAN_LOCATION="$(pwd)/$file"
+                  echo "Found: $PLAN_LOCATION"
+                  FOUND=1
+                  break
+                fi
+              done
+            fi
+            
             # If not found, search in common locations
-            if [ -z "$PLAN_FILE" ]; then
+            if [ "$FOUND" -eq 0 ]; then
               echo "Not found in current directory, searching common locations..."
               echo ""
               
-              SEARCH_DIRS=(
-                "."
-                "${ENV0_ROOT_DIR:-.}"
-                "$HOME"
-                "/tmp"
-                "/var/tmp"
-              )
+              SEARCH_DIRS=". ${ENV0_ROOT_DIR:-.} $HOME /tmp /var/tmp"
               
-              for search_dir in "${SEARCH_DIRS[@]}"; do
+              for search_dir in $SEARCH_DIRS; do
+                if [ "$FOUND" -eq 1 ]; then
+                  break
+                fi
                 if [ -d "$search_dir" ]; then
                   echo "Searching in: $search_dir"
-                  for plan_name in "${PLAN_NAMES[@]}"; do
-                    if [[ "$plan_name" == *"*"* ]]; then
-                      found=$(find "$search_dir" -maxdepth 3 -name "${plan_name}" -type f 2>/dev/null | head -1)
-                    else
-                      found=$(find "$search_dir" -maxdepth 3 -name "$plan_name" -type f 2>/dev/null | head -1)
-                    fi
-                    
+                  for plan_name in $PLAN_NAMES; do
+                    found=$(find "$search_dir" -maxdepth 3 -name "$plan_name" -type f 2>/dev/null | head -1)
                     if [ -n "$found" ] && [ -f "$found" ]; then
                       PLAN_FILE=$(basename "$found")
                       PLAN_LOCATION="$found"
                       echo "Found: $PLAN_LOCATION"
-                      break 2
+                      FOUND=1
+                      break
                     fi
                   done
+                  # Also search for .tfplan files
+                  if [ "$FOUND" -eq 0 ]; then
+                    found=$(find "$search_dir" -maxdepth 3 -name "*.tfplan" -type f 2>/dev/null | head -1)
+                    if [ -n "$found" ] && [ -f "$found" ]; then
+                      PLAN_FILE=$(basename "$found")
+                      PLAN_LOCATION="$found"
+                      echo "Found: $PLAN_LOCATION"
+                      FOUND=1
+                    fi
+                  fi
                 fi
               done
             fi
             
             # Try to use terraform show to detect plan
-            if [ -z "$PLAN_FILE" ]; then
+            if [ "$FOUND" -eq 0 ]; then
               echo ""
               echo "=== ATTEMPTING TERRAFORM SHOW DETECTION ==="
-              if command -v terraform &> /dev/null; then
+              if command -v terraform >/dev/null 2>&1; then
                 # Try terraform show without specifying a file (uses last plan)
                 if terraform show -json 2>/dev/null | head -1 | grep -q "format_version"; then
                   echo "Terraform show detected a plan (using last plan in state)"
                   PLAN_FILE="(detected via terraform show)"
                   PLAN_LOCATION="(last plan in terraform state)"
+                  FOUND=1
                 else
                   echo "No plan detected via terraform show"
                 fi
@@ -228,7 +232,7 @@ deploy:
             echo "=========================================="
             echo "PLAN FILE SEARCH RESULTS"
             echo "=========================================="
-            if [ -n "$PLAN_FILE" ] && [ "$PLAN_FILE" != "(detected via terraform show)" ]; then
+            if [ "$FOUND" -eq 1 ] && [ "$PLAN_FILE" != "(detected via terraform show)" ]; then
               echo "✓ Plan file found: $PLAN_LOCATION"
               echo "  File name: $PLAN_FILE"
               echo "  Full path: $PLAN_LOCATION"
@@ -238,7 +242,7 @@ deploy:
               echo "Storing plan file location for next steps..."
               echo "PLAN_FILE=$PLAN_LOCATION" >> $ENV0_ENV
               echo "PLAN_FILE_NAME=$PLAN_FILE" >> $ENV0_ENV
-            elif [ "$PLAN_FILE" == "(detected via terraform show)" ]; then
+            elif [ "$PLAN_FILE" = "(detected via terraform show)" ]; then
               echo "⚠ Plan detected via terraform show (no file path available)"
               echo "  Will use 'terraform show -json' without file argument"
               echo ""
@@ -246,7 +250,7 @@ deploy:
               echo "PLAN_FILE_NAME=(terraform show)" >> $ENV0_ENV
             else
               echo "✗ No plan file found"
-              echo "  Searched for: ${PLAN_NAMES[*]}"
+              echo "  Searched for: $PLAN_NAMES *.tfplan"
               echo "  Searched in: current directory and common locations"
               echo ""
               echo "Listing current directory contents:"
