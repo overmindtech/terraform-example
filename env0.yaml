@@ -9,6 +9,11 @@ deploy:
           inputs:
             action: submit-plan
             api_key: ${OVM_API_KEY}
+        - name: Wait for Analysis
+          use: https://github.com/overmindtech/env0-plugin
+          inputs:
+            action: wait-for-simulation
+            api_key: ${OVM_API_KEY}
         - name: Print Env Vars
           run: |
             env
