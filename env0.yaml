@@ -5,15 +5,9 @@ deploy:
     # COMMENTED OUT: Overmind integration steps
     terraformPlan:
       after:
-        - name: Install Overmind CLI
+        - name: Show the path
           run: |
-            set -xe
-            # Install Overmind CLI using APK package manager
-            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/rsa.7B6E65C2058FDB78.key' | sudo tee /etc/apk/keys/tools@overmind-7B6E65C2058FDB78.rsa.pub > /dev/null
-            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/config.alpine.txt?distro=alpine&codename=v3.8' | sudo tee -a /etc/apk/repositories > /dev/null
-            sudo apk update
-            sudo apk add overmind-cli
-            overmind --version
+            echo $PATH
     #     
     #     - name: Convert Terraform Plan to JSON
     #       run: |
@@ -85,7 +79,7 @@ deploy:
     #         else
     #           echo "Warning: Failed to get change URL from Overmind"
     #         fi
-    
+
     # terraformApply:
     #   before:
     #     - name: Mark Change Started
@@ -136,4 +130,3 @@ deploy:
     #           ./overmindtech/overmind changes end-change \
     #             --ticket-link "$ticket_link" || true
     #         fi
-
