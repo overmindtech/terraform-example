@@ -2,158 +2,26 @@ version: 2
 
 deploy:
   steps:
-    # COMMENTED OUT: Overmind integration steps
     terraformPlan:
       after:
-        - name: Install Overmind CLI
-          run: |
-            #!/bin/sh
-            set -e
-
-            REPO="overmindtech/cli"
-
-            # Preferred installation directories (in order of preference)
-            PREFERRED_DIRS="/home/node/.local/bin:${HOME}/.local/bin:/opt/packages/bin:/usr/local/bin"
-
-            OS=$(uname -s)
-            ARCH=$(uname -m)
-
-            case "${ARCH}" in
-                x86_64) ARCH="x86_64" ;;
-                aarch64|arm64) ARCH="arm64" ;;
-                i386|i686) ARCH="i386" ;;
-                *) echo "Unsupported architecture: ${ARCH}"; exit 1 ;;
-            esac
-
-            case "${OS}" in
-                Linux|Darwin) ARCHIVE_EXT="tar.gz" ;;
-                MINGW*|MSYS*|CYGWIN*) OS="Windows"; ARCHIVE_EXT="zip" ;;
-                *) echo "Unsupported OS: ${OS}"; exit 1 ;;
-            esac
-
-            # Function to check if directory is writable and in PATH
-            find_install_dir() {
-                # First try preferred directories
-                IFS=':'
-                for dir in $PREFERRED_DIRS; do
-                    [ -z "$dir" ] && continue
-                    
-                    # Create if parent is writable
-                    if [ ! -d "$dir" ]; then
-                        mkdir -p "$dir" 2>/dev/null || continue
-                    fi
-                    
-                    # Check if writable and in PATH
-                    if [ -w "$dir" ] && echo ":${PATH}:" | grep -q ":${dir}:"; then
-                        echo "$dir"
-                        return 0
-                    fi
-                done
-                
-                # Fall back to any writable directory in PATH
-                for dir in $PATH; do
-                    [ -z "$dir" ] && continue
-                    [ -d "$dir" ] && [ -w "$dir" ] && echo "$dir" && return 0
-                done
-                unset IFS
-                
-                return 1
-            }
-
-            INSTALL_DIR=$(find_install_dir)
-
-            if [ -z "${INSTALL_DIR}" ]; then
-                echo "Error: No writable directory found in PATH"
-                echo "Tried: ${PREFERRED_DIRS}"
-                echo "Current PATH: ${PATH}"
-                exit 1
-            fi
-
-            echo "Installing to: ${INSTALL_DIR}"
-
-            echo "Detecting latest release..."
-            LATEST_VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-
-            if [ -z "${LATEST_VERSION}" ]; then
-                echo "Failed to fetch latest version"
-                exit 1
-            fi
-
-            echo "Latest version: ${LATEST_VERSION}"
-            VERSION_NUMBER=$(echo "${LATEST_VERSION}" | sed 's/^v//')
-
-            FILENAME="overmind_cli_${VERSION_NUMBER}_${OS}_${ARCH}.${ARCHIVE_EXT}"
-            DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_VERSION}/${FILENAME}"
-
-            echo "Downloading ${FILENAME}..."
-
-            TMP_DIR=$(mktemp -d)
-            trap "rm -rf ${TMP_DIR}" EXIT
-            cd "${TMP_DIR}"
-
-            curl -fsSL "${DOWNLOAD_URL}" -o archive
-
-            if [ "${ARCHIVE_EXT}" = "tar.gz" ]; then
-                tar -xzf archive
-            else
-                unzip -q archive
-            fi
-
-            # Look for the binary - it's called 'overmind'
-            BINARY=$(find . -maxdepth 1 -type f -executable -name "overmind*" ! -name "*.txt" ! -name "*.md" ! -name "LICENSE" | head -n 1)
-
-            if [ -z "${BINARY}" ]; then
-                echo "Error: Could not find binary in archive"
-                ls -la
-                exit 1
-            fi
-
-            cp "${BINARY}" "${INSTALL_DIR}/overmind"
-            chmod +x "${INSTALL_DIR}/overmind"
-
-            echo "✓ Overmind CLI ${LATEST_VERSION} installed to ${INSTALL_DIR}/overmind"
-            echo "✓ Directory is already in PATH"
-
-            "${INSTALL_DIR}/overmind" version 2>/dev/null || echo "Installation complete"
-     
-        - name: Display ENV0 Environment Variables
-          run: |
-            echo "=========================================="
-            echo "ENV0 ENVIRONMENT VARIABLES"
-            echo "=========================================="
-            env
-
         - name: Submit Plan to Overmind
-          run: |
-            set -xe
-            # Construct the env0 deployment URL for the ticket-link
-            ticket_link="https://app.env0.com/p/${ENV0_PROJECT_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}?organizationId=${ENV0_ORGANIZATION_ID}"
-            
-            overmind changes submit-plan \
-              $ENV0_TF_PLAN_JSON \
-              --title "Env0 Deployment: ${ENV0_DEPLOYMENT_LOG_ID}" \
-              --ticket-link "$ticket_link"
+          use: https://github.com/overmindtech/env0-plugin
+          inputs:
+            action: submit-plan
+            api_key: ${OVERMIND_API_KEY}
     
     terraformApply:
       before:
         - name: Mark Change Started
-          run: |
-            set -xe
-            # Construct the env0 deployment URL for the ticket-link
-            ticket_link="https://app.env0.com/p/${ENV0_PROJECT_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}?organizationId=${ENV0_ORGANIZATION_ID}"
-            
-            # Start the change in Overmind
-            overmind changes start-change \
-              --ticket-link "$ticket_link"
+          use: https://github.com/overmindtech/env0-plugin
+          inputs:
+            action: start-change
+            api_key: ${OVERMIND_API_KEY}
       
       after:
         - name: Mark Change Finished
-          run: |
-            set -xe
-            # Construct the env0 deployment URL for the ticket-link
-            ticket_link="https://app.env0.com/p/${ENV0_PROJECT_ID}/environments/${ENV0_ENVIRONMENT_ID}/deployments/${ENV0_DEPLOYMENT_LOG_ID}?organizationId=${ENV0_ORGANIZATION_ID}"
-            
-            # End the change in Overmind
-            overmind changes end-change \
-              --ticket-link "$ticket_link"
+          use: https://github.com/overmindtech/env0-plugin
+          inputs:
+            action: end-change
+            api_key: ${OVERMIND_API_KEY}
 
