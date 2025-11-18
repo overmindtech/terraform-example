@@ -265,18 +265,16 @@ deploy:
             echo "=========================================="
     
     # COMMENTED OUT: Overmind integration steps
-    # terraformPlan:
-    #   after:
-    #     - name: Install Overmind CLI
-    #       run: |
-    #         set -xe
-    #         # Download and install Overmind CLI
-    #         # Using the same method as the GitHub action: download from releases
-    #         curl -L https://github.com/overmindtech/cli/releases/latest/download/overmind_cli_Linux_x86_64.tar.gz -o /tmp/overmind.tar.gz
-    #         mkdir -p ./overmindtech
-    #         tar -xzf /tmp/overmind.tar.gz -C ./overmindtech
-    #         chmod +x ./overmindtech/overmind
-    #         ./overmindtech/overmind --version
+    terraformPlan:
+      after:
+        - name: Install Overmind CLI
+          run: |
+            set -xe
+            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/rsa.7B6E65C2058FDB78.key' > /etc/apk/keys/tools@overmind-7B6E65C2058FDB78.rsa.pub
+            curl -1sLf 'https://dl.cloudsmith.io/public/overmind/tools/config.alpine.txt?distro=alpine&codename=v3.8' >> /etc/apk/repositories
+            apk update
+            apk add overmind-cli
+            overmind --version
     #     
     #     - name: Convert Terraform Plan to JSON
     #       run: |
