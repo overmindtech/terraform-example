@@ -258,5 +258,3 @@ deploy:
             fi
             echo "=========================================="
      
-        - name: Convert Terraform Plan to JSON
-          run:
