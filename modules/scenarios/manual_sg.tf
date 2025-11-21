@@ -136,10 +136,10 @@ resource "aws_instance" "webserver" {
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
-  # Root volume will be deleted on termination (default behavior)
-  # This ensures clean state on instance replacement
+  # Root volume will be preserved on termination
+  # This prevents data loss during instance replacement
   root_block_device {
-    delete_on_termination = true
+    delete_on_termination = false
   }
 
   tags = {
@@ -157,10 +157,10 @@ resource "aws_instance" "app_server" {
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
-  # Root volume will be deleted on termination (default behavior)
-  # This ensures clean state on instance replacement
+  # Root volume will be preserved on termination
+  # This prevents data loss during instance replacement
   root_block_device {
-    delete_on_termination = true
+    delete_on_termination = false
   }
 
   tags = {
