@@ -7,6 +7,16 @@ output "alb_url" {
   value       = var.enabled ? "http://${aws_lb.app[0].dns_name}" : null
 }
 
+output "alb_dns_name" {
+  description = "DNS name of the ALB"
+  value       = var.enabled ? aws_lb.app[0].dns_name : null
+}
+
+output "alb_zone_id" {
+  description = "Zone ID of the ALB"
+  value       = var.enabled ? aws_lb.app[0].zone_id : null
+}
+
 output "demo_status" {
   description = "Object showing current vs required memory, cost calculations, and risk assessment"
   value = var.enabled ? {
