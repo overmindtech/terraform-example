@@ -18,7 +18,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory_utilization" {
   count               = var.enabled ? 1 : 0
   alarm_name          = "${local.name_prefix}-high-memory"
   comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
+  evaluation_periods  = "3" # Changed from "2"
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
   period              = "300"  # 5 minutes for cost optimization
