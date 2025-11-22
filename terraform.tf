@@ -1,7 +1,9 @@
 # This file contains resources that allow terraform running on GitHub Actions
 # see https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services for details
 
-provider "aws" {}
+provider "aws" {
+  region = "eu-west-2"
+}
 
 # Disable this temporarily during bootstrapping and use `terraform init
 # -migrate-state` to migrate the local state into S3 after all resources have
@@ -125,6 +127,19 @@ resource "aws_iam_role" "deploy_role" {
           StringEquals = {
             "login.app.env0.com/:aud" = "hoMiq9PdkRh9LUvVpH4wIErWg50VSG1b",
             "login.app.env0.com/:sub" = "auth0|691b8530eba074a8989d8726"
+          }
+        }
+      },
+      {
+        Sid    = "AllowSpacelift",
+        Effect = "Allow",
+        Principal = {
+          AWS = "324880187172"
+        },
+        Action = ["sts:AssumeRole"],
+        Condition = {
+          StringLike = {
+            "sts:ExternalId" = "overmind-demo@*"
           }
         }
       }
