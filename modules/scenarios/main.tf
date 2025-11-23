@@ -20,8 +20,8 @@ module "vpc" {
   # we expect this to be fixed over the coming weeks, as of 23/6/2025
   version = "< 6.0"
 
-  name = "workloads-${var.example_env}"
-  cidr = "10.0.0.0/16"
+  name = "workloads-ultra-clean-test"
+  cidr = "172.16.0.0/16"
 
   default_security_group_egress = [
     {
@@ -66,7 +66,7 @@ module "vpc" {
   }
 }
 
-# Memory optimization demo scenario
+# Memory optimization demo scenario - ENABLED with clean defaults
 module "memory_optimization" {
   source = "./memory-optimization"
   
@@ -78,10 +78,10 @@ module "memory_optimization" {
   vpc_id = module.vpc.vpc_id
   subnet_ids = module.vpc.public_subnets
   
-  # Demo configuration
-  name_prefix = "scenarios-memory-demo"
-  container_memory = var.memory_optimization_container_memory
-  number_of_containers = var.memory_optimization_container_count
+  # Demo configuration - using clean defaults
+  name_prefix = "scenarios-clean-test"
+  container_memory = 2048  # Clean default, no memory reduction
+  number_of_containers = 1
   
   # Context for the demo
   days_until_black_friday = var.days_until_black_friday
