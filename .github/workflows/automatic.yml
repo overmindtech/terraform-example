@@ -165,3 +165,16 @@ jobs:
           overmind-api-key: ${{ secrets.OVM_API_KEY }}
           infracost-api-key: ${{ secrets.INFRACOST_API_KEY }}
           terraform-plan-json: ./tfplan-cost.json
+
+  auto-approval:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    needs: execute
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: overmindtech/approval-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          block-on-high-risks: true
+          max-medium-risks: 3
