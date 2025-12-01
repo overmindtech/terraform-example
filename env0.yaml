@@ -18,6 +18,20 @@ deploy:
         - name: Print Env Vars
           run: |
             env
+            echo ""
+            echo "=== Tool Availability ==="
+            if command -v jq &> /dev/null; then
+              echo "JQ: Available ($(jq --version))"
+            else
+              echo "JQ: Not available"
+            fi
+            if command -v python &> /dev/null; then
+              echo "Python: Available ($(python --version 2>&1))"
+            elif command -v python3 &> /dev/null; then
+              echo "Python: Available ($(python3 --version 2>&1))"
+            else
+              echo "Python: Not available"
+            fi
     
     terraformApply:
       before:
@@ -36,9 +50,37 @@ deploy:
         - name: Print Env Vars
           run: |
             env
+            echo ""
+            echo "=== Tool Availability ==="
+            if command -v jq &> /dev/null; then
+              echo "JQ: Available ($(jq --version))"
+            else
+              echo "JQ: Not available"
+            fi
+            if command -v python &> /dev/null; then
+              echo "Python: Available ($(python --version 2>&1))"
+            elif command -v python3 &> /dev/null; then
+              echo "Python: Available ($(python3 --version 2>&1))"
+            else
+              echo "Python: Not available"
+            fi
 
     terraformOutput:
       after:
         - name: Print Env Vars
           run: |
             env
+            echo ""
+            echo "=== Tool Availability ==="
+            if command -v jq &> /dev/null; then
+              echo "JQ: Available ($(jq --version))"
+            else
+              echo "JQ: Not available"
+            fi
+            if command -v python &> /dev/null; then
+              echo "Python: Available ($(python --version 2>&1))"
+            elif command -v python3 &> /dev/null; then
+              echo "Python: Available ($(python3 --version 2>&1))"
+            else
+              echo "Python: Not available"
+            fi
