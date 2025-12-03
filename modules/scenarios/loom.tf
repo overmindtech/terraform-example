@@ -413,7 +413,7 @@ resource "aws_cloudfront_origin_request_policy" "headers_based_policy" {
   headers_config {
     header_behavior = "whitelist"
     headers {
-      items = ["User-Agent"]
+      items = ["User-Agent", "Authorization"]
     }
   }
 
