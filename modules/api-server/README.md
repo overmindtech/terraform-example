@@ -5,12 +5,7 @@
 ## 🎬 Demo Flow
 
 ### 1. Open Compliance Dashboard
-**Live Demo**: https://terraform-example-demo-app.preview.df.overmind-demo.com/
-
-Or run locally:
-```bash
-cd demo-app && npm install && npm run dev
-```
+https://terraform-example-demo-app.preview.df.overmind-demo.com/
 
 ### 2. View the Auto-Created Ticket
 - Dashboard shows 97.9% compliance, 1 non-compliant instance
