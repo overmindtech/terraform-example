@@ -361,26 +361,26 @@ module "heritage" {
   source = "./modules/heritage"
 
   example_env = var.example_env
-  
+
   # VPC inputs from baseline
-  vpc_id                  = module.baseline.vpc_id
-  public_subnets          = module.baseline.public_subnets
-  private_subnets         = module.baseline.private_subnets
+  vpc_id                    = module.baseline.vpc_id
+  public_subnets            = module.baseline.public_subnets
+  private_subnets           = module.baseline.private_subnets
   default_security_group_id = module.baseline.default_security_group_id
-  public_route_table_ids  = module.baseline.public_route_table_ids
-  ami_id                  = module.baseline.ami_id
-  
+  public_route_table_ids    = module.baseline.public_route_table_ids
+  ami_id                    = module.baseline.ami_id
+
   # Memory optimization demo settings
-  enable_memory_optimization_demo = var.enable_memory_optimization_demo
+  enable_memory_optimization_demo      = var.enable_memory_optimization_demo
   memory_optimization_container_memory = var.memory_optimization_container_memory
-  memory_optimization_container_count = var.memory_optimization_container_count
-  days_until_black_friday = var.days_until_black_friday
-  
+  memory_optimization_container_count  = var.memory_optimization_container_count
+  days_until_black_friday              = var.days_until_black_friday
+
   # Message size breach demo settings
-  enable_message_size_breach_demo = var.enable_message_size_breach_demo
-  message_size_breach_max_size = var.message_size_breach_max_size
-  message_size_breach_batch_size = var.message_size_breach_batch_size
+  enable_message_size_breach_demo    = var.enable_message_size_breach_demo
+  message_size_breach_max_size       = var.message_size_breach_max_size
+  message_size_breach_batch_size     = var.message_size_breach_batch_size
   message_size_breach_lambda_timeout = var.message_size_breach_lambda_timeout
-  message_size_breach_lambda_memory = var.message_size_breach_lambda_memory
+  message_size_breach_lambda_memory  = var.message_size_breach_lambda_memory
   message_size_breach_retention_days = var.message_size_breach_retention_days
 }
