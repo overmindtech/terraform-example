@@ -18,9 +18,9 @@ variable "container_memory" {
   description = "Memory allocation per container in MB. Optimized based on monitoring data showing 800MB average usage with 950MB peaks."
   type        = number
   default     = 2048
-  
+
   validation {
-    condition = var.container_memory >= 512 && var.container_memory <= 30720
+    condition     = var.container_memory >= 512 && var.container_memory <= 30720
     error_message = "Container memory must be between 512 MB and 30 GB."
   }
 }
@@ -29,9 +29,9 @@ variable "number_of_containers" {
   description = "ECS service desired count for high availability and load distribution"
   type        = number
   default     = 15
-  
+
   validation {
-    condition = var.number_of_containers >= 1 && var.number_of_containers <= 100
+    condition     = var.number_of_containers >= 1 && var.number_of_containers <= 100
     error_message = "Number of containers must be between 1 and 100."
   }
 }
@@ -82,7 +82,7 @@ variable "java_heap_size_mb" {
 variable "enable_container_insights" {
   description = "Enable CloudWatch Container Insights for the ECS cluster"
   type        = bool
-  default     = false  # Disabled for cost optimization
+  default     = false # Disabled for cost optimization
 }
 
 variable "health_check_grace_period" {
@@ -106,7 +106,7 @@ variable "application_port" {
 variable "cpu_units" {
   description = "CPU units for ECS task (1024 = 1 vCPU)"
   type        = number
-  default     = 512  # Reduced from 1024 for cost savings
+  default     = 512 # Reduced from 1024 for cost savings
 }
 
 # Tags

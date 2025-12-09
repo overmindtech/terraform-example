@@ -21,7 +21,7 @@ resource "aws_cloudwatch_metric_alarm" "high_memory_utilization" {
   evaluation_periods  = "2"
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
-  period              = "300"  # 5 minutes for cost optimization
+  period              = "300" # 5 minutes for cost optimization
   statistic           = "Average"
   threshold           = "80"
   alarm_description   = "This metric monitors ECS memory utilization - WILL FIRE when containers run out of memory"
@@ -36,11 +36,11 @@ resource "aws_cloudwatch_metric_alarm" "high_memory_utilization" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-memory-alarm"
     Description = "Memory utilization alarm for Java application"
-    
+
     # Alarm metadata
-    AlarmTrigger       = "memory-over-80-percent"
-    JavaHeapMB         = tostring(var.java_heap_size_mb)
-    ContainerMemoryMB  = tostring(var.container_memory)
+    AlarmTrigger        = "memory-over-80-percent"
+    JavaHeapMB          = tostring(var.java_heap_size_mb)
+    ContainerMemoryMB   = tostring(var.container_memory)
     WillFireAfterChange = tostring(var.container_memory < var.java_heap_size_mb + 256)
   })
 }
@@ -55,7 +55,7 @@ resource "aws_cloudwatch_metric_alarm" "low_task_count" {
   namespace           = "AWS/ECS"
   period              = "300"
   statistic           = "Average"
-  threshold           = var.number_of_containers * 0.8  # 80% of expected tasks
+  threshold           = var.number_of_containers * 0.8 # 80% of expected tasks
   alarm_description   = "This metric monitors ECS running task count - WILL FIRE when containers crash due to OOM"
   alarm_actions       = [aws_sns_topic.alerts[0].arn]
   ok_actions          = [aws_sns_topic.alerts[0].arn]
@@ -68,12 +68,12 @@ resource "aws_cloudwatch_metric_alarm" "low_task_count" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-task-count-alarm"
     Description = "Task count alarm for container health monitoring"
-    
+
     # Alarm metadata
-    ExpectedTasks      = tostring(var.number_of_containers)
-    ThresholdTasks     = tostring(var.number_of_containers * 0.8)
-    CrashCause         = "OOM-when-memory-reduced"
-    BusinessImpact     = "service-degradation"
+    ExpectedTasks  = tostring(var.number_of_containers)
+    ThresholdTasks = tostring(var.number_of_containers * 0.8)
+    CrashCause     = "OOM-when-memory-reduced"
+    BusinessImpact = "service-degradation"
   })
 }
 
@@ -99,11 +99,11 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-cpu-alarm"
     Description = "CPU utilization alarm for Java application performance"
-    
+
     # Technical metadata
-    GCPressure         = "high-when-heap-approaches-limit"
-    JVMBehavior        = "CPU-spikes-before-OOM"
-    MemoryThrashing    = "frequent-GC-when-constrained"
+    GCPressure      = "high-when-heap-approaches-limit"
+    JVMBehavior     = "CPU-spikes-before-OOM"
+    MemoryThrashing = "frequent-GC-when-constrained"
   })
 }
 
@@ -129,7 +129,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_targets" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-unhealthy-targets-alarm"
     Description = "ALB target health monitoring for application availability"
-    
+
     # Impact metadata
     UserExperience     = "failed-requests-during-crashes"
     DeregistrationTime = "${var.deregistration_delay}s"

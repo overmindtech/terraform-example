@@ -1,7 +1,7 @@
 # IAM Role for Lambda function
 resource "aws_iam_role" "lambda_role" {
   name = "image-processor-lambda-role-${var.example_env}"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -14,7 +14,7 @@ resource "aws_iam_role" "lambda_role" {
       }
     ]
   })
-  
+
   tags = {
     Name        = "Lambda Execution Role"
     Environment = var.example_env
@@ -39,7 +39,7 @@ resource "aws_iam_role_policy_attachment" "lambda_sqs_policy" {
 resource "aws_iam_role_policy" "lambda_logs_policy" {
   name = "lambda-logs-policy-${var.example_env}"
   role = aws_iam_role.lambda_role.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

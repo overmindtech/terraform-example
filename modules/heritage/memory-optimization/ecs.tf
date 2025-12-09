@@ -70,7 +70,7 @@ resource "aws_iam_role" "ecs_task_role" {
 resource "aws_cloudwatch_log_group" "app" {
   count             = var.enabled ? 1 : 0
   name              = "/ecs/${local.name_prefix}"
-  retention_in_days = 1  # Reduced from 7 days for cost optimization
+  retention_in_days = 1 # Reduced from 7 days for cost optimization
 
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-logs"
@@ -87,17 +87,17 @@ resource "aws_ecs_task_definition" "app" {
   cpu                      = var.cpu_units
   memory                   = var.container_memory
   execution_role_arn       = aws_iam_role.ecs_execution_role[0].arn
-  task_role_arn           = aws_iam_role.ecs_task_role[0].arn
+  task_role_arn            = aws_iam_role.ecs_task_role[0].arn
 
   container_definitions = jsonencode([
     {
       name  = "tomcat-app"
       image = "tomcat:9-jre11"
-      
+
       # THE CRITICAL CONFIGURATION - Java heap size that will cause OOM!
       environment = [
         {
-          name  = "JAVA_OPTS"
+          name = "JAVA_OPTS"
           # THIS IS THE TRAP! JVM configured for 1536MB heap + 256MB overhead = 1792MB total
           # When container_memory changes to 1024MB, this will cause immediate OOM kills
           value = "-Xmx${var.java_heap_size_mb}m -Xms${var.java_heap_size_mb}m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
@@ -110,7 +110,7 @@ resource "aws_ecs_task_definition" "app" {
 
       # MISLEADING METRIC! This shows only 800MB average, hiding the real requirement
       memoryReservation = 800
-      
+
       # Health check with enough time for JVM startup
       healthCheck = {
         command = [
@@ -147,13 +147,13 @@ resource "aws_ecs_task_definition" "app" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-task"
     Description = "ECS task definition with Java heap configuration"
-    
+
     # Technical metadata
-    JavaHeapSizeMB     = tostring(var.java_heap_size_mb)
-    MemoryOverheadMB   = "256"
-    TotalRequiredMB    = tostring(var.java_heap_size_mb + 256)
-    ContainerMemoryMB  = tostring(var.container_memory)
-    MemoryOptimized    = "true"
+    JavaHeapSizeMB    = tostring(var.java_heap_size_mb)
+    MemoryOverheadMB  = "256"
+    TotalRequiredMB   = tostring(var.java_heap_size_mb + 256)
+    ContainerMemoryMB = tostring(var.container_memory)
+    MemoryOptimized   = "true"
   })
 }
 
@@ -195,7 +195,7 @@ resource "aws_ecs_service" "app" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-service"
     Description = "ECS service running Java application containers"
-    
+
     # Impact metadata
     ContainersAffected = tostring(var.number_of_containers)
     DeploymentType     = "rolling"

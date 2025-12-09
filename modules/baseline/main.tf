@@ -14,7 +14,7 @@ data "aws_ami" "amazon_linux" {
 }
 
 module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
+  source = "terraform-aws-modules/vpc/aws"
   # version 6 is breaking change across multiple AWS module so we pin to < 6.0 see https://github.com/terraform-aws-modules/terraform-aws-ecs/issues/291
   # another pin was added to terraform.tf for the S3 module
   # we expect this to be fixed over the coming weeks, as of 23/6/2025

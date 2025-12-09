@@ -100,3 +100,4 @@ variable "message_size_breach_retention_days" {
     error_message = "Retention days must be between 1 and 3653 days."
   }
 }
+

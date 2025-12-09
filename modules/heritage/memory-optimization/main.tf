@@ -43,7 +43,7 @@ data "aws_availability_zones" "available" {
 # Create standalone VPC if needed
 resource "aws_vpc" "standalone" {
   count                = var.enabled && var.create_standalone_vpc ? 1 : 0
-  cidr_block          = "10.0.0.0/16"
+  cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -113,22 +113,22 @@ locals {
   ) : []
 
   # Cost calculations (realistic AWS Fargate pricing)
-  cost_per_gb_month = 50
-  current_memory_gb = var.container_memory / 1024
+  cost_per_gb_month  = 50
+  current_memory_gb  = var.container_memory / 1024
   current_cost_month = local.current_memory_gb * var.number_of_containers * local.cost_per_gb_month
-  
+
   # The "optimized" memory that would break everything
-  optimized_memory = 1024
-  optimized_memory_gb = local.optimized_memory / 1024
+  optimized_memory     = 1024
+  optimized_memory_gb  = local.optimized_memory / 1024
   optimized_cost_month = local.optimized_memory_gb * var.number_of_containers * local.cost_per_gb_month
-  
+
   monthly_savings = local.current_cost_month - local.optimized_cost_month
 
   # The critical calculation: Will this work?
-  java_heap_mb = 1536  # -Xmx1536m configured in the application
-  java_overhead_mb = 256  # Metaspace + OS overhead
+  java_heap_mb       = 1536 # -Xmx1536m configured in the application
+  java_overhead_mb   = 256  # Metaspace + OS overhead
   required_memory_mb = local.java_heap_mb + local.java_overhead_mb
-  will_it_work = var.container_memory >= local.required_memory_mb
+  will_it_work       = var.container_memory >= local.required_memory_mb
 
   # Common tags for all resources (AWS compliant)
   common_tags = {
@@ -137,13 +137,13 @@ locals {
     Scenario    = "cost-reduction"
     CreatedBy   = "terraform"
     Purpose     = "production-optimization"
-    
+
     # Context tags (AWS compliant format)
-    MemoryMB           = tostring(var.container_memory)
-    JavaHeapMB         = tostring(local.java_heap_mb)
-    RequiredMemoryMB   = tostring(local.required_memory_mb)
-    OptimizationWorks  = tostring(local.will_it_work)
-    DaysUntilBF        = tostring(var.days_until_black_friday)
-    RiskLevel          = local.will_it_work ? "low" : "high"
+    MemoryMB          = tostring(var.container_memory)
+    JavaHeapMB        = tostring(local.java_heap_mb)
+    RequiredMemoryMB  = tostring(local.required_memory_mb)
+    OptimizationWorks = tostring(local.will_it_work)
+    DaysUntilBF       = tostring(var.days_until_black_friday)
+    RiskLevel         = local.will_it_work ? "low" : "high"
   }
 }

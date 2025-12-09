@@ -384,3 +384,17 @@ module "heritage" {
   message_size_breach_lambda_memory  = var.message_size_breach_lambda_memory
   message_size_breach_retention_days = var.message_size_breach_retention_days
 }
+
+# API Server
+module "api_server" {
+  source = "./modules/api-server"
+
+  enabled       = true
+  instance_type = "c5.large"
+
+  vpc_id         = module.baseline.vpc_id
+  public_subnets = module.baseline.public_subnets
+  ami_id         = module.baseline.ami_id
+
+  name_prefix = "api"
+}

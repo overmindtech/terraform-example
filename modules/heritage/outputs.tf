@@ -40,12 +40,12 @@ output "message_size_breach_lambda_function_name" {
 
 output "message_size_breach_payload_analysis" {
   description = "Analysis of payload size vs Lambda limits"
-  value       = length(module.message_size_breach) > 0 ? {
-    max_message_size = module.message_size_breach[0].max_message_size
-    batch_size = module.message_size_breach[0].batch_size
-    total_batch_size_bytes = module.message_size_breach[0].total_batch_size_bytes
+  value = length(module.message_size_breach) > 0 ? {
+    max_message_size           = module.message_size_breach[0].max_message_size
+    batch_size                 = module.message_size_breach[0].batch_size
+    total_batch_size_bytes     = module.message_size_breach[0].total_batch_size_bytes
     lambda_payload_limit_bytes = module.message_size_breach[0].lambda_payload_limit_bytes
-    payload_limit_exceeded = module.message_size_breach[0].payload_limit_exceeded
+    payload_limit_exceeded     = module.message_size_breach[0].payload_limit_exceeded
   } : null
 }
 

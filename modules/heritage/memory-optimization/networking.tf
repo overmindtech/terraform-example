@@ -16,7 +16,7 @@ resource "aws_lb" "app" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-alb"
     Description = "ALB for memory optimization demo - will route to failing containers after memory change"
-    
+
     # Context tags
     "context:black-friday-traffic" = "10x normal load expected"
     "context:capacity-planning"    = "load balancer configured for high traffic"
@@ -25,11 +25,11 @@ resource "aws_lb" "app" {
 
 # Target Group - DANGEROUS CONFIGURATION!
 resource "aws_lb_target_group" "app" {
-  count    = var.enabled ? 1 : 0
-  name     = "${local.name_prefix}-tg"
-  port     = var.application_port
-  protocol = "HTTP"
-  vpc_id   = local.vpc_id
+  count       = var.enabled ? 1 : 0
+  name        = "${local.name_prefix}-tg"
+  port        = var.application_port
+  protocol    = "HTTP"
+  vpc_id      = local.vpc_id
   target_type = "ip"
 
   # CRITICAL RISK: 5 second deregistration = no time for rollback!
@@ -50,11 +50,11 @@ resource "aws_lb_target_group" "app" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-tg"
     Description = "Target group with ${var.deregistration_delay}s deregistration - NO TIME FOR ROLLBACK"
-    
+
     # Risk warning tags
-    "risk:deregistration-delay"    = "${var.deregistration_delay}s"
-    "risk:rollback-capability"     = "none"
-    "risk:black-friday-timing"     = "change ${var.days_until_black_friday} days before peak"
+    "risk:deregistration-delay" = "${var.deregistration_delay}s"
+    "risk:rollback-capability"  = "none"
+    "risk:black-friday-timing"  = "change ${var.days_until_black_friday} days before peak"
   })
 }
 
@@ -66,8 +66,8 @@ resource "aws_lb_listener" "app" {
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    
+    type = "forward"
+
     forward {
       target_group {
         arn = aws_lb_target_group.app[0].arn
@@ -135,7 +135,7 @@ resource "aws_security_group" "ecs_tasks" {
   tags = merge(local.common_tags, {
     Name        = "${local.name_prefix}-ecs-sg"
     Description = "ECS tasks security group - containers will crash after memory optimization"
-    
+
     # Warning tags
     "warning:containers-affected" = "${var.number_of_containers} containers"
     "warning:crash-behavior"      = "immediate OOM after memory reduction"

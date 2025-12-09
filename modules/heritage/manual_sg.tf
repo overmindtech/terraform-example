@@ -62,7 +62,7 @@ resource "aws_route_table_association" "restricted-2b" {
 }
 
 resource "aws_network_acl" "restricted" {
-  vpc_id     = var.vpc_id
+  vpc_id = var.vpc_id
   subnet_ids = [
     aws_subnet.restricted-2a.id,
     aws_subnet.restricted-2b.id
@@ -129,10 +129,10 @@ data "aws_ssm_parameter" "amzn2_latest" {
 
 resource "aws_instance" "webserver" {
   ami           = data.aws_ssm_parameter.amzn2_latest.value
-  instance_type = "t3.small"  # Upgraded from t3.micro for cost analysis demo
+  instance_type = "t3.small" # Upgraded from t3.micro for cost analysis demo
   subnet_id     = aws_subnet.restricted-2a.id
   key_name      = "Demo Key Pair"
-  
+
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
@@ -150,10 +150,10 @@ resource "aws_instance" "webserver" {
 
 resource "aws_instance" "app_server" {
   ami           = data.aws_ssm_parameter.amzn2_latest.value
-  instance_type = "t3.small"  # Upgraded from t3.micro for cost analysis demo
+  instance_type = "t3.small" # Upgraded from t3.micro for cost analysis demo
   subnet_id     = aws_subnet.restricted-2b.id
   key_name      = "Demo Key Pair"
-  
+
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 

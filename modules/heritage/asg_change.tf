@@ -4,9 +4,9 @@
 
 # Define an EC2 launch template
 resource "aws_launch_template" "my_launch_template" {
-  name_prefix   = "asg-change-launch-template-${var.example_env}"
-  image_id      = var.ami_id
-  instance_type = "t3.micro"
+  name_prefix            = "asg-change-launch-template-${var.example_env}"
+  image_id               = var.ami_id
+  instance_type          = "t3.micro"
   vpc_security_group_ids = [var.default_security_group_id]
 }
 

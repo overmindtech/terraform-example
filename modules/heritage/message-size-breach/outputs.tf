@@ -78,14 +78,14 @@ output "payload_limit_exceeded" {
 output "risk_assessment" {
   description = "Risk assessment based on configuration"
   value = (var.max_message_size * var.batch_size) > 262144 ? {
-    risk_level = "CRITICAL"
-    message    = "Batch size will exceed Lambda payload limit. Lambda invocations will fail."
-    impact     = "Complete processing pipeline failure"
+    risk_level  = "CRITICAL"
+    message     = "Batch size will exceed Lambda payload limit. Lambda invocations will fail."
+    impact      = "Complete processing pipeline failure"
     cost_impact = "Exponential cost increase from failed invocations"
-  } : {
-    risk_level = "LOW"
-    message    = "Configuration is within safe limits"
-    impact     = "No expected issues"
+    } : {
+    risk_level  = "LOW"
+    message     = "Configuration is within safe limits"
+    impact      = "No expected issues"
     cost_impact = "Normal operational costs"
   }
 }
