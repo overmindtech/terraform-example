@@ -6,7 +6,7 @@
 resource "aws_security_group" "allow_access" {
   name        = "allow_access-${var.example_env}"
   description = "Allow access security group"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 22
@@ -31,7 +31,7 @@ resource "aws_security_group" "allow_access" {
 # communication. In fairness, the reachability analyser can answer this
 # question.
 resource "aws_subnet" "restricted-2a" {
-  vpc_id            = module.vpc.vpc_id
+  vpc_id            = var.vpc_id
   cidr_block        = "10.0.9.0/24"
   availability_zone = "eu-west-2a"
 
@@ -41,7 +41,7 @@ resource "aws_subnet" "restricted-2a" {
 }
 
 resource "aws_subnet" "restricted-2b" {
-  vpc_id            = module.vpc.vpc_id
+  vpc_id            = var.vpc_id
   cidr_block        = "10.0.10.0/24"
   availability_zone = "eu-west-2b"
 
@@ -54,15 +54,15 @@ resource "aws_subnet" "restricted-2b" {
 // the internet gateway created by the VPC module
 resource "aws_route_table_association" "restricted-2a" {
   subnet_id      = aws_subnet.restricted-2a.id
-  route_table_id = module.vpc.public_route_table_ids[0]
+  route_table_id = var.public_route_table_ids[0]
 }
 resource "aws_route_table_association" "restricted-2b" {
   subnet_id      = aws_subnet.restricted-2b.id
-  route_table_id = module.vpc.public_route_table_ids[0]
+  route_table_id = var.public_route_table_ids[0]
 }
 
 resource "aws_network_acl" "restricted" {
-  vpc_id     = module.vpc.vpc_id
+  vpc_id     = var.vpc_id
   subnet_ids = [
     aws_subnet.restricted-2a.id,
     aws_subnet.restricted-2b.id
@@ -173,7 +173,7 @@ resource "aws_instance" "app_server" {
 # that's what you'd expect. However, the network ACL is blocking the
 # communication
 resource "aws_security_group" "instance_sg" {
-  vpc_id = module.vpc.vpc_id
+  vpc_id = var.vpc_id
 
   ingress {
     from_port   = 8080
@@ -196,3 +196,4 @@ resource "aws_security_group" "instance_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+

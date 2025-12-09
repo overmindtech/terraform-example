@@ -1,7 +1,37 @@
-
 variable "example_env" {
   description = "Indicate which example environment to use"
   default     = "github"
+  type        = string
+}
+
+# VPC inputs from baseline module
+variable "vpc_id" {
+  description = "ID of the VPC"
+  type        = string
+}
+
+variable "public_subnets" {
+  description = "IDs of the public subnets"
+  type        = list(string)
+}
+
+variable "private_subnets" {
+  description = "IDs of the private subnets"
+  type        = list(string)
+}
+
+variable "default_security_group_id" {
+  description = "ID of the default security group"
+  type        = string
+}
+
+variable "public_route_table_ids" {
+  description = "IDs of the public route tables"
+  type        = list(string)
+}
+
+variable "ami_id" {
+  description = "ID of the Amazon Linux 2 AMI"
   type        = string
 }
 
@@ -101,3 +131,4 @@ variable "message_size_breach_retention_days" {
     error_message = "Retention days must be between 1 and 3653 days."
   }
 }
+

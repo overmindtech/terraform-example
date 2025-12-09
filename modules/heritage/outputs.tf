@@ -1,5 +1,5 @@
 # outputs.tf
-# Outputs for the scenarios module
+# Outputs for the heritage module
 
 # Memory optimization demo outputs
 output "memory_optimization_demo_status" {
@@ -22,22 +22,6 @@ output "memory_optimization_cost_analysis" {
   value       = var.enable_memory_optimization_demo ? module.memory_optimization.cost_analysis : null
 }
 
-# VPC information (useful for other integrations)
-output "vpc_id" {
-  description = "ID of the VPC created for scenarios"
-  value       = module.vpc.vpc_id
-}
-
-output "public_subnet_ids" {
-  description = "IDs of the public subnets"
-  value       = module.vpc.public_subnets
-}
-
-output "private_subnet_ids" {
-  description = "IDs of the private subnets"
-  value       = module.vpc.private_subnets
-}
-
 # Message size limit breach demo outputs
 output "message_size_breach_demo_status" {
   description = "Status and analysis of the message size limit breach demo"
@@ -54,7 +38,6 @@ output "message_size_breach_lambda_function_name" {
   value       = length(module.message_size_breach) > 0 ? module.message_size_breach[0].lambda_function_name : null
 }
 
-
 output "message_size_breach_payload_analysis" {
   description = "Analysis of payload size vs Lambda limits"
   value       = length(module.message_size_breach) > 0 ? {
@@ -65,3 +48,4 @@ output "message_size_breach_payload_analysis" {
     payload_limit_exceeded = module.message_size_breach[0].payload_limit_exceeded
   } : null
 }
+
