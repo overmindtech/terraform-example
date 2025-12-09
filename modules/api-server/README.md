@@ -5,7 +5,9 @@
 ## 🎬 Demo Flow
 
 ### 1. Open Compliance Dashboard
-Launch the demo app at your Vercel URL or run locally:
+**Live Demo**: https://terraform-example-demo-app.preview.df.overmind-demo.com/
+
+Or run locally:
 ```bash
 cd demo-app && npm install && npm run dev
 ```
@@ -69,3 +71,4 @@ terraform destroy -target=module.api_server
 
 - [T3 CPU Credits](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-credits-baseline-concepts.html)
 - [C5 vs T3 Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/compute-optimized-instances.html)
+
