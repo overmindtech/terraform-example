@@ -231,7 +231,7 @@ resource "random_pet" "second" {
 resource "aws_cloudfront_function" "example" {
   name    = "${var.example_env}-${random_pet.this.id}"
   runtime = "cloudfront-js-1.0"
-  code    = file("example-function.js")
+  code    = file("${path.module}/example-function.js")
 }
 
 # Second resource
@@ -451,7 +451,7 @@ resource "aws_lb" "main" {
   name                       = var.example_env
   internal                   = false
   load_balancer_type         = "application"
-  subnets                    = module.vpc.public_subnets
+  subnets                    = var.public_subnets
   enable_deletion_protection = false
 }
 
@@ -481,7 +481,7 @@ data "aws_route53_zone" "demo" {
 # to discover this relationship and therefore tell people about it
 resource "aws_db_subnet_group" "default" {
   name       = "main-${var.example_env}"
-  subnet_ids = module.vpc.private_subnets
+  subnet_ids = var.private_subnets
 
   tags = {
     Name = "Default DB Subnet Group for ${var.example_env}"
@@ -562,8 +562,8 @@ resource "aws_ecs_service" "face" {
 
   network_configuration {
     assign_public_ip = false
-    security_groups  = [module.vpc.default_security_group_id]
-    subnets          = module.vpc.private_subnets
+    security_groups  = [var.default_security_group_id]
+    subnets          = var.private_subnets
   }
 
   capacity_provider_strategy {
@@ -600,7 +600,7 @@ resource "aws_lb_target_group" "face" {
   port        = 1234
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = var.vpc_id
 
   health_check {
     enabled           = true
@@ -668,8 +668,8 @@ resource "aws_ecs_service" "visit_counter" {
 
   network_configuration {
     assign_public_ip = false
-    security_groups  = [module.vpc.default_security_group_id]
-    subnets          = module.vpc.private_subnets
+    security_groups  = [var.default_security_group_id]
+    subnets          = var.private_subnets
   }
 
   capacity_provider_strategy {
@@ -706,7 +706,7 @@ resource "aws_lb_target_group" "visit_counter" {
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = var.vpc_id
 }
 
 resource "aws_route53_record" "visit_counter" {
@@ -757,3 +757,4 @@ resource "aws_cloudfront_distribution" "visit_counter" {
     cloudfront_default_certificate = true
   }
 }
+

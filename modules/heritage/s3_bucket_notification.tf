@@ -38,3 +38,4 @@ resource "aws_sqs_queue_policy" "my_queue_policy" {
     ]
   })
 }
+
