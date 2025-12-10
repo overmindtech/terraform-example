@@ -41,7 +41,7 @@ output "manual_instance_command" {
   value = var.enabled ? join(" ", [
     "aws ec2 run-instances",
     "--image-id", var.ami_id,
-    "--instance-type t4g.nano",
+    "--instance-type t3.nano",
     "--subnet-id", var.public_subnets[0],
     "--security-group-ids", aws_security_group.internet_access[0].id,
     "--tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=data-processor},{Key=Team,Value=data-engineering},{Key=CreatedBy,Value=console}]'",
