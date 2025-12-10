@@ -72,7 +72,7 @@ aws ec2 stop-instances --instance-ids $(terraform output -raw api_server_instanc
 terraform destroy -target=module.api_server
 ```
 
-## 📖 Learn More
+### Learn More
 
 - [T3 CPU Credits](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-credits-baseline-concepts.html)
 - [C5 vs T3 Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/compute-optimized-instances.html)
