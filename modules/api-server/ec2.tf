@@ -25,7 +25,28 @@ resource "aws_instance" "api_server" {
   user_data = base64encode(<<-EOF
     #!/bin/bash
     yum update -y
-    yum install -y httpd
+    yum install -y httpd stress-ng
+
+    # Create systemd service for CPU load simulation (70% sustained)
+    cat > /etc/systemd/system/cpu-load-simulator.service <<'SERVICE'
+    [Unit]
+    Description=Simulate 70% CPU load for demo purposes
+    After=network.target
+
+    [Service]
+    Type=simple
+    ExecStart=/usr/bin/stress-ng --cpu 2 --cpu-load 70
+    Restart=always
+    RestartSec=10
+
+    [Install]
+    WantedBy=multi-user.target
+    SERVICE
+
+    # Enable and start CPU load simulation
+    systemctl daemon-reload
+    systemctl enable cpu-load-simulator
+    systemctl start cpu-load-simulator
 
     cat > /var/www/html/health <<'HEALTH'
     OK

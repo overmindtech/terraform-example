@@ -41,6 +41,16 @@ Overmind analyzes the PR and catches the hidden risk.
 
 **The trap**: Both instances look identical on paper, but t3 uses CPU credits. At 70% sustained CPU, credits exhaust and performance collapses.
 
+## 🔥 CPU Load Simulation
+
+The instance runs a **permanent 70% CPU load** via `stress-ng` to simulate a real CPU-intensive workload. This ensures:
+
+- CloudWatch shows realistic CPU utilization (~70%)
+- Overmind can detect the risk from actual metrics
+- The demo reflects real-world conditions
+
+The load runs as a systemd service that starts on boot and restarts automatically. No extra cost - EC2 is billed by time, not CPU usage.
+
 ## 🔍 What Overmind Catches
 
 1. **Blast Radius** - ALB, target groups, alarms, security groups
