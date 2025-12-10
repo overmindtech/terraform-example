@@ -14,7 +14,7 @@ Demonstrates Overmind's ability to discover **manual dependencies** that Terrafo
 
 Merge this module to main. GitHub Actions will provision:
 - Security group named `internet-access` (permissive egress)
-- One t4g.nano instance (Terraform-managed)
+- One t3.nano instance (Terraform-managed)
 
 ### 2. Create Manual Instance
 
@@ -29,7 +29,7 @@ Or manually:
 ```bash
 aws ec2 run-instances \
   --image-id <AMI_ID> \
-  --instance-type t4g.nano \
+  --instance-type t3.nano \
   --subnet-id <SUBNET_ID> \
   --security-group-ids <SG_ID> \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=data-processor},{Key=Team,Value=data-engineering},{Key=CreatedBy,Value=console}]' \
@@ -99,7 +99,7 @@ After demo:
 
 ## Cost
 
-- Terraform-managed instance: ~$3/month (t4g.nano)
-- Manual instance: ~$3/month (t4g.nano)
+- Terraform-managed instance: ~$4/month (t3.nano)
+- Manual instance: ~$4/month (t3.nano)
 - **Total**: ~$6/month
 

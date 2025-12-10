@@ -5,7 +5,7 @@ resource "aws_instance" "api_server" {
   count = var.enabled ? 1 : 0
 
   ami           = var.ami_id
-  instance_type = "t4g.nano"
+  instance_type = "t3.nano"
 
   subnet_id                   = var.public_subnets[0]
   vpc_security_group_ids      = [aws_security_group.internet_access[0].id]
