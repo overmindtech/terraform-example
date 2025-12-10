@@ -398,3 +398,15 @@ module "api_server" {
 
   name_prefix = "api"
 }
+
+# Shared Security Group Demo
+# Demonstrates Overmind's ability to discover manual dependencies
+module "shared_security_group" {
+  source = "./modules/shared-security-group"
+
+  enabled = true
+
+  vpc_id         = module.baseline.vpc_id
+  public_subnets = module.baseline.public_subnets
+  ami_id         = module.baseline.ami_id
+}
