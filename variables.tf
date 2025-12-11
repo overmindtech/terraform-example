@@ -101,3 +101,9 @@ variable "message_size_breach_retention_days" {
   }
 }
 
+# Signals demo settings
+variable "enable_signals_demo" {
+  description = "Enable the Signals demo module"
+  type        = bool
+  default     = true
+}

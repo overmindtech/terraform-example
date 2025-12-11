@@ -410,3 +410,17 @@ module "shared_security_group" {
   public_subnets = module.baseline.public_subnets
   ami_id         = module.baseline.ami_id
 }
+
+module "signals_demo" {
+  count  = var.enable_signals_demo ? 1 : 0
+  source = "./modules/signals-demo"
+
+  # Reuse shared infrastructure from baseline module
+  vpc_id     = module.baseline.vpc_id
+  subnet_ids = module.baseline.public_subnets
+  ami_id     = module.baseline.ami_id
+
+  # Other variables are read from modules/signals-demo/terraform.tfvars
+  # This module is designed to be self-contained and run from its own directory
+  # Setting enable_signals_demo = true will include it in root terraform operations
+}
