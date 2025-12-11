@@ -419,7 +419,7 @@ locals {
       name = "Acme Corp"
     }
     globex = {
-      cidr = "198.51.100.0/29"
+      cidr = "198.51.105.0/29"
       name = "Globex Industries"
     }
     initech = {
@@ -427,11 +427,11 @@ locals {
       name = "Initech"
     }
     umbrella = {
-      cidr = "198.18.100.0/24"
+      cidr = "198.18.105.0/24"
       name = "Umbrella Corp"
     }
     cyberdyne = {
-      cidr = "100.64.0.0/29"
+      cidr = "100.64.5.0/29"
       name = "Cyberdyne Systems"
     }
   }
