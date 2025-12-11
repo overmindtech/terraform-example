@@ -54,9 +54,6 @@ jobs:
     name: Apply Routine Customer Update
     needs: cleanup-old-demo-prs
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: modules/signals-demo
     permissions:
       contents: write
       id-token: write
@@ -93,7 +90,7 @@ jobs:
           case $ROTATION in
             0)
               echo "Rotation 0: Adding test customer A"
-              cat > terraform.tfvars <<'EOF'
+              cat > modules/signals-demo/terraform.tfvars <<'EOF'
           customer_cidrs = {
             acme_corp = {
               cidr = "203.0.113.10/32"
@@ -129,7 +126,7 @@ jobs:
 
             1)
               echo "Rotation 1: Expanding Globex CIDR"
-              cat > terraform.tfvars <<'EOF'
+              cat > modules/signals-demo/terraform.tfvars <<'EOF'
           customer_cidrs = {
             acme_corp = {
               cidr = "203.0.113.10/32"
@@ -161,7 +158,7 @@ jobs:
 
             2)
               echo "Rotation 2: Adding test customers B and C"
-              cat > terraform.tfvars <<'EOF'
+              cat > modules/signals-demo/terraform.tfvars <<'EOF'
           customer_cidrs = {
             acme_corp = {
               cidr = "203.0.113.10/32"
@@ -201,7 +198,7 @@ jobs:
 
             3)
               echo "Rotation 3: Back to baseline"
-              cat > terraform.tfvars <<'EOF'
+              cat > modules/signals-demo/terraform.tfvars <<'EOF'
           customer_cidrs = {
             acme_corp = {
               cidr = "203.0.113.10/32"
@@ -234,16 +231,16 @@ jobs:
           esac
 
           echo "Generated terraform.tfvars:"
-          cat terraform.tfvars
+          cat modules/signals-demo/terraform.tfvars
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform -chdir=modules/signals-demo init
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform -chdir=modules/signals-demo plan -out=tfplan
 
       - name: Convert plan to JSON
-        run: terraform show -json tfplan > tfplan.json
+        run: terraform -chdir=modules/signals-demo show -json tfplan > modules/signals-demo/tfplan.json
 
       - uses: overmindtech/actions/install-cli@main
         with:
@@ -254,7 +251,7 @@ jobs:
         id: submit-plan
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
-          plan-json: ./tfplan.json
+          plan-json: modules/signals-demo/tfplan.json
           tags: 'model=risks_v6'
 
       - uses: overmindtech/actions/start-change@main
@@ -262,7 +259,7 @@ jobs:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform -chdir=modules/signals-demo apply -auto-approve tfplan
 
       - uses: overmindtech/actions/end-change@main
         if: success() || failure() || cancelled()
@@ -271,7 +268,6 @@ jobs:
 
       - name: Commit updated tfvars
         run: |
-          cd ../..
           git config user.name "Signals Demo Bot"
           git config user.email "demo-bot@overmind.tech"
 
