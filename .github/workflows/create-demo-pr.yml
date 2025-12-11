@@ -68,27 +68,33 @@ jobs:
 
           NUM_CUSTOMERS=${{ inputs.num_new_customers }}
 
-          # Generate customer HCL blocks
-          CUSTOMER_HCL=""
-          CUSTOMER_LIST=""
+          # Use temp files to avoid escaping issues
+          HCL_FILE=$(mktemp)
+          LIST_FILE=$(mktemp)
 
           for i in $(seq 0 $((NUM_CUSTOMERS - 1))); do
             IFS='|' read -r key cidr name <<< "${CUSTOMER_POOL[$i]}"
-            CUSTOMER_HCL="${CUSTOMER_HCL}$(printf '    %s = {\n      cidr = "%s"\n      name = "%s"\n    }\n' "$key" "$cidr" "$name")"
-            CUSTOMER_LIST="${CUSTOMER_LIST}$(printf -- '- **%s** (%s)\n' "$name" "$cidr")"
+            
+            # Write HCL block directly to file (4-space indent for key, 6-space for properties)
+            echo "    ${key} = {" >> "$HCL_FILE"
+            echo "      cidr = \"${cidr}\"" >> "$HCL_FILE"
+            echo "      name = \"${name}\"" >> "$HCL_FILE"
+            echo "    }" >> "$HCL_FILE"
+            
+            # Write list item directly to file  
+            echo "- **${name}** (${cidr})" >> "$LIST_FILE"
           done
 
-          {
-            echo "customer_hcl<<EOF"
-            printf '%s\n' "$CUSTOMER_HCL"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+          # Output using GitHub's multiline syntax
+          echo "customer_hcl<<EOF" >> $GITHUB_OUTPUT
+          cat "$HCL_FILE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-          {
-            echo "customer_list<<EOF"
-            printf '%s\n' "$CUSTOMER_LIST"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+          echo "customer_list<<EOF" >> $GITHUB_OUTPUT
+          cat "$LIST_FILE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          rm -f "$HCL_FILE" "$LIST_FILE"
 
       - name: Generate clean scenario
         if: inputs.scenario == 'clean'
