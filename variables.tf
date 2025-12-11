@@ -101,9 +101,9 @@ variable "message_size_breach_retention_days" {
   }
 }
 
-# Signals demo settings
-variable "enable_signals_demo" {
-  description = "Enable the Signals demo module"
+# API access module settings
+variable "enable_api_access" {
+  description = "Enable the customer API access module"
   type        = bool
   default     = true
 }

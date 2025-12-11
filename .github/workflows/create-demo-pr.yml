@@ -74,7 +74,7 @@ jobs:
 
           for i in $(seq 0 $((NUM_CUSTOMERS - 1))); do
             IFS='|' read -r key cidr name <<< "${CUSTOMER_POOL[$i]}"
-            CUSTOMER_HCL="${CUSTOMER_HCL}  ${key} = {\n    cidr = \"${cidr}\"\n    name = \"${name}\"\n  }\n"
+            CUSTOMER_HCL="${CUSTOMER_HCL}    ${key} = {\n      cidr = \"${cidr}\"\n      name = \"${name}\"\n    }\n"
             CUSTOMER_LIST="${CUSTOMER_LIST}- **${name}** (${cidr})\n"
           done
 
@@ -89,37 +89,7 @@ jobs:
       - name: Generate clean scenario
         if: inputs.scenario == 'clean'
         run: |
-          cat > modules/signals-demo/terraform.tfvars <<EOF
-          customer_cidrs = {
-            acme_corp = {
-              cidr = "203.0.113.10/32"
-              name = "Acme Corp"
-            }
-            globex = {
-              cidr = "198.51.100.0/29"
-              name = "Globex Industries"
-            }
-            initech = {
-              cidr = "192.0.2.50/32"
-              name = "Initech"
-            }
-            umbrella = {
-              cidr = "198.18.100.0/24"
-              name = "Umbrella Corp"
-            }
-            cyberdyne = {
-              cidr = "100.64.0.0/29"
-              name = "Cyberdyne Systems"
-            }
-            # New customers added by sales team
-          ${{ steps.customers.outputs.customer_hcl }}}
-
-
-
-          internal_cidr = "10.0.0.0/8"
-          demo_domain   = "signals-demo.overmind.tech"
-          alert_email   = "demo-alerts@overmind.tech"
-          EOF
+          python3 .github/scripts/add-customers-to-main.py main.tf "${{ steps.customers.outputs.customer_hcl }}"
 
           echo "PR_TITLE=feat: Add new enterprise customers to API whitelist" >> $GITHUB_ENV
 
@@ -150,43 +120,11 @@ jobs:
       - name: Generate needle scenario
         if: inputs.scenario == 'needle'
         run: |
-          cat > modules/signals-demo/terraform.tfvars <<EOF
-          customer_cidrs = {
-            acme_corp = {
-              cidr = "203.0.113.10/32"
-              name = "Acme Corp"
-            }
-            globex = {
-              cidr = "198.51.100.0/29"
-              name = "Globex Industries"
-            }
-            initech = {
-              cidr = "192.0.2.50/32"
-              name = "Initech"
-            }
-            umbrella = {
-              cidr = "198.18.100.0/24"
-              name = "Umbrella Corp"
-            }
-            cyberdyne = {
-              cidr = "100.64.0.0/29"
-              name = "Cyberdyne Systems"
-            }
-            # New customers added by sales team
-          ${{ steps.customers.outputs.customer_hcl }}}
-
-
-
-          # SECURITY HARDENING: Narrowed per audit findings (JIRA-4521)
-          # Was: 10.0.0.0/8 (overly permissive)
-          # Now: 10.50.0.0/16 (our VPC CIDR only)
-          internal_cidr = "10.50.0.0/16"
-
-
-
-          demo_domain = "signals-demo.overmind.tech"
-          alert_email = "demo-alerts@overmind.tech"
-          EOF
+          # Add new customers
+          python3 .github/scripts/add-customers-to-main.py main.tf "${{ steps.customers.outputs.customer_hcl }}"
+          
+          # Update internal_cidr for the needle scenario
+          python3 .github/scripts/update-internal-cidr.py main.tf "10.50.0.0/16" "SECURITY HARDENING: Narrowed per audit findings (JIRA-4521)"
 
           echo "PR_TITLE=feat: Add new customers + tighten internal SG per security audit" >> $GITHUB_ENV
 
@@ -228,7 +166,7 @@ jobs:
 
       - name: Commit changes
         run: |
-          git add modules/signals-demo/terraform.tfvars
+          git add main.tf
           git commit -m "${{ env.PR_TITLE }}"
           git push origin ${{ steps.branch.outputs.branch_name }}
 

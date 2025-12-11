@@ -411,8 +411,38 @@ module "shared_security_group" {
   ami_id         = module.baseline.ami_id
 }
 
-module "signals_demo" {
-  count  = var.enable_signals_demo ? 1 : 0
+# Customer API access configuration
+locals {
+  api_customer_cidrs = {
+    acme_corp = {
+      cidr = "203.0.113.10/32"
+      name = "Acme Corp"
+    }
+    globex = {
+      cidr = "198.51.100.0/29"
+      name = "Globex Industries"
+    }
+    initech = {
+      cidr = "192.0.2.50/32"
+      name = "Initech"
+    }
+    umbrella = {
+      cidr = "198.18.100.0/24"
+      name = "Umbrella Corp"
+    }
+    cyberdyne = {
+      cidr = "100.64.0.0/29"
+      name = "Cyberdyne Systems"
+    }
+  }
+
+  api_internal_cidr = "10.0.0.0/8"
+  api_domain        = "api.example.com"
+  api_alert_email   = "alerts@example.com"
+}
+
+module "api_access" {
+  count  = var.enable_api_access ? 1 : 0
   source = "./modules/signals-demo"
 
   # Reuse shared infrastructure from baseline module
@@ -420,7 +450,9 @@ module "signals_demo" {
   subnet_ids = module.baseline.public_subnets
   ami_id     = module.baseline.ami_id
 
-  # Other variables are read from modules/signals-demo/terraform.tfvars
-  # This module is designed to be self-contained and run from its own directory
-  # Setting enable_signals_demo = true will include it in root terraform operations
+  # Customer CIDRs and other configuration
+  customer_cidrs = local.api_customer_cidrs
+  internal_cidr  = local.api_internal_cidr
+  domain         = local.api_domain
+  alert_email    = local.api_alert_email
 }

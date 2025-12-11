@@ -25,5 +25,5 @@ customer_cidrs = {
 # The "needle" scenario changes this to 10.50.0.0/16
 internal_cidr = "10.0.0.0/8"
 
-demo_domain = "signals-demo.overmind.tech"
-alert_email = "demo-alerts@overmind.tech"
+domain = "api.example.com"
+alert_email = "alerts@example.com"

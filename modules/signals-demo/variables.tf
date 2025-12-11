@@ -34,16 +34,16 @@ variable "internal_cidr" {
   default     = "10.0.0.0/8"
 }
 
-variable "demo_domain" {
-  description = "Domain name for the demo environment Route 53 zone"
+variable "domain" {
+  description = "Domain name for the API Route 53 zone"
   type        = string
-  default     = "signals-demo.overmind.tech"
+  default     = "api.example.com"
 }
 
 variable "alert_email" {
   description = "Email address for CloudWatch alarm notifications"
   type        = string
-  default     = "demo-alerts@overmind.tech"
+  default     = "alerts@example.com"
 }
 
 variable "vpc_id" {

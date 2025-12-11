@@ -15,7 +15,7 @@ output "api_public_ip" {
 
 output "api_endpoint" {
   description = "HTTPS endpoint for the API"
-  value       = "https://api.${var.demo_domain}"
+  value       = "https://${var.domain}"
 }
 
 output "customer_sg_id" {
@@ -40,10 +40,10 @@ output "sns_topic_arn" {
 
 output "route53_zone_id" {
   description = "Route 53 hosted zone ID"
-  value       = aws_route53_zone.demo.zone_id
+  value       = aws_route53_zone.api.zone_id
 }
 
 output "route53_nameservers" {
   description = "Nameservers for the Route 53 zone (configure at registrar)"
-  value       = aws_route53_zone.demo.name_servers
+  value       = aws_route53_zone.api.name_servers
 }

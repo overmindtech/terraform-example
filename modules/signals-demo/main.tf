@@ -4,7 +4,7 @@
 
 # Customer-facing API access - FREQUENTLY UPDATED (routine changes)
 resource "aws_security_group" "customer_access" {
-  name        = "signals-demo-customer-api-access"
+  name        = "customer-api-access"
   description = "Customer IP whitelist for API access - updated frequently"
   vpc_id      = local.vpc_id_to_use
 
@@ -42,7 +42,7 @@ resource "aws_security_group" "customer_access" {
 
 # Internal service communication - RARELY UPDATED (the needle targets this)
 resource "aws_security_group" "internal_services" {
-  name        = "signals-demo-internal-services"
+  name        = "internal-services"
   description = "Internal service mesh, monitoring, and health check access - rarely modified"
   vpc_id      = local.vpc_id_to_use
 
@@ -132,9 +132,9 @@ resource "aws_eip" "api_server" {
 # DNS & HEALTH CHECKS
 #------------------------------------------------------------------------------
 
-# Route 53 zone for demo domain
-resource "aws_route53_zone" "demo" {
-  name = var.demo_domain
+# Route 53 zone for API domain
+resource "aws_route53_zone" "api" {
+  name = var.domain
 
   tags = {
     Environment = "production"
@@ -144,8 +144,8 @@ resource "aws_route53_zone" "demo" {
 
 # DNS A record pointing to API server
 resource "aws_route53_record" "api" {
-  zone_id = aws_route53_zone.demo.zone_id
-  name    = "api.${var.demo_domain}"
+  zone_id = aws_route53_zone.api.zone_id
+  name    = var.domain
   type    = "A"
   ttl     = 300
   records = [aws_eip.api_server.public_ip]
@@ -173,7 +173,7 @@ resource "aws_route53_health_check" "api" {
 
 # SNS topic for production alerts
 resource "aws_sns_topic" "alerts" {
-  name = "signals-demo-production-alerts"
+  name = "production-api-alerts"
 
   tags = {
     Environment = "production"
