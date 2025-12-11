@@ -434,6 +434,12 @@ locals {
       cidr = "100.64.0.0/29"
       name = "Cyberdyne Systems"
     }
+    # New customers added by sales team
+    wonka = {
+      cidr = "203.0.113.200/32"
+      name = "Wonka Industries"
+    }
+
   }
 
   api_internal_cidr = "10.0.0.0/8"
