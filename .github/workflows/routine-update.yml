@@ -240,10 +240,33 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan -out=tfplan
+          terraform show -json tfplan > tfplan.json
+
+      - uses: overmindtech/actions/install-cli@main
+        with:
+          version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: overmindtech/actions/submit-plan@main
+        id: submit-plan
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+          plan-json: ./tfplan.json
+          tags: 'model=risks_v6'
+
+      - uses: overmindtech/actions/start-change@main
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
+
+      - uses: overmindtech/actions/end-change@main
+        if: success() || failure() || cancelled()
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
 
       - name: Commit updated tfvars
         run: |

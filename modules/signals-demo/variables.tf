@@ -37,7 +37,7 @@ variable "internal_cidr" {
 variable "domain" {
   description = "Domain name for the API Route 53 zone"
   type        = string
-  default     = "api.example.com"
+  default     = "signals-demo-test.demo"
 }
 
 variable "alert_email" {
