@@ -35,7 +35,11 @@ jobs:
       pull-requests: write
 
     steps:
+      # Use PAT instead of GITHUB_TOKEN so that PR creation triggers other workflows
+      # (GitHub prevents workflows from triggering when using GITHUB_TOKEN to avoid loops)
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
 
       - name: Configure Git
         run: |
@@ -230,7 +234,7 @@ jobs:
 
       - name: Create Pull Request
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           FULL_TITLE="${{ env.PR_TITLE }}"
           if [ -n "${{ inputs.pr_title_suffix }}" ]; then

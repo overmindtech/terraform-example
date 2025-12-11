@@ -78,3 +78,8 @@ Some notes to get started with replicating this on your own setup.
 * Configure OIDC access for github actions [docs](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
 
 * Supply the ARN of the created role (terraform output `terraform_deploy_role`) as `TERRAFORM_DEPLOY_ROLE` and an Overmind API as `OVM_API_KEY` through the "Actions secrets and variables" page in the repo settings.
+
+* For the "Create Demo PR" workflow to trigger other workflows (like the automatic Terraform analysis), you need to create a Personal Access Token (PAT) with `repo` scope and add it as a secret named `GH_PAT`. This is required because GitHub prevents workflows from triggering other workflows when using `GITHUB_TOKEN` to avoid infinite loops.
+  - Create a PAT: GitHub Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic)
+  - Required scopes: `repo` (full control of private repositories)
+  - Add it as a repository secret named `GH_PAT`
