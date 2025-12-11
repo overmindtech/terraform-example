@@ -70,7 +70,7 @@ jobs:
 
           for i in $(seq 0 $((NUM_CUSTOMERS - 1))); do
             IFS='|' read -r key cidr name <<< "${CUSTOMER_POOL[$i]}"
-            CUSTOMER_HCL="${CUSTOMER_HCL}  ${key} = { cidr = \"${cidr}\", name = \"${name}\" }\n"
+            CUSTOMER_HCL="${CUSTOMER_HCL}  ${key} = {\n    cidr = \"${cidr}\"\n    name = \"${name}\"\n  }\n"
             CUSTOMER_LIST="${CUSTOMER_LIST}- **${name}** (${cidr})\n"
           done
 
@@ -87,11 +87,26 @@ jobs:
         run: |
           cat > modules/signals-demo/terraform.tfvars <<EOF
           customer_cidrs = {
-            acme_corp = { cidr = "203.0.113.10/32", name = "Acme Corp" }
-            globex    = { cidr = "198.51.100.0/29", name = "Globex Industries" }
-            initech   = { cidr = "192.0.2.50/32", name = "Initech" }
-            umbrella  = { cidr = "198.18.100.0/24", name = "Umbrella Corp" }
-            cyberdyne = { cidr = "100.64.0.0/29", name = "Cyberdyne Systems" }
+            acme_corp = {
+              cidr = "203.0.113.10/32"
+              name = "Acme Corp"
+            }
+            globex = {
+              cidr = "198.51.100.0/29"
+              name = "Globex Industries"
+            }
+            initech = {
+              cidr = "192.0.2.50/32"
+              name = "Initech"
+            }
+            umbrella = {
+              cidr = "198.18.100.0/24"
+              name = "Umbrella Corp"
+            }
+            cyberdyne = {
+              cidr = "100.64.0.0/29"
+              name = "Cyberdyne Systems"
+            }
             # New customers added by sales team
           ${{ steps.customers.outputs.customer_hcl }}}
 
@@ -133,11 +148,26 @@ jobs:
         run: |
           cat > modules/signals-demo/terraform.tfvars <<EOF
           customer_cidrs = {
-            acme_corp = { cidr = "203.0.113.10/32", name = "Acme Corp" }
-            globex    = { cidr = "198.51.100.0/29", name = "Globex Industries" }
-            initech   = { cidr = "192.0.2.50/32", name = "Initech" }
-            umbrella  = { cidr = "198.18.100.0/24", name = "Umbrella Corp" }
-            cyberdyne = { cidr = "100.64.0.0/29", name = "Cyberdyne Systems" }
+            acme_corp = {
+              cidr = "203.0.113.10/32"
+              name = "Acme Corp"
+            }
+            globex = {
+              cidr = "198.51.100.0/29"
+              name = "Globex Industries"
+            }
+            initech = {
+              cidr = "192.0.2.50/32"
+              name = "Initech"
+            }
+            umbrella = {
+              cidr = "198.18.100.0/24"
+              name = "Umbrella Corp"
+            }
+            cyberdyne = {
+              cidr = "100.64.0.0/29"
+              name = "Cyberdyne Systems"
+            }
             # New customers added by sales team
           ${{ steps.customers.outputs.customer_hcl }}}
 

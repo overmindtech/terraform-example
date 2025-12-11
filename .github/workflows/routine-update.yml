@@ -95,12 +95,30 @@ jobs:
               echo "Rotation 0: Adding test customer A"
               cat > terraform.tfvars <<'EOF'
           customer_cidrs = {
-            acme_corp   = { cidr = "203.0.113.10/32", name = "Acme Corp" }
-            globex      = { cidr = "198.51.100.0/29", name = "Globex Industries" }
-            initech     = { cidr = "192.0.2.50/32", name = "Initech" }
-            umbrella    = { cidr = "198.18.100.0/24", name = "Umbrella Corp" }
-            cyberdyne   = { cidr = "100.64.0.0/29", name = "Cyberdyne Systems" }
-            rotation_a  = { cidr = "192.0.2.100/32", name = "Rotation Test A" }
+            acme_corp = {
+              cidr = "203.0.113.10/32"
+              name = "Acme Corp"
+            }
+            globex = {
+              cidr = "198.51.100.0/29"
+              name = "Globex Industries"
+            }
+            initech = {
+              cidr = "192.0.2.50/32"
+              name = "Initech"
+            }
+            umbrella = {
+              cidr = "198.18.100.0/24"
+              name = "Umbrella Corp"
+            }
+            cyberdyne = {
+              cidr = "100.64.0.0/29"
+              name = "Cyberdyne Systems"
+            }
+            rotation_a = {
+              cidr = "192.0.2.100/32"
+              name = "Rotation Test A"
+            }
           }
 
           internal_cidr = "10.0.0.0/8"
@@ -113,11 +131,26 @@ jobs:
               echo "Rotation 1: Expanding Globex CIDR"
               cat > terraform.tfvars <<'EOF'
           customer_cidrs = {
-            acme_corp   = { cidr = "203.0.113.10/32", name = "Acme Corp" }
-            globex      = { cidr = "198.51.100.0/28", name = "Globex Industries" }
-            initech     = { cidr = "192.0.2.50/32", name = "Initech" }
-            umbrella    = { cidr = "198.18.100.0/24", name = "Umbrella Corp" }
-            cyberdyne   = { cidr = "100.64.0.0/29", name = "Cyberdyne Systems" }
+            acme_corp = {
+              cidr = "203.0.113.10/32"
+              name = "Acme Corp"
+            }
+            globex = {
+              cidr = "198.51.100.0/28"
+              name = "Globex Industries"
+            }
+            initech = {
+              cidr = "192.0.2.50/32"
+              name = "Initech"
+            }
+            umbrella = {
+              cidr = "198.18.100.0/24"
+              name = "Umbrella Corp"
+            }
+            cyberdyne = {
+              cidr = "100.64.0.0/29"
+              name = "Cyberdyne Systems"
+            }
           }
 
           internal_cidr = "10.0.0.0/8"
@@ -130,13 +163,34 @@ jobs:
               echo "Rotation 2: Adding test customers B and C"
               cat > terraform.tfvars <<'EOF'
           customer_cidrs = {
-            acme_corp   = { cidr = "203.0.113.10/32", name = "Acme Corp" }
-            globex      = { cidr = "198.51.100.0/29", name = "Globex Industries" }
-            initech     = { cidr = "192.0.2.50/32", name = "Initech" }
-            umbrella    = { cidr = "198.18.100.0/24", name = "Umbrella Corp" }
-            cyberdyne   = { cidr = "100.64.0.0/29", name = "Cyberdyne Systems" }
-            rotation_b  = { cidr = "172.16.50.0/28", name = "Rotation Test B" }
-            rotation_c  = { cidr = "10.200.0.0/24", name = "Rotation Test C" }
+            acme_corp = {
+              cidr = "203.0.113.10/32"
+              name = "Acme Corp"
+            }
+            globex = {
+              cidr = "198.51.100.0/29"
+              name = "Globex Industries"
+            }
+            initech = {
+              cidr = "192.0.2.50/32"
+              name = "Initech"
+            }
+            umbrella = {
+              cidr = "198.18.100.0/24"
+              name = "Umbrella Corp"
+            }
+            cyberdyne = {
+              cidr = "100.64.0.0/29"
+              name = "Cyberdyne Systems"
+            }
+            rotation_b = {
+              cidr = "172.16.50.0/28"
+              name = "Rotation Test B"
+            }
+            rotation_c = {
+              cidr = "10.200.0.0/24"
+              name = "Rotation Test C"
+            }
           }
 
           internal_cidr = "10.0.0.0/8"
@@ -149,11 +203,26 @@ jobs:
               echo "Rotation 3: Back to baseline"
               cat > terraform.tfvars <<'EOF'
           customer_cidrs = {
-            acme_corp   = { cidr = "203.0.113.10/32", name = "Acme Corp" }
-            globex      = { cidr = "198.51.100.0/29", name = "Globex Industries" }
-            initech     = { cidr = "192.0.2.50/32", name = "Initech" }
-            umbrella    = { cidr = "198.18.100.0/24", name = "Umbrella Corp" }
-            cyberdyne   = { cidr = "100.64.0.0/29", name = "Cyberdyne Systems" }
+            acme_corp = {
+              cidr = "203.0.113.10/32"
+              name = "Acme Corp"
+            }
+            globex = {
+              cidr = "198.51.100.0/29"
+              name = "Globex Industries"
+            }
+            initech = {
+              cidr = "192.0.2.50/32"
+              name = "Initech"
+            }
+            umbrella = {
+              cidr = "198.18.100.0/24"
+              name = "Umbrella Corp"
+            }
+            cyberdyne = {
+              cidr = "100.64.0.0/29"
+              name = "Cyberdyne Systems"
+            }
           }
 
           internal_cidr = "10.0.0.0/8"
