@@ -240,9 +240,10 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        run: |
-          terraform plan -out=tfplan
-          terraform show -json tfplan > tfplan.json
+        run: terraform plan -out=tfplan
+
+      - name: Convert plan to JSON
+        run: terraform show -json tfplan > tfplan.json
 
       - uses: overmindtech/actions/install-cli@main
         with:
