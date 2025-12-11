@@ -6,7 +6,7 @@
 resource "aws_security_group" "customer_access" {
   name        = "customer-api-access"
   description = "Customer IP whitelist for API access - updated frequently"
-  vpc_id      = local.vpc_id_to_use
+  vpc_id      = var.vpc_id
 
   dynamic "ingress" {
     for_each = var.customer_cidrs
@@ -44,7 +44,7 @@ resource "aws_security_group" "customer_access" {
 resource "aws_security_group" "internal_services" {
   name        = "internal-services"
   description = "Internal service mesh, monitoring, and health check access - rarely modified"
-  vpc_id      = local.vpc_id_to_use
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 443

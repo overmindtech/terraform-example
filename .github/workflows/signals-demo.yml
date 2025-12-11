@@ -29,17 +29,23 @@ jobs:
 
       - name: Modify customer IP ranges
         run: |
-          # Simple rotation: modify the last octet of each customer CIDR
-          # This creates routine changes that Overmind should recognize
+          # Rotate customer IP ranges while maintaining valid CIDR blocks
+          # CIDR blocks must use network addresses (last octet = 0 for /24, /29, etc.)
           DAY_OF_YEAR=$(date +%j)
           OFFSET=$((DAY_OF_YEAR % 10))
           
-          # Modify each customer CIDR by adjusting the last octet
-          sed -i "s|203\.0\.113\.10/32|203.0.113.$((10 + OFFSET))/32|g" main.tf
-          sed -i "s|198\.51\.100\.0/29|198.51.100.$((OFFSET))/29|g" main.tf
-          sed -i "s|192\.0\.2\.50/32|192.0.2.$((50 + OFFSET))/32|g" main.tf
-          sed -i "s|198\.18\.100\.0/24|198.18.100.$((OFFSET))/24|g" main.tf
-          sed -i "s|100\.64\.0\.0/29|100.64.0.$((OFFSET))/29|g" main.tf
+          # For /32 blocks (single IPs), modify the last octet
+          sed -i "s|\(203\.0\.113\.\)[0-9]\+\(/32\)|\1$((10 + OFFSET))\2|g" main.tf
+          sed -i "s|\(192\.0\.2\.\)[0-9]\+\(/32\)|\1$((50 + OFFSET))\2|g" main.tf
+          
+          # For /29 blocks: normalize to .0 first, then modify third octet
+          sed -i "s|198\.51\.[0-9]\+\.\([0-9]\+\)/29|198.51.$((100 + OFFSET)).0/29|g" main.tf
+          
+          # For /24 blocks: normalize to .0 first, then modify third octet
+          sed -i "s|198\.18\.[0-9]\+\.\([0-9]\+\)/24|198.18.$((100 + OFFSET)).0/24|g" main.tf
+          
+          # For 100.64.x.x/29 blocks: normalize to .0 first, then modify third octet
+          sed -i "s|100\.64\.[0-9]\+\.\([0-9]\+\)/29|100.64.$((OFFSET)).0/29|g" main.tf
           
           echo "Modified customer IP ranges with offset: ${OFFSET}"
 
