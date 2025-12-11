@@ -19,6 +19,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
 
       - name: Configure Git
         run: |
@@ -42,6 +44,8 @@ jobs:
           echo "Modified customer IP ranges with offset: ${OFFSET}"
 
       - name: Commit changes
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           git add main.tf
           if git diff --staged --quiet; then
@@ -91,6 +95,5 @@ jobs:
         run: terraform apply -auto-approve tfplan
 
       - uses: overmindtech/actions/end-change@main
-        if: success() || failure() || cancelled()
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
