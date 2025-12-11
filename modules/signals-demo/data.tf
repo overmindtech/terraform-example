@@ -3,13 +3,19 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 # Use provided VPC or fall back to default VPC (for standalone usage)
+# Always create the data source to avoid count/for_each dependency on unknown values
+# We'll conditionally use it in locals
 data "aws_vpc" "selected" {
-  count   = var.vpc_id == null ? 1 : 0
   default = true
 }
 
 locals {
-  vpc_id_to_use = var.vpc_id != null ? var.vpc_id : (length(data.aws_vpc.selected) > 0 ? data.aws_vpc.selected[0].id : "")
+  # Use coalesce to prefer provided vpc_id, fall back to default VPC if null/empty
+  # This handles unknown values by always having a fallback
+  vpc_id_to_use = coalesce(
+    try(var.vpc_id, null),
+    try(data.aws_vpc.selected.id, null)
+  )
 }
 
 # Use provided subnets or find subnets in the selected VPC
