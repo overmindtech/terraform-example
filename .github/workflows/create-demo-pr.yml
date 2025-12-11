@@ -98,8 +98,10 @@ jobs:
 
       - name: Generate clean scenario
         if: inputs.scenario == 'clean'
+        env:
+          NEW_CUSTOMERS: ${{ steps.customers.outputs.customer_hcl }}
         run: |
-          python3 .github/scripts/add-customers-to-main.py main.tf "${{ steps.customers.outputs.customer_hcl }}"
+          python3 .github/scripts/add-customers-to-main.py main.tf
 
           echo "PR_TITLE=feat: Add new enterprise customers to API whitelist" >> $GITHUB_ENV
 
@@ -129,9 +131,11 @@ jobs:
 
       - name: Generate needle scenario
         if: inputs.scenario == 'needle'
+        env:
+          NEW_CUSTOMERS: ${{ steps.customers.outputs.customer_hcl }}
         run: |
           # Add new customers
-          python3 .github/scripts/add-customers-to-main.py main.tf "${{ steps.customers.outputs.customer_hcl }}"
+          python3 .github/scripts/add-customers-to-main.py main.tf
           
           # Update internal_cidr for the needle scenario
           python3 .github/scripts/update-internal-cidr.py main.tf "10.50.0.0/16" "SECURITY HARDENING: Narrowed per audit findings (JIRA-4521)"

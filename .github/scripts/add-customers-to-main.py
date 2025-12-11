@@ -64,19 +64,18 @@ def add_customers_to_main(main_tf_path, new_customers_hcl):
 
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: add-customers-to-main.py <main.tf path> <customers HCL>", file=sys.stderr)
+    if len(sys.argv) < 2:
+        print("Usage: add-customers-to-main.py <main.tf path> [customers HCL]", file=sys.stderr)
         print("\nAlternatively, set NEW_CUSTOMERS environment variable:", file=sys.stderr)
         print("  NEW_CUSTOMERS='...' python3 add-customers-to-main.py main.tf", file=sys.stderr)
         sys.exit(1)
     
     main_tf_path = sys.argv[1]
     
-    # Get customers from command line arg or environment variable
-    if len(sys.argv) >= 3:
+    # Get customers from environment variable (preferred) or command line arg
+    new_customers_hcl = os.environ.get('NEW_CUSTOMERS', '')
+    if not new_customers_hcl and len(sys.argv) >= 3:
         new_customers_hcl = sys.argv[2]
-    else:
-        new_customers_hcl = os.environ.get('NEW_CUSTOMERS', '')
     
     if not new_customers_hcl:
         print("Error: No customers provided", file=sys.stderr)
