@@ -1,0 +1,380 @@
+name: Signals Demo
+
+on:
+  schedule:
+    # Run Monday, Wednesday, Friday at 2am UTC
+    - cron: '0 2 * * 1,3,5'
+  workflow_dispatch:
+    inputs:
+      rotation_override:
+        description: 'Force a specific rotation (0-3). Leave empty for auto.'
+        required: false
+        type: string
+      pr_title_suffix:
+        description: 'Optional suffix for PR title (e.g., "- HashiConf Demo")'
+        required: false
+        default: ''
+      num_new_customers:
+        description: 'Number of new customers to add (1-5)'
+        required: false
+        default: '3'
+        type: choice
+        options:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+
+concurrency:
+  group: signals-demo
+  cancel-in-progress: false
+
+jobs:
+  cleanup-old-demo-prs:
+    name: Cleanup Stale Demo PRs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Close stale demo PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Looking for demo PRs older than 7 days..."
+
+          # Get all open PRs with demo/ prefix older than 7 days
+          STALE_PRS=$(gh pr list \
+            --state open \
+            --json number,createdAt,headRefName \
+            --jq '.[] | select(.headRefName | startswith("demo/")) | select((now - (.createdAt | fromdateiso8601)) > 604800) | .number')
+
+          if [ -z "$STALE_PRS" ]; then
+            echo "No stale demo PRs found."
+          else
+            echo "$STALE_PRS" | while read pr_num; do
+              if [ -n "$pr_num" ]; then
+                echo "Closing stale demo PR #${pr_num}"
+                gh pr close "${pr_num}" \
+                  --delete-branch \
+                  --comment "🧹 Closing stale demo PR (older than 7 days)."
+              fi
+            done
+          fi
+
+  signals-demo:
+    name: Signals Demo Update
+    needs: cleanup-old-demo-prs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      # Use PAT for manual runs (to allow PR creation to trigger workflows)
+      # Use GITHUB_TOKEN for cron runs (no PR creation needed)
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ github.event_name == 'workflow_dispatch' && secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "Signals Demo Bot"
+          git config user.email "demo-bot@overmind.tech"
+
+      - name: Determine if manual run
+        id: is_manual
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "is_manual=true" >> $GITHUB_OUTPUT
+            echo "Creating PR with risky change for manual run"
+          else
+            echo "is_manual=false" >> $GITHUB_OUTPUT
+            echo "Cron run - routine updates only, no PR"
+          fi
+
+      - name: Create branch (manual runs only)
+        if: steps.is_manual.outputs.is_manual == 'true'
+        id: branch
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          BRANCH_NAME="demo/manual/${TIMESTAMP}"
+          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          git checkout -b "${BRANCH_NAME}"
+
+      - name: Calculate rotation
+        id: rotation
+        run: |
+          if [ -n "${{ inputs.rotation_override }}" ]; then
+            ROTATION="${{ inputs.rotation_override }}"
+          else
+            DAY_OF_YEAR=$(date +%j)
+            ROTATION=$((DAY_OF_YEAR % 4))
+          fi
+          echo "rotation=${ROTATION}" >> $GITHUB_OUTPUT
+          echo "Using rotation: ${ROTATION}"
+
+      - name: Generate routine customer updates
+        id: customers
+        run: |
+          ROTATION=${{ steps.rotation.outputs.rotation }}
+
+          # Pool of fake customers for routine additions
+          declare -a CUSTOMER_POOL=(
+            'wonka|203.0.113.200/32|Wonka Industries'
+            'oceanic|198.51.100.64/29|Oceanic Airlines'
+            'dharma|192.0.2.128/25|Dharma Initiative'
+            'wayne|172.16.50.0/28|Wayne Enterprises'
+            'stark|10.200.0.0/24|Stark Industries'
+          )
+
+          # For manual runs, use the input; for cron, use rotation-based logic
+          if [ "${{ steps.is_manual.outputs.is_manual }}" == "true" ]; then
+            NUM_CUSTOMERS=${{ inputs.num_new_customers || '3' }}
+            ROUTINE_CHANGE_TYPE="add_customers"
+          else
+            # Cron runs: simple rotation of routine changes
+            # Rotation 0: Add 1 customer
+            # Rotation 1: Expand existing customer CIDR (more IPs needed)
+            # Rotation 2: Add 1 customer
+            # Rotation 3: Contract CIDR back (or no change)
+            case $ROTATION in
+              0)
+                NUM_CUSTOMERS=1
+                ROUTINE_CHANGE_TYPE="add_customers"
+                ;;
+              1)
+                NUM_CUSTOMERS=0
+                ROUTINE_CHANGE_TYPE="expand_cidr"
+                ;;
+              2)
+                NUM_CUSTOMERS=1
+                ROUTINE_CHANGE_TYPE="add_customers"
+                ;;
+              3)
+                NUM_CUSTOMERS=0
+                ROUTINE_CHANGE_TYPE="contract_cidr"
+                ;;
+            esac
+            echo "routine_change_type=${ROUTINE_CHANGE_TYPE}" >> $GITHUB_OUTPUT
+          fi
+
+          # Use temp files to avoid escaping issues
+          HCL_FILE=$(mktemp)
+          LIST_FILE=$(mktemp)
+
+          for i in $(seq 0 $((NUM_CUSTOMERS - 1))); do
+            IFS='|' read -r key cidr name <<< "${CUSTOMER_POOL[$i]}"
+            
+            # Write HCL block directly to file (4-space indent for key, 6-space for properties)
+            echo "    ${key} = {" >> "$HCL_FILE"
+            echo "      cidr = \"${cidr}\"" >> "$HCL_FILE"
+            echo "      name = \"${name}\"" >> "$HCL_FILE"
+            echo "    }" >> "$HCL_FILE"
+            
+            # Write list item directly to file  
+            echo "- **${name}** (${cidr})" >> "$LIST_FILE"
+          done
+
+          # Output using GitHub's multiline syntax
+          if [ -s "$HCL_FILE" ]; then
+            echo "customer_hcl<<EOF" >> $GITHUB_OUTPUT
+            cat "$HCL_FILE" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+            echo "customer_list<<EOF" >> $GITHUB_OUTPUT
+            cat "$LIST_FILE" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "customer_hcl=" >> $GITHUB_OUTPUT
+            echo "customer_list=" >> $GITHUB_OUTPUT
+          fi
+
+          rm -f "$HCL_FILE" "$LIST_FILE"
+
+      - name: Apply routine updates to main.tf
+        env:
+          NEW_CUSTOMERS: ${{ steps.customers.outputs.customer_hcl }}
+        run: |
+          # Apply routine customer updates
+          # These are the "noise" - frequent, low-risk changes that Overmind should recognize as routine
+          
+          # For both cron and manual runs, add new customers if any
+          if [ -n "${{ steps.customers.outputs.customer_hcl }}" ]; then
+            echo "Adding new customers to whitelist (routine change)"
+            python3 .github/scripts/add-customers-to-main.py main.tf
+          fi
+          
+          # For cron runs, also apply rotation-based CIDR modifications
+          if [ "${{ steps.is_manual.outputs.is_manual }}" == "false" ]; then
+            ROUTINE_TYPE="${{ steps.customers.outputs.routine_change_type }}"
+            
+            case $ROUTINE_TYPE in
+              expand_cidr)
+                echo "Rotation 1: Expanding Globex CIDR (customer needs more IPs)"
+                # Expand from /29 to /28 - routine change, customer got more IPs
+                sed -i '/globex = {/,/}/ s|"198\.51\.100\.0/29"|"198.51.100.0/28"|' main.tf
+                ;;
+              contract_cidr)
+                echo "Rotation 3: Contracting Globex CIDR back (customer reduced IPs)"
+                # Contract back from /28 to /29 - routine change, customer reduced IP allocation
+                sed -i '/globex = {/,/}/ s|"198\.51\.100\.0/28"|"198.51.100.0/29"|' main.tf
+                ;;
+            esac
+          fi
+
+      - name: Apply risky change (manual runs only)
+        if: steps.is_manual.outputs.is_manual == 'true'
+        run: |
+          # Update internal_cidr for the risky change
+          python3 .github/scripts/update-internal-cidr.py main.tf "10.50.0.0/16"
+
+      - name: Generate PR content (manual runs only)
+        if: steps.is_manual.outputs.is_manual == 'true'
+        run: |
+          cat > /tmp/pr_body.md <<'BODY'
+          ## Summary
+
+          Two changes in this PR:
+
+          ### 1. New Customer Whitelist Additions
+
+          Adding new enterprise customers to our API whitelist per sales team request.
+
+          ${{ steps.customers.outputs.customer_list }}
+
+          ### 2. Security Hardening (JIRA-4521)
+
+          Security audit flagged our internal services SG as overly permissive. We were allowing all of `10.0.0.0/8` but we only need our VPC CIDR.
+
+          > "The internal-services security group allows ingress from 10.0.0.0/8, which includes IP ranges outside of the production VPC. Recommend narrowing to the specific VPC CIDR to reduce attack surface."
+          > — Security Audit Report, Section 4.2.1
+
+          Narrowing to `10.50.0.0/16` which is our primary VPC range.
+
+          ### Changes
+
+          - ${{ inputs.num_new_customers || '3' }} new ingress rules on `customer-api-access` security group
+          - 3 ingress rules modified on `internal-services` security group (CIDR narrowed from 10.0.0.0/8 to 10.50.0.0/16)
+
+          ### Checklist
+
+          - [x] Verified customer CIDRs with IT teams
+          - [x] Confirmed 10.50.0.0/16 covers production workloads
+          - [x] Security team approved change
+
+          /cc @platform-team @security-team
+          BODY
+
+          PR_TITLE="feat: Add new customers + tighten internal SG per security audit"
+          if [ -n "${{ inputs.pr_title_suffix }}" ]; then
+            PR_TITLE="${PR_TITLE} ${{ inputs.pr_title_suffix }}"
+          fi
+          echo "PR_TITLE=${PR_TITLE}" >> $GITHUB_ENV
+          echo "PR_BODY_FILE=/tmp/pr_body.md" >> $GITHUB_ENV
+
+      - name: Commit changes
+        run: |
+          git add main.tf
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            if [ "${{ steps.is_manual.outputs.is_manual }}" == "true" ]; then
+              git commit -m "${{ env.PR_TITLE }}"
+              git push origin ${{ steps.branch.outputs.branch_name }}
+            else
+              git commit -m "chore: routine customer IP rotation (rotation ${{ steps.rotation.outputs.rotation }})"
+              git push
+            fi
+          fi
+
+      - name: Create Pull Request (manual runs only)
+        if: steps.is_manual.outputs.is_manual == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          PR_URL=$(gh pr create \
+            --title "${{ env.PR_TITLE }}" \
+            --body-file "${{ env.PR_BODY_FILE }}" \
+            --base main \
+            --head ${{ steps.branch.outputs.branch_name }})
+
+          echo "PR_URL=${PR_URL}" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.0"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Convert plan to JSON
+        run: terraform show -json tfplan > tfplan.json
+
+      - uses: overmindtech/actions/install-cli@main
+        with:
+          version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: overmindtech/actions/submit-plan@main
+        id: submit-plan
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+          plan-json: tfplan.json
+          tags: 'model=risks_v6'
+
+      - uses: overmindtech/actions/start-change@main
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+      - uses: overmindtech/actions/end-change@main
+        if: success() || failure() || cancelled()
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+      - name: Summary (Manual Run)
+        if: steps.is_manual.outputs.is_manual == 'true'
+        run: |
+          echo "## 🚀 Demo PR Created!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Run Type** | Manual |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ steps.branch.outputs.branch_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **New Customers** | ${{ inputs.num_new_customers || '3' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **PR URL** | ${{ env.PR_URL }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Wait for Overmind to analyze the PR (~30 seconds)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Open the PR and review Overmind's findings" >> $GITHUB_STEP_SUMMARY
+          echo "3. Note how Overmind flags the internal SG change as unusual" >> $GITHUB_STEP_SUMMARY
+
+      - name: Summary (Cron Run)
+        if: steps.is_manual.outputs.is_manual == 'false'
+        run: |
+          echo "## ✅ Routine Update Applied" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Run Type** | Cron (automatic) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Rotation** | ${{ steps.rotation.outputs.rotation }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Changes Applied** | Routine customer IP updates |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Overmind Analysis** | Submitted |" >> $GITHUB_STEP_SUMMARY
