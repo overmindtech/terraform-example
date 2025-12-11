@@ -75,7 +75,7 @@ jobs:
           for i in $(seq 0 $((NUM_CUSTOMERS - 1))); do
             IFS='|' read -r key cidr name <<< "${CUSTOMER_POOL[$i]}"
             CUSTOMER_HCL="${CUSTOMER_HCL}$(printf '    %s = {\n      cidr = "%s"\n      name = "%s"\n    }\n' "$key" "$cidr" "$name")"
-            CUSTOMER_LIST="${CUSTOMER_LIST}$(printf '- **%s** (%s)\n' "$name" "$cidr")"
+            CUSTOMER_LIST="${CUSTOMER_LIST}$(printf -- '- **%s** (%s)\n' "$name" "$cidr")"
           done
 
           echo "customer_hcl<<EOF" >> $GITHUB_OUTPUT
