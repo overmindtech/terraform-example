@@ -74,16 +74,16 @@ jobs:
 
           for i in $(seq 0 $((NUM_CUSTOMERS - 1))); do
             IFS='|' read -r key cidr name <<< "${CUSTOMER_POOL[$i]}"
-            CUSTOMER_HCL="${CUSTOMER_HCL}    ${key} = {\n      cidr = \"${cidr}\"\n      name = \"${name}\"\n    }\n"
-            CUSTOMER_LIST="${CUSTOMER_LIST}- **${name}** (${cidr})\n"
+            CUSTOMER_HCL="${CUSTOMER_HCL}$(printf '    %s = {\n      cidr = "%s"\n      name = "%s"\n    }\n' "$key" "$cidr" "$name")"
+            CUSTOMER_LIST="${CUSTOMER_LIST}$(printf '- **%s** (%s)\n' "$name" "$cidr")"
           done
 
           echo "customer_hcl<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$CUSTOMER_HCL" >> $GITHUB_OUTPUT
+          printf '%s' "$CUSTOMER_HCL" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
           echo "customer_list<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$CUSTOMER_LIST" >> $GITHUB_OUTPUT
+          printf '%s' "$CUSTOMER_LIST" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Generate clean scenario
