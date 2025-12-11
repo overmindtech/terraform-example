@@ -138,7 +138,7 @@ jobs:
           python3 .github/scripts/add-customers-to-main.py main.tf
           
           # Update internal_cidr for the needle scenario
-          python3 .github/scripts/update-internal-cidr.py main.tf "10.50.0.0/16" "SECURITY HARDENING: Narrowed per audit findings (JIRA-4521)"
+          python3 .github/scripts/update-internal-cidr.py main.tf "10.50.0.0/16"
 
           echo "PR_TITLE=feat: Add new customers + tighten internal SG per security audit" >> $GITHUB_ENV
 
