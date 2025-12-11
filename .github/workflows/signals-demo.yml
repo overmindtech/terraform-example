@@ -49,31 +49,11 @@ jobs:
           
           echo "Modified customer IP ranges with offset: ${OFFSET}"
 
-      - name: Commit changes
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          git add main.tf
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: update customer IP ranges"
-            git push
-          fi
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.7.0"
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
-          aws-region: us-east-1
-
       - name: Terraform Init
-        run: terraform init
+        uses: ./.github/actions/terraform_init/
+        with:
+          terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+          terraform_workspace: terraform-example
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
@@ -98,8 +78,23 @@ jobs:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
 
       - name: Terraform Apply
+        id: terraform-apply
         run: terraform apply -auto-approve tfplan
 
       - uses: overmindtech/actions/end-change@main
+        if: steps.terraform-apply.outcome == 'success'
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+      - name: Commit changes
+        if: steps.terraform-apply.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          git add main.tf
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update customer IP ranges"
+            git push
+          fi
