@@ -49,6 +49,18 @@ jobs:
           
           echo "Modified customer IP ranges with offset: ${OFFSET}"
 
+      - name: Show changes
+        run: |
+          echo "## Changes to main.tf" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```diff' >> $GITHUB_STEP_SUMMARY
+          git diff main.tf >> $GITHUB_STEP_SUMMARY || echo "No changes detected"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Also print to console
+          echo "=== Git diff ==="
+          git diff main.tf || echo "No changes detected"
+
       - name: Terraform Init
         uses: ./.github/actions/terraform_init/
         with:
