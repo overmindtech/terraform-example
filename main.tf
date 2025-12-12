@@ -415,28 +415,28 @@ module "shared_security_group" {
 locals {
   api_customer_cidrs = {
     acme_corp = {
-      cidr = "203.0.113.16/32"
+      cidr = "203.0.113.15/32"
       name = "Acme Corp"
     }
     globex = {
-      cidr = "198.51.105.8/29"
+      cidr = "198.51.105.0/29"
       name = "Globex Industries"
     }
     initech = {
-      cidr = "192.0.2.56/32"
+      cidr = "192.0.2.55/32"
       name = "Initech"
     }
     umbrella = {
-      cidr = "198.18.106.0/24"
+      cidr = "198.18.106.0/25"
       name = "Umbrella Corp"
     }
     cyberdyne = {
-      cidr = "100.64.5.8/29"
+      cidr = "100.64.5.0/29"
       name = "Cyberdyne Systems"
     }
   }
 
-  api_internal_cidr = "10.0.0.0/8"
+  api_internal_cidr = "10.0.0.0/16" # SECURITY HARDENING: Narrowed to VPC CIDR per audit findings
   api_domain        = "signals-demo-test.demo"
   api_alert_email   = "alerts@example.com"
 }
