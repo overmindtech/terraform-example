@@ -415,23 +415,23 @@ module "shared_security_group" {
 locals {
   api_customer_cidrs = {
     acme_corp = {
-      cidr = "203.0.113.16/32"
+      cidr = "203.0.113.15/32"
       name = "Acme Corp"
     }
     globex = {
-      cidr = "198.51.106.0/29"
+      cidr = "198.51.105.0/29"
       name = "Globex Industries"
     }
     initech = {
-      cidr = "192.0.2.56/32"
+      cidr = "192.0.2.55/32"
       name = "Initech"
     }
     umbrella = {
-      cidr = "198.18.106.0/24"
+      cidr = "198.18.105.0/24"
       name = "Umbrella Corp"
     }
     cyberdyne = {
-      cidr = "100.64.6.0/29"
+      cidr = "100.64.5.0/29"
       name = "Cyberdyne Systems"
     }
   }
