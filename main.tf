@@ -423,7 +423,7 @@ locals {
       name = "Globex Industries"
     }
     initech = {
-      cidr = "192.0.2.56/32"
+      cidr = "192.0.2.56/31"
       name = "Initech"
     }
     umbrella = {
@@ -436,7 +436,7 @@ locals {
     }
   }
 
-  api_internal_cidr = "10.0.0.0/8"
+  api_internal_cidr = "10.0.0.0/16" # SECURITY HARDENING: Narrowed to VPC CIDR per audit findings
   api_domain        = "signals-demo-test.demo"
   api_alert_email   = "alerts@example.com"
 }
