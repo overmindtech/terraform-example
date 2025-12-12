@@ -14,7 +14,7 @@ https://terraform-example-demo-app.preview.df.overmind-demo.com/
 
 ### 3. Click "Open in Editor"
 - In **Related Resources**, click **"Open in Editor"**
-- Opens github.dev directly at line 389 of `main.tf`
+- Opens github.dev directly at line 393 of `main.tf`
 
 ### 4. Make the Change
 Change the instance type:

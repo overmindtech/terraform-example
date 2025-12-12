@@ -22,6 +22,15 @@ resource "aws_instance" "api_server" {
     })
   }
 
+  # For burstable instances (t2, t3, t4g), use standard mode (not unlimited)
+  # This makes CPU credit exhaustion a real risk at sustained high CPU usage
+  dynamic "credit_specification" {
+    for_each = local.is_burstable ? [1] : []
+    content {
+      cpu_credits = "standard"
+    }
+  }
+
   user_data = base64encode(<<-EOF
 #!/bin/bash
 set -ex
