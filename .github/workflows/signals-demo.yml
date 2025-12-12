@@ -31,8 +31,9 @@ jobs:
         run: |
           # Rotate customer IP ranges while maintaining valid CIDR blocks
           # CIDR blocks must use network addresses (last octet = 0 for /24, /29, etc.)
-          DAY_OF_YEAR=$(date +%j)
-          OFFSET=$((DAY_OF_YEAR % 10))
+          # Use seconds since epoch to ensure each run produces different values
+          SECONDS_SINCE_EPOCH=$(date +%s)
+          OFFSET=$((SECONDS_SINCE_EPOCH % 10))
           
           # For /32 blocks (single IPs), modify the last octet
           sed -i "s|\(203\.0\.113\.\)[0-9]\+\(/32\)|\1$((10 + OFFSET))\2|g" main.tf
@@ -47,7 +48,7 @@ jobs:
           # For 100.64.x.x/29 blocks: normalize to .0 first, then modify third octet
           sed -i "s|100\.64\.[0-9]\+\.\([0-9]\+\)/29|100.64.$((OFFSET)).0/29|g" main.tf
           
-          echo "Modified customer IP ranges with offset: ${OFFSET}"
+          echo "Modified customer IP ranges with offset: ${OFFSET} (based on seconds since epoch: ${SECONDS_SINCE_EPOCH})"
 
       - name: Show changes
         run: |
