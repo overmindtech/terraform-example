@@ -82,11 +82,9 @@ Overmind's Signals feature uses **pattern recognition** to identify unusual chan
    ```
    internal_services SG change
    → api_server (uses this SG)
-   → api_eip (attached to server)
-   → route53_record (points to EIP)
-   → route53_health_check (monitors the endpoint)
-   → cloudwatch_alarm (alerts on health check failures)
-   → sns_topic (pages on-call)
+   → monitoring_vpc (peered shared-services VPC)
+   → internal_nlb (health-checks the API over peering)
+   → target_health (healthy → unhealthy)
    ```
 
 4. **Risk Assessment**: Overmind recognizes that changing a rarely-modified, critical security group that affects monitoring infrastructure is high-risk, regardless of whether it's "more secure."
@@ -97,7 +95,7 @@ Overmind's Signals feature uses **pattern recognition** to identify unusual chan
 - GitHub repository with Actions enabled
 - Overmind connected to the repository
 - Terraform >= 1.5.0
-- Domain name for Route53 (or use the default `signals-demo.overmind.tech`)
+- Domain name for Route53 (optional; this module includes Route53 resources but the demo proof does not rely on public health checks)
 
 ## Running a Demo
 
@@ -105,8 +103,8 @@ Overmind's Signals feature uses **pattern recognition** to identify unusual chan
 
 This repo uses a single GitHub Actions workflow to generate the demo changes:
 
-- **Routine mode (scheduled)**: rotates customer CIDRs and commits directly to `main` (no PR)
-- **Needle mode (manual)**: rotates customer CIDRs **and** tightens the internal CIDR, then opens a PR (no terraform plan/apply in this workflow)
+- **Routine mode (scheduled)**: broadens one customer allowlist CIDR (or adds a new customer) and commits directly to `main` (no PR)
+- **Needle mode (manual)**: runs the same routine update **and** tightens the internal CIDR, then opens a PR (no terraform plan/apply in this workflow)
  
 In routine mode, the allowlist changes are intentionally **non-breaking**: each run broadens the **first** customer CIDR it finds that can be widened (superset of the previous range). Once existing customers are “broad enough”, the workflow adds a new customer entry instead. This keeps the churn realistic without cutting off existing clients.
 
@@ -124,7 +122,7 @@ Before running the demo workflow, ensure the repository has:
 2. Click **Run workflow**
 3. Set **include_needle** to `true`
 4. Wait for the workflow to open a PR titled:
-   - `feat: Add new customers + tighten internal SG per security audit`
+   - `security: narrow internal ingress CIDR (JIRA-4521)`
 
 #### Trigger the Clean Scenario (routine baseline)
 
@@ -170,22 +168,14 @@ Close the PR when you're done (or merge it if you want to demonstrate the downst
 │           ▼                                                 │
 │  aws_instance.api_server (production-api-server)            │
 │           │                                                 │
-│           ├──► aws_eip.api_server                           │
-│           │         │                                       │
-│           │         ▼                                       │
-│           │    aws_route53_record.api                       │
-│           │    (api.signals-demo.overmind.tech)             │
-│           │                                                 │
-│           └──► aws_route53_health_check.api                 │
+│           └──► vpc_peering_connection                        │
 │                     │                                       │
 │                     ▼                                       │
-│                aws_cloudwatch_metric_alarm.api_health       │
+│                monitoring_vpc (10.50.0.0/16)                │
 │                     │                                       │
 │                     ▼                                       │
-│                aws_sns_topic.alerts                         │
-│                     │                                       │
-│                     ▼                                       │
-│                Pages on-call team                           │
+│                internal_nlb target_health                   │
+│                (healthy → unhealthy)                        │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -195,11 +185,9 @@ Close the PR when you're done (or merge it if you want to demonstrate the downst
 Estimated monthly cost: **~$3-5**
 
 - `t4g.nano` instance: ~$3/month
-- Route53 hosted zone: ~$0.50/month
 - Elastic IP: Free (when attached to instance)
-- Route53 health check: ~$0.50/month
-- CloudWatch alarms: Free tier
-- SNS: Free tier
+- Internal NLB: varies by region/usage (kept small for demo)
+- Route53 hosted zone/health check: optional (not required for the demo proof)
 - Everything else: Free tier
 
 ## Troubleshooting
@@ -234,15 +222,13 @@ terraform {
 
 ### Health checks failing immediately
 
-- This is expected if you haven't configured the API server to respond on port 8080/443
-- For demo purposes, the health check failure is part of the scenario
-- In production, you'd need a web server running on the instance
+- The demo proof uses an **internal NLB target health** check from a peered VPC.\n+  - In AWS: check the target group health for the monitoring NLB.\n+  - In Terraform: see outputs `signals_monitoring_nlb_dns_name` and `signals_monitoring_target_group_arn`.\n+- The API instance runs a small health endpoint on port **9090** via `user_data` for deterministic target health.
 
 ## Technical Deep Dive
 
 ### Why 10.0.0.0/8 vs 10.0.0.0/16 Matters
 
-- `10.0.0.0/8` covers all RFC 1918 private IP space (16,777,216 addresses)
+- `10.0.0.0/8` covers the full 10/8 private range (16,777,216 addresses)\n+  (RFC1918 also includes `172.16.0.0/12` and `192.168.0.0/16`.)
 - `10.0.0.0/16` covers only the workload VPC (65,536 addresses)
 - Shared services/monitoring components often run in separate networks or VPCs (e.g., a peered `10.50.0.0/16`)
 - Narrowing to only the workload VPC CIDR breaks connectivity from those external-but-private networks
@@ -252,9 +238,8 @@ terraform {
 The blast radius visualization shows how a single security group change cascades:
 
 1. **Direct Impact**: `api_server` loses connectivity from monitoring systems
-2. **Health Check Impact**: Route53 can't verify the endpoint is healthy
-3. **Alerting Impact**: CloudWatch alarm fires, but if monitoring is broken, you might not see other alerts
-4. **Operational Impact**: On-call team gets paged, but root cause analysis is harder without metrics
+2. **Health Check Impact**: Internal NLB target health flips to unhealthy (AWS-native evidence)
+3. **Operational Impact**: Monitoring/observability signals from the shared services VPC can go dark even while customers still have access
 
 ### Pattern Recognition in Action
 
