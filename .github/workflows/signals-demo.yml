@@ -35,26 +35,46 @@ jobs:
 
       - name: Modify customer IP ranges
         run: |
-          # Rotate customer IP ranges while maintaining valid CIDR blocks
-          # CIDR blocks must use network addresses (last octet = 0 for /24, /29, etc.)
-          # Use seconds since epoch to ensure each run produces different values
-          SECONDS_SINCE_EPOCH=$(date +%s)
-          OFFSET=$((SECONDS_SINCE_EPOCH % 10))
-          
-          # For /32 blocks (single IPs), modify the last octet
-          sed -i "s|\(203\.0\.113\.\)[0-9]\+\(/32\)|\1$((10 + OFFSET))\2|g" main.tf
-          sed -i "s|\(192\.0\.2\.\)[0-9]\+\(/32\)|\1$((50 + OFFSET))\2|g" main.tf
-          
-          # For /29 blocks: normalize to .0 first, then modify third octet
-          sed -i "s|198\.51\.[0-9]\+\.\([0-9]\+\)/29|198.51.$((100 + OFFSET)).0/29|g" main.tf
-          
-          # For /24 blocks: normalize to .0 first, then modify third octet
-          sed -i "s|198\.18\.[0-9]\+\.\([0-9]\+\)/24|198.18.$((100 + OFFSET)).0/24|g" main.tf
-          
-          # For 100.64.x.x/29 blocks: normalize to .0 first, then modify third octet
-          sed -i "s|100\.64\.[0-9]\+\.\([0-9]\+\)/29|100.64.$((OFFSET)).0/29|g" main.tf
-          
-          echo "Modified customer IP ranges with offset: ${OFFSET} (based on seconds since epoch: ${SECONDS_SINCE_EPOCH})"
+          # Rotate customer IP ranges while maintaining valid CIDR blocks.
+          #
+          # Important: keep changes small and plausible (toggle between two nearby values),
+          # so the routine job looks like a normal update and doesn't appear as a broad,
+          # unrelated replacement of customer ranges. It does not need to be unique each run.
+          python3 - <<'PY'
+          import sys
+          from typing import Tuple, List
+
+          path = "main.tf"
+          content = open(path, "r").read()
+
+          pairs: List[Tuple[str, str]] = [
+              # /32 single IPs: toggle last octet by +1
+              ("203.0.113.15/32", "203.0.113.16/32"),
+              ("192.0.2.55/32", "192.0.2.56/32"),
+              # /29 networks: toggle to next valid /29 boundary within same /24
+              ("198.51.105.0/29", "198.51.105.8/29"),
+              ("100.64.5.0/29", "100.64.5.8/29"),
+              # /24 networks: toggle third octet by +1
+              ("198.18.105.0/24", "198.18.106.0/24"),
+          ]
+
+          updated = content
+          changes = 0
+          for a, b in pairs:
+              if a in updated:
+                  updated = updated.replace(a, b)
+                  changes += 1
+              elif b in updated:
+                  updated = updated.replace(b, a)
+                  changes += 1
+
+          if updated == content:
+              print("Error: no customer CIDRs updated (patterns not found).", file=sys.stderr)
+              sys.exit(1)
+
+          open(path, "w").write(updated)
+          print(f"Toggled {changes} customer CIDR(s) (small change).")
+          PY
 
       - name: Needle scenario - tighten internal CIDR
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.include_needle == 'true' }}
@@ -179,6 +199,9 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           ref: main
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
       - name: Configure Git
         run: |
           git config user.name "Signals Demo Bot"
@@ -193,6 +216,9 @@ jobs:
       - name: Restore modified main.tf
         run: |
           cp ./artifacts/main.tf ./main.tf
+
+      - name: Terraform fmt
+        run: terraform fmt -no-color main.tf
 
       - name: Commit and push
         env:
@@ -225,6 +251,9 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           ref: main
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
       - name: Configure Git
         run: |
           git config user.name "Signals Demo Bot"
@@ -239,6 +268,9 @@ jobs:
       - name: Restore modified main.tf
         run: |
           cp ./artifacts/main.tf ./main.tf
+
+      - name: Terraform fmt
+        run: terraform fmt -no-color main.tf
 
       - name: Create branch, commit, and push
         env:
