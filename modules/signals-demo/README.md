@@ -8,7 +8,7 @@ We simulate a B2B SaaS company that maintains customer IP whitelists for API acc
 
 1. **Clean Scenario**: Just routine customer IP whitelist updates. Overmind recognizes the pattern and marks it as low-risk/auto-approvable.
 
-2. **Needle Scenario**: Same routine updates, but a teammate also "tightened security" by narrowing an internal CIDR from `10.0.0.0/8` to `10.50.0.0/16`. This looks like a security improvement and passes all policy checks, but it will break monitoring and health checks. Overmind flags this as unusual (the internal SG is rarely modified) and shows the blast radius.
+2. **Needle Scenario**: Same routine updates, but a teammate also "tightened security" by narrowing an internal CIDR from `10.0.0.0/8` to `10.0.0.0/16` (the baseline VPC CIDR). This looks like a security improvement and passes all policy checks, but it breaks connectivity from a peered “shared services/monitoring” VPC that previously relied on that broader range. Overmind flags this as unusual (the internal SG is rarely modified) and shows the blast radius.
 
 ## The Risk Explained
 
@@ -21,7 +21,7 @@ The "needle" scenario includes a change that appears to be a security improvemen
 internal_cidr = "10.0.0.0/8"
 
 # After (the "security hardening")
-internal_cidr = "10.50.0.0/16"
+internal_cidr = "10.0.0.0/16"
 ```
 
 **Why it looks good:**
@@ -31,37 +31,27 @@ internal_cidr = "10.50.0.0/16"
 - Matches the VPC CIDR
 
 **Why it's actually dangerous:**
-- Monitoring systems outside the VPC can't reach the API server
-- Health checks fail because Route53 health checkers can't access ports 8080/443
-- Prometheus scraping fails (port 9090 blocked)
-- Internal tools and service mesh components lose connectivity
-- **The system appears healthy but monitoring is blind**
+- A peered/shared services VPC (e.g. `10.50.0.0/16`) can no longer reach the API server on internal ports
+- Internal tooling and monitoring lose connectivity (e.g., metrics scraping on port 9090)
+- **AWS metadata shows the breakage**: the monitoring VPC’s internal NLB target health flips to unhealthy
 
 ### What Actually Breaks
 
-When `internal_cidr` is narrowed from `10.0.0.0/8` to `10.50.0.0/16`, here's what happens:
+When `internal_cidr` is narrowed from `10.0.0.0/8` to `10.0.0.0/16`, here's what happens:
 
-1. **Route53 Health Checks Fail**
-   - Health checkers run from AWS infrastructure (not in your VPC)
-   - They can't reach the API server on ports 443 or 8080
-   - Health check status goes to "Unhealthy"
-   - After 3 consecutive failures, the alarm triggers
+1. **Peered Monitoring/Shared-Services Connectivity Breaks**
+   - A Terraform-managed “monitoring” VPC (CIDR `10.50.0.0/16`) is peered to the workload VPC (`10.0.0.0/16`)
+   - With the broad `/8`, the API’s `internal_services` SG allows the monitoring VPC to reach port 9090
+   - After narrowing to the workload VPC `/16`, traffic from the monitoring VPC is blocked by the SG
 
-2. **CloudWatch Alarm Fires**
-   - `production-api-health-check-failed` alarm goes into ALARM state
-   - SNS topic receives the alert
-   - On-call team gets paged
+2. **AWS-managed Health Signal Flips**
+   - The monitoring VPC’s internal NLB health-checks the API instance over the peering link
+   - Target health changes from **healthy → unhealthy**, visible via ELBv2 target health and CloudWatch metrics
 
-3. **Monitoring Goes Dark**
-   - Prometheus can't scrape metrics from port 9090
-   - Service mesh health checks fail
-   - Internal tooling loses access
-   - **But the API server itself is still running and serving customer traffic**
-
-4. **The Silent Failure**
+3. **The Silent Failure**
    - Customers don't notice (they use the customer-facing security group)
    - The API continues to work
-   - But monitoring, alerting, and observability are broken
+   - But monitoring/observability paths from the shared services VPC are broken
    - If a real issue occurs, no one will know until customers complain
 
 ### Why Traditional Policy Checks Miss This
@@ -248,13 +238,12 @@ terraform {
 
 ## Technical Deep Dive
 
-### Why 10.0.0.0/8 vs 10.50.0.0/16 Matters
+### Why 10.0.0.0/8 vs 10.0.0.0/16 Matters
 
 - `10.0.0.0/8` covers all RFC 1918 private IP space (16,777,216 addresses)
-- `10.50.0.0/16` covers only a single /16 subnet (65,536 addresses)
-- AWS Route53 health checkers use infrastructure IPs that may not be in your VPC's CIDR range
-- Monitoring systems, service mesh components, and internal tools often run in separate networks or VPCs
-- Narrowing to only the VPC CIDR breaks connectivity from these external systems
+- `10.0.0.0/16` covers only the workload VPC (65,536 addresses)
+- Shared services/monitoring components often run in separate networks or VPCs (e.g., a peered `10.50.0.0/16`)
+- Narrowing to only the workload VPC CIDR breaks connectivity from those external-but-private networks
 
 ### The Dependency Chain
 

@@ -30,8 +30,9 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config user.name "Signals Demo Bot"
-          git config user.email "demo-bot@overmind.tech"
+          # Use a neutral automation identity that matches what you'd typically see in real repos.
+          git config user.name "Platform Automation"
+          git config user.email "platform-automation@company.com"
 
       - name: Modify customer IP ranges
         run: |
@@ -51,11 +52,19 @@ jobs:
               # /32 single IPs: toggle last octet by +1
               ("203.0.113.15/32", "203.0.113.16/32"),
               ("192.0.2.55/32", "192.0.2.56/32"),
-              # /29 networks: toggle to next valid /29 boundary within same /24
-              ("198.51.105.0/29", "198.51.105.8/29"),
-              ("100.64.5.0/29", "100.64.5.8/29"),
-              # /24 networks: toggle third octet by +1
-              ("198.18.105.0/24", "198.18.106.0/24"),
+              # Network CIDRs: keep routine changes *overlapping* and small.
+              #
+              # We avoid swapping to a totally different, non-overlapping CIDR (even if "nearby"),
+              # because that doesn't resemble an innocuous allowlist maintenance update.
+              #
+              # /29 <-> /28: slight broadening/tightening within the same /24 (overlapping).
+              ("198.51.105.8/29", "198.51.105.0/28"),
+              ("198.51.105.0/29", "198.51.105.0/28"),
+              ("100.64.5.8/29", "100.64.5.0/28"),
+              ("100.64.5.0/29", "100.64.5.0/28"),
+              # /24 <-> /25: small tightening/loosening that remains within the same /24 (overlapping).
+              ("198.18.106.0/24", "198.18.106.0/25"),
+              ("198.18.105.0/24", "198.18.105.0/25"),
           ]
 
           updated = content
@@ -79,7 +88,7 @@ jobs:
       - name: Needle scenario - tighten internal CIDR
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.include_needle == 'true' }}
         run: |
-          python3 .github/scripts/update-internal-cidr.py main.tf "10.50.0.0/16" "SECURITY HARDENING: Narrowed per audit findings"
+          python3 .github/scripts/update-internal-cidr.py main.tf "10.0.0.0/16" "SECURITY HARDENING: Narrowed to VPC CIDR per audit findings"
 
       - name: Show changes
         run: |
@@ -204,8 +213,8 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config user.name "Signals Demo Bot"
-          git config user.email "demo-bot@overmind.tech"
+          git config user.name "Platform Automation"
+          git config user.email "platform-automation@company.com"
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -233,7 +242,7 @@ jobs:
           fi
 
   create-pr:
-    name: Create PR for needle scenario
+    name: Create PR for security hardening change
     runs-on: ubuntu-latest
     needs: modify
     if: >-
@@ -256,8 +265,8 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config user.name "Signals Demo Bot"
-          git config user.email "demo-bot@overmind.tech"
+          git config user.name "Platform Automation"
+          git config user.email "platform-automation@company.com"
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -276,7 +285,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          BRANCH="signals-demo/needle-$(date +%Y%m%d-%H%M%S)"
+          # Use a realistic branch naming convention (team/topic + ticket).
+          BRANCH="security/jira-4521-narrow-internal-cidr-$(date +%Y%m%d-%H%M%S)"
           echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
 
           git checkout -b "$BRANCH"
@@ -287,7 +297,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "feat: add new customers and tighten internal CIDR"
+          git commit -m "security: narrow internal ingress CIDR (JIRA-4521)"
           git push -u origin "$BRANCH"
 
       - name: Open pull request
@@ -296,15 +306,20 @@ jobs:
         run: |
           BODY="$(printf '%s\n' \
             '## Summary' \
-            '- Add new customers and rotate customer IP allowlist ranges (routine change).' \
-            '- SECURITY HARDENING (JIRA-4521): Narrow internal CIDR from `10.0.0.0/8` to `10.50.0.0/16` per audit findings.' \
+            '- Narrow internal ingress CIDR used for service/monitoring access.' \
             '' \
-            '## Notes' \
-            'This change looks safer (more restrictive) and passes typical policy checks, but can break monitoring/health checks and other internal tooling that is not within the VPC CIDR.' \
+            '## Context' \
+            '- JIRA-4521: Reduce internal exposure based on audit feedback.' \
+            '' \
+            '## Testing' \
+            '- Terraform plan reviewed in CI.' \
+            '' \
+            '## Rollout / Risk' \
+            '- If any internal tooling relies on the broader range, it may lose access; monitor health checks and alarms after merge.' \
           )"
 
           gh pr create \
             --base main \
             --head "$BRANCH" \
-            --title "feat: Add new customers + tighten internal SG per security audit" \
+            --title "security: narrow internal ingress CIDR (JIRA-4521)" \
             --body "$BODY"

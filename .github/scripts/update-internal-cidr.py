@@ -8,7 +8,7 @@ Usage:
     python3 update-internal-cidr.py <main.tf path> <new_cidr> [comment]
 
 Example:
-    python3 update-internal-cidr.py main.tf "10.50.0.0/16" "SECURITY HARDENING: Narrowed per audit findings"
+    python3 update-internal-cidr.py main.tf "10.0.0.0/16" "SECURITY HARDENING: Narrowed to VPC CIDR per audit findings"
 """
 
 import re
@@ -21,7 +21,7 @@ def update_internal_cidr(main_tf_path, new_cidr, comment=None):
     
     Args:
         main_tf_path: Path to main.tf file
-        new_cidr: New CIDR value (e.g., "10.50.0.0/16")
+        new_cidr: New CIDR value (e.g., "10.0.0.0/16")
         comment: Optional comment to add after the value
     """
     # Read the file

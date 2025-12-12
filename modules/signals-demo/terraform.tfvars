@@ -22,7 +22,7 @@ customer_cidrs = {
 }
 
 # IMPORTANT: This should always be 10.0.0.0/8 in the baseline
-# The "needle" scenario changes this to 10.50.0.0/16
+# The "needle" scenario changes this to 10.0.0.0/16 (baseline VPC CIDR)
 internal_cidr = "10.0.0.0/8"
 
 domain = "signals-demo-test.demo"

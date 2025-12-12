@@ -106,6 +106,60 @@ resource "aws_instance" "api_server" {
     aws_security_group.internal_services.id
   ]
 
+  # Deterministic local endpoint so AWS-managed health checks (e.g. NLB target health)
+  # can succeed/fail purely due to networking and security group rules.
+  user_data = <<-EOF
+              #!/bin/bash
+              set -euo pipefail
+
+              # Ensure python3 exists (Amazon Linux 2)
+              yum install -y python3
+
+              cat >/opt/health_server.py <<'PY'
+              from http.server import BaseHTTPRequestHandler, HTTPServer
+
+              class Handler(BaseHTTPRequestHandler):
+                  def do_GET(self):
+                      if self.path in ("/health", "/healthz", "/"):
+                          self.send_response(200)
+                          self.send_header("Content-Type", "text/plain")
+                          self.end_headers()
+                          self.wfile.write(b"ok\n")
+                          return
+                      self.send_response(404)
+                      self.end_headers()
+
+                  def log_message(self, format, *args):
+                      # Silence noisy logs in demo environment
+                      return
+
+              if __name__ == "__main__":
+                  server = HTTPServer(("0.0.0.0", 9090), Handler)
+                  server.serve_forever()
+              PY
+
+              cat >/etc/systemd/system/health-server.service <<'UNIT'
+              [Unit]
+              Description=Signals demo health endpoint (port 9090)
+              After=network-online.target
+              Wants=network-online.target
+
+              [Service]
+              Type=simple
+              ExecStart=/usr/bin/python3 /opt/health_server.py
+              Restart=always
+              RestartSec=2
+
+              [Install]
+              WantedBy=multi-user.target
+              UNIT
+
+              systemctl daemon-reload
+              systemctl enable --now health-server.service
+              EOF
+
+  user_data_replace_on_change = true
+
   tags = {
     Name        = "production-api-server"
     Environment = "production"
