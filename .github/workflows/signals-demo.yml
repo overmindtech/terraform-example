@@ -224,16 +224,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
+          BODY="$(printf '%s\n' \
+            '## Summary' \
+            '- Add new customers and rotate customer IP allowlist ranges (routine change).' \
+            '- SECURITY HARDENING (JIRA-4521): Narrow internal CIDR from `10.0.0.0/8` to `10.50.0.0/16` per audit findings.' \
+            '' \
+            '## Notes' \
+            'This change looks safer (more restrictive) and passes typical policy checks, but can break monitoring/health checks and other internal tooling that is not within the VPC CIDR.' \
+          )"
+
           gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "feat: Add new customers + tighten internal SG per security audit" \
-            --body "$(cat <<'EOF'
-## Summary
-- Add new customers and rotate customer IP allowlist ranges (routine change).
-- SECURITY HARDENING (JIRA-4521): Narrow internal CIDR from `10.0.0.0/8` to `10.50.0.0/16` per audit findings.
-
-## Notes
-This change looks safer (more restrictive) and passes typical policy checks, but can break monitoring/health checks and other internal tooling that is not within the VPC CIDR.
-EOF
-)"
+            --body "$BODY"
