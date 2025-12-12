@@ -23,78 +23,82 @@ resource "aws_instance" "api_server" {
   }
 
   user_data = base64encode(<<-EOF
-    #!/bin/bash
-    yum update -y
-    yum install -y httpd stress-ng
+#!/bin/bash
+set -ex
 
-    # Create systemd service for CPU load simulation (70% sustained)
-    cat > /etc/systemd/system/cpu-load-simulator.service <<'SERVICE'
-    [Unit]
-    Description=Simulate 70% CPU load for demo purposes
-    After=network.target
+# Install EPEL for stress-ng and other packages
+amazon-linux-extras install epel -y || yum install -y epel-release
+yum update -y
+yum install -y httpd stress-ng
 
-    [Service]
-    Type=simple
-    ExecStart=/usr/bin/stress-ng --cpu 2 --cpu-load 70
-    Restart=always
-    RestartSec=10
+# Create systemd service for CPU load simulation (70% sustained)
+cat > /etc/systemd/system/cpu-load-simulator.service <<'SERVICE'
+[Unit]
+Description=Simulate 70% CPU load for demo purposes
+After=network.target
 
-    [Install]
-    WantedBy=multi-user.target
-    SERVICE
+[Service]
+Type=simple
+ExecStart=/usr/bin/stress-ng --cpu 2 --cpu-load 70
+Restart=always
+RestartSec=10
 
-    # Enable and start CPU load simulation
-    systemctl daemon-reload
-    systemctl enable cpu-load-simulator
-    systemctl start cpu-load-simulator
+[Install]
+WantedBy=multi-user.target
+SERVICE
 
-    cat > /var/www/html/health <<'HEALTH'
-    OK
-    HEALTH
+# Enable and start CPU load simulation
+systemctl daemon-reload
+systemctl enable cpu-load-simulator
+systemctl start cpu-load-simulator
 
-    cat > /var/www/html/index.html <<'INDEX'
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>API Server Status</title>
-        <style>
-            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; background: #1a1a2e; color: #eee; }
-            .container { max-width: 800px; margin: 0 auto; }
-            h1 { color: #00d9ff; border-bottom: 2px solid #00d9ff; padding-bottom: 10px; }
-            .metric { background: #16213e; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #00d9ff; }
-            .metric-label { color: #888; font-size: 12px; text-transform: uppercase; }
-            .metric-value { font-size: 32px; font-weight: bold; margin: 5px 0; }
-            .cpu-bar { height: 20px; background: #0f3460; border-radius: 10px; overflow: hidden; margin-top: 10px; }
-            .cpu-fill { height: 100%; background: linear-gradient(90deg, #51cf66, #fcc419, #ff6b6b); width: ${var.typical_cpu_utilization}%; }
-            .info { background: #0f3460; padding: 15px; border-radius: 8px; margin-top: 20px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>API Server Status</h1>
-            
-            <div class="metric">
-                <div class="metric-label">Instance Type</div>
-                <div class="metric-value">${var.instance_type}</div>
-            </div>
+cat > /var/www/html/health <<'HEALTH'
+OK
+HEALTH
 
-            <div class="metric">
-                <div class="metric-label">Current CPU Utilization</div>
-                <div class="metric-value">${var.typical_cpu_utilization}%</div>
-                <div class="cpu-bar"><div class="cpu-fill"></div></div>
-            </div>
-
-            <div class="info">
-                <strong>Workload:</strong> ${var.workload_description}
-            </div>
+cat > /var/www/html/index.html <<'INDEX'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Server Status</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; background: #1a1a2e; color: #eee; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #00d9ff; border-bottom: 2px solid #00d9ff; padding-bottom: 10px; }
+        .metric { background: #16213e; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #00d9ff; }
+        .metric-label { color: #888; font-size: 12px; text-transform: uppercase; }
+        .metric-value { font-size: 32px; font-weight: bold; margin: 5px 0; }
+        .cpu-bar { height: 20px; background: #0f3460; border-radius: 10px; overflow: hidden; margin-top: 10px; }
+        .cpu-fill { height: 100%; background: linear-gradient(90deg, #51cf66, #fcc419, #ff6b6b); width: ${var.typical_cpu_utilization}%; }
+        .info { background: #0f3460; padding: 15px; border-radius: 8px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API Server Status</h1>
+        
+        <div class="metric">
+            <div class="metric-label">Instance Type</div>
+            <div class="metric-value">${var.instance_type}</div>
         </div>
-    </body>
-    </html>
-    INDEX
 
-    systemctl start httpd
-    systemctl enable httpd
-  EOF
+        <div class="metric">
+            <div class="metric-label">Current CPU Utilization</div>
+            <div class="metric-value">${var.typical_cpu_utilization}%</div>
+            <div class="cpu-bar"><div class="cpu-fill"></div></div>
+        </div>
+
+        <div class="info">
+            <strong>Workload:</strong> ${var.workload_description}
+        </div>
+    </div>
+</body>
+</html>
+INDEX
+
+systemctl start httpd
+systemctl enable httpd
+EOF
   )
 
   tags = merge(local.common_tags, {
