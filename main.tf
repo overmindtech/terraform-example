@@ -419,7 +419,7 @@ locals {
       name = "Acme Corp"
     }
     globex = {
-      cidr = "198.51.105.8/29"
+      cidr = "198.51.105.0/28"
       name = "Globex Industries"
     }
     initech = {
