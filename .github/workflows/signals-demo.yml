@@ -5,22 +5,28 @@ on:
     # Run every day at 2am UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      include_needle:
+        description: Include needle scenario (tighten internal CIDR + open PR)
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: signals-demo
   cancel-in-progress: false
 
 jobs:
-  signals-demo:
-    name: Update Customer IP Ranges
+  modify-and-apply:
+    name: Modify config + terraform plan/apply
     runs-on: ubuntu-latest
     permissions:
-      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_PAT }}
+          ref: main
 
       - name: Configure Git
         run: |
@@ -49,6 +55,11 @@ jobs:
           sed -i "s|100\.64\.[0-9]\+\.\([0-9]\+\)/29|100.64.$((OFFSET)).0/29|g" main.tf
           
           echo "Modified customer IP ranges with offset: ${OFFSET} (based on seconds since epoch: ${SECONDS_SINCE_EPOCH})"
+
+      - name: Needle scenario - tighten internal CIDR
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.include_needle == 'true' }}
+        run: |
+          python3 .github/scripts/update-internal-cidr.py main.tf "10.50.0.0/16" "SECURITY HARDENING: Narrowed per audit findings"
 
       - name: Show changes
         run: |
@@ -99,8 +110,53 @@ jobs:
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
 
-      - name: Commit changes
-        if: steps.terraform-apply.outcome == 'success'
+      - name: Upload artifacts (main.tf + terraform plan)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signals-demo-artifacts
+          if-no-files-found: error
+          path: |
+            main.tf
+            tfplan
+            tfplan.json
+
+  commit-routine:
+    name: Commit routine changes directly to main
+    runs-on: ubuntu-latest
+    needs: modify-and-apply
+    if: >-
+      ${{
+        needs.modify-and-apply.result == 'success' &&
+        (
+          github.event_name == 'schedule' ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.include_needle != 'true')
+        )
+      }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          ref: main
+
+      - name: Configure Git
+        run: |
+          git config user.name "Signals Demo Bot"
+          git config user.email "demo-bot@overmind.tech"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: signals-demo-artifacts
+          path: ./artifacts
+
+      - name: Restore modified main.tf
+        run: |
+          cp ./artifacts/main.tf ./main.tf
+
+      - name: Commit and push
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
@@ -109,5 +165,75 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: update customer IP ranges"
-            git push
+            git push origin main
           fi
+
+  create-pr:
+    name: Create PR for needle scenario
+    runs-on: ubuntu-latest
+    needs: modify-and-apply
+    if: >-
+      ${{
+        needs.modify-and-apply.result == 'success' &&
+        github.event_name == 'workflow_dispatch' &&
+        github.event.inputs.include_needle == 'true'
+      }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          ref: main
+
+      - name: Configure Git
+        run: |
+          git config user.name "Signals Demo Bot"
+          git config user.email "demo-bot@overmind.tech"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: signals-demo-artifacts
+          path: ./artifacts
+
+      - name: Restore modified main.tf
+        run: |
+          cp ./artifacts/main.tf ./main.tf
+
+      - name: Create branch, commit, and push
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          BRANCH="signals-demo/needle-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
+          git checkout -b "$BRANCH"
+          git add main.tf
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "feat: add new customers and tighten internal CIDR"
+          git push -u origin "$BRANCH"
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "feat: Add new customers + tighten internal SG per security audit" \
+            --body "$(cat <<'EOF'
+## Summary
+- Add new customers and rotate customer IP allowlist ranges (routine change).
+- SECURITY HARDENING (JIRA-4521): Narrow internal CIDR from `10.0.0.0/8` to `10.50.0.0/16` per audit findings.
+
+## Notes
+This change looks safer (more restrictive) and passes typical policy checks, but can break monitoring/health checks and other internal tooling that is not within the VPC CIDR.
+EOF
+)"
