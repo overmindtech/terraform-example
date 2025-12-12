@@ -36,53 +36,94 @@ jobs:
 
       - name: Modify customer IP ranges
         run: |
-          # Rotate customer IP ranges while maintaining valid CIDR blocks.
-          #
-          # Important: keep changes small and plausible (toggle between two nearby values),
-          # so the routine job looks like a normal update and doesn't appear as a broad,
-          # unrelated replacement of customer ranges. It does not need to be unique each run.
+          # Routine allowlist maintenance:
+          # - Never narrow or shift customer CIDRs (avoid breaking existing clients).
+          # - Broaden exactly one customer CIDR per run (small, innocuous change), rotating.
+          # - Once all customers are at a cap, add a new customer (routine onboarding churn).
           python3 - <<'PY'
+          import ipaddress
+          import re
           import sys
-          from typing import Tuple, List
 
           path = "main.tf"
           content = open(path, "r").read()
 
-          pairs: List[Tuple[str, str]] = [
-              # /32 single IPs: toggle last octet by +1
-              ("203.0.113.15/32", "203.0.113.16/32"),
-              ("192.0.2.55/32", "192.0.2.56/32"),
-              # Network CIDRs: keep routine changes *overlapping* and small.
-              #
-              # We avoid swapping to a totally different, non-overlapping CIDR (even if "nearby"),
-              # because that doesn't resemble an innocuous allowlist maintenance update.
-              #
-              # /29 <-> /28: slight broadening/tightening within the same /24 (overlapping).
-              ("198.51.105.8/29", "198.51.105.0/28"),
-              ("198.51.105.0/29", "198.51.105.0/28"),
-              ("100.64.5.8/29", "100.64.5.0/28"),
-              ("100.64.5.0/29", "100.64.5.0/28"),
-              # /24 <-> /25: small tightening/loosening that remains within the same /24 (overlapping).
-              ("198.18.106.0/24", "198.18.106.0/25"),
-              ("198.18.105.0/24", "198.18.105.0/25"),
-          ]
+          customers = ["acme_corp", "globex", "initech", "umbrella", "cyberdyne"]
+          max_broaden_prefix = {
+              # /32: broaden to /31 then /30, then stop
+              "acme_corp": 30,
+              "initech": 30,
+              # /29: broaden to /28, then stop
+              "globex": 28,
+              "cyberdyne": 28,
+              # /24: treat as already capped (keeps it plausible)
+              "umbrella": 24,
+          }
+
+          def get_customer_cidr(key: str, text: str) -> str:
+              m = re.search(rf"{re.escape(key)}\\s*=\\s*\\{{[^}}]*?\\bcidr\\s*=\\s*\"([^\"]+)\"", text, re.S)
+              if not m:
+                  raise RuntimeError(f\"Could not find cidr for customer '{key}'\")
+              return m.group(1)
+
+          def set_customer_cidr(key: str, new_cidr: str, text: str) -> str:
+              return re.sub(
+                  rf\"({re.escape(key)}\\s*=\\s*\\{{[^}}]*?\\bcidr\\s*=\\s*\\\")([^\"]+)(\\\")\",
+                  rf\"\\g<1>{new_cidr}\\g<3>\",
+                  text,
+                  flags=re.S,
+                  count=1,
+              )
+
+          def broaden_one_step(cidr: str, cap_prefix: int) -> str:
+              net = ipaddress.ip_network(cidr, strict=True)
+              # smaller prefixlen == broader network; don't go broader than cap
+              if net.prefixlen <= cap_prefix:
+                  return cidr
+              new_prefix = max(net.prefixlen - 1, cap_prefix)
+              return str(net.supernet(new_prefix=new_prefix))
 
           updated = content
-          changes = 0
-          for a, b in pairs:
-              if a in updated:
-                  updated = updated.replace(a, b)
-                  changes += 1
-              elif b in updated:
-                  updated = updated.replace(b, a)
-                  changes += 1
 
-          if updated == content:
-              print("Error: no customer CIDRs updated (patterns not found).", file=sys.stderr)
-              sys.exit(1)
+          broadened_key = None
+          current = None
+          new = None
+          for key in customers:
+              current = get_customer_cidr(key, updated)
+              cap = max_broaden_prefix[key]
+              new = broaden_one_step(current, cap)
+              if new != current:
+                  updated = set_customer_cidr(key, new, updated)
+                  broadened_key = key
+                  break
 
-          open(path, "w").write(updated)
-          print(f"Toggled {changes} customer CIDR(s) (small change).")
+          if broadened_key is not None:
+              open(path, "w").write(updated)
+              print(f\"Routine change: broadened {broadened_key} ({current} -> {new}).\")
+              sys.exit(0)
+
+          # No customer can be broadened: add a new customer (routine onboarding).
+          existing = [int(m.group(1)) for m in re.finditer(r\"\\bnewco_(\\d+)\\b\", updated)]
+          n = (max(existing) if existing else 0) + 1
+          new_key = f\"newco_{n}\"
+          new_name = f\"NewCo {n}\"
+          new_cidr = f\"203.0.113.{100 + n}/32\"
+
+          # Insert into api_customer_cidrs map immediately after its opening line.
+          if \"api_customer_cidrs = {\" not in updated:
+              raise RuntimeError(\"Could not find api_customer_cidrs map\")
+          updated = updated.replace(
+              \"api_customer_cidrs = {\",
+              \"api_customer_cidrs = {\\n\" +
+              f\"    {new_key} = {{\\n\" +
+              f\"      cidr = \\\"{new_cidr}\\\"\\n\" +
+              f\"      name = \\\"{new_name}\\\"\\n\" +
+              f\"    }}\\n\",
+              1,
+          )
+
+          open(path, \"w\").write(updated)
+          print(f\"Routine change: added customer {new_key} ({new_cidr}).\")
           PY
 
       - name: Needle scenario - tighten internal CIDR

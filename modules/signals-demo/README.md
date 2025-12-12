@@ -107,6 +107,8 @@ This repo uses a single GitHub Actions workflow to generate the demo changes:
 
 - **Routine mode (scheduled)**: rotates customer CIDRs and commits directly to `main` (no PR)
 - **Needle mode (manual)**: rotates customer CIDRs **and** tightens the internal CIDR, then opens a PR (no terraform plan/apply in this workflow)
+ 
+In routine mode, the allowlist changes are intentionally **non-breaking**: each run broadens the **first** customer CIDR it finds that can be widened (superset of the previous range). Once existing customers are “broad enough”, the workflow adds a new customer entry instead. This keeps the churn realistic without cutting off existing clients.
 
 #### Setup checklist
 
