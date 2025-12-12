@@ -63,13 +63,13 @@ jobs:
           def get_customer_cidr(key: str, text: str) -> str:
               m = re.search(rf"{re.escape(key)}\\s*=\\s*\\{{[^}}]*?\\bcidr\\s*=\\s*\"([^\"]+)\"", text, re.S)
               if not m:
-                  raise RuntimeError(f\"Could not find cidr for customer '{key}'\")
+                  raise RuntimeError(f"Could not find cidr for customer '{key}'")
               return m.group(1)
 
           def set_customer_cidr(key: str, new_cidr: str, text: str) -> str:
               return re.sub(
-                  rf\"({re.escape(key)}\\s*=\\s*\\{{[^}}]*?\\bcidr\\s*=\\s*\\\")([^\"]+)(\\\")\",
-                  rf\"\\g<1>{new_cidr}\\g<3>\",
+                  rf"({re.escape(key)}\\s*=\\s*\\{{[^}}]*?\\bcidr\\s*=\\s*\\\")([^\"]+)(\\\")",
+                  rf"\\g<1>{new_cidr}\\g<3>",
                   text,
                   flags=re.S,
                   count=1,
@@ -99,15 +99,15 @@ jobs:
 
           if broadened_key is not None:
               open(path, "w").write(updated)
-              print(f\"Routine change: broadened {broadened_key} ({current} -> {new}).\")
+              print(f"Routine change: broadened {broadened_key} ({current} -> {new}).")
               sys.exit(0)
 
           # No customer can be broadened: add a new customer (routine onboarding).
-          existing = [int(m.group(1)) for m in re.finditer(r\"\\bnewco_(\\d+)\\b\", updated)]
+          existing = [int(m.group(1)) for m in re.finditer(r"\\bnewco_(\\d+)\\b", updated)]
           n = (max(existing) if existing else 0) + 1
-          new_key = f\"newco_{n}\"
-          new_name = f\"NewCo {n}\"
-          new_cidr = f\"203.0.113.{100 + n}/32\"
+          new_key = f"newco_{n}"
+          new_name = f"NewCo {n}"
+          new_cidr = f"203.0.113.{100 + n}/32"
 
           # Insert into api_customer_cidrs map immediately after its opening line.
           if \"api_customer_cidrs = {\" not in updated:
@@ -115,15 +115,15 @@ jobs:
           updated = updated.replace(
               \"api_customer_cidrs = {\",
               \"api_customer_cidrs = {\\n\" +
-              f\"    {new_key} = {{\\n\" +
-              f\"      cidr = \\\"{new_cidr}\\\"\\n\" +
-              f\"      name = \\\"{new_name}\\\"\\n\" +
-              f\"    }}\\n\",
+              f"    {new_key} = {{\\n" +
+              f"      cidr = \\\"{new_cidr}\\\"\\n" +
+              f"      name = \\\"{new_name}\\\"\\n" +
+              f"    }}\\n",
               1,
           )
 
-          open(path, \"w\").write(updated)
-          print(f\"Routine change: added customer {new_key} ({new_cidr}).\")
+          open(path, "w").write(updated)
+          print(f"Routine change: added customer {new_key} ({new_cidr}).")
           PY
 
       - name: Needle scenario - tighten internal CIDR
