@@ -415,7 +415,7 @@ module "shared_security_group" {
 locals {
   api_customer_cidrs = {
     acme_corp = {
-      cidr = "203.0.113.16/32"
+      cidr = "203.0.113.16/30"
       name = "Acme Corp"
     }
     globex = {
