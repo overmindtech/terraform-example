@@ -113,23 +113,40 @@ Overmind's Signals feature uses **pattern recognition** to identify unusual chan
 
 ### Before the Demo (5 minutes prior)
 
-1. Go to **Actions** → **Create Demo PR**
+This repo uses a single GitHub Actions workflow to generate the demo changes:
+
+- **Routine mode (scheduled)**: rotates customer CIDRs and commits directly to `main` (no PR)
+- **Needle mode (manual)**: rotates customer CIDRs **and** tightens the internal CIDR, then opens a PR (no terraform plan/apply in this workflow)
+
+#### Setup checklist
+
+Before running the demo workflow, ensure the repository has:
+
+- `GH_PAT` secret with permission to push branches and open PRs (repo `contents:write` + `pull_request` scopes as needed)
+- `OVM_API_KEY` secret (for Overmind analysis in the downstream plan workflows)
+- `TERRAFORM_DEPLOY_ROLE` repo variable (used by the terraform init action in routine mode)
+
+#### Create the Needle Scenario PR (recommended for demos)
+
+1. Go to **Actions** → **Update Customer IP Ranges**
 2. Click **Run workflow**
-3. Select scenario:
-   - `clean` — Shows auto-approvable routine changes
-   - `needle` — Shows the dangerous change detection
-4. Optionally add a suffix like "- Customer Name Demo"
-5. Select number of new customers (1-5)
-6. Wait ~30 seconds for PR creation and Overmind analysis
+3. Set **include_needle** to `true`
+4. Wait for the workflow to open a PR titled:
+   - `feat: Add new customers + tighten internal SG per security audit`
+
+#### Trigger the Clean Scenario (routine baseline)
+
+- Either wait for the scheduled run, or manually run the same workflow with **include_needle** set to `false`.
+- This path commits directly to `main` (it is intended to build the “routine change” baseline over time).
 
 ### During the Demo
 
 #### Clean Scenario
 
-1. Open the PR
+1. Show the repeated customer allowlist CIDR updates landing on `main` over time (routine churn).
 2. Show Overmind's analysis: "Routine pattern detected, low risk"
 3. Point out this could be auto-approved
-4. **Key talking point**: "Overmind recognizes this pattern—customer IP changes happen multiple times per week. This is normal."
+4. **Key talking point**: "Overmind recognizes this pattern—customer IP changes happen repeatedly. This is normal."
 
 #### Needle Scenario
 
@@ -147,7 +164,7 @@ Overmind's Signals feature uses **pattern recognition** to identify unusual chan
 
 ### After the Demo
 
-Close the PR or let the cleanup job handle it (runs with the routine job, closes PRs older than 7 days).
+Close the PR when you're done (or merge it if you want to demonstrate the downstream effects).
 
 ## Architecture
 
