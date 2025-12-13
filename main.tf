@@ -423,7 +423,7 @@ locals {
       name = "Globex Industries"
     }
     initech = {
-      cidr = "192.0.2.56/32"
+      cidr = "192.0.2.56/31"
       name = "Initech"
     }
     umbrella = {
