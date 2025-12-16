@@ -431,7 +431,7 @@ locals {
       name = "Umbrella Corp"
     }
     cyberdyne = {
-      cidr = "100.64.5.8/29"
+      cidr = "100.64.5.0/28"
       name = "Cyberdyne Systems"
     }
   }
