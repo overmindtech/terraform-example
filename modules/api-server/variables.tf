@@ -52,3 +52,14 @@ variable "additional_tags" {
   default     = {}
 }
 
+variable "cpu_credits" {
+  description = "CPU credit option for burstable instances (t2, t3, t4g). Use 'unlimited' for sustained CPU-intensive workloads to prevent throttling."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition     = contains(["standard", "unlimited"], var.cpu_credits)
+    error_message = "cpu_credits must be either 'standard' or 'unlimited'."
+  }
+}
+
