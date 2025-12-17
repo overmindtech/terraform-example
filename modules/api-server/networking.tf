@@ -110,6 +110,12 @@ resource "aws_lb_target_group_attachment" "api" {
   target_group_arn = aws_lb_target_group.api[0].arn
   target_id        = aws_instance.api_server[0].id
   port             = 80
+
+  # Ensure new instance is registered before old one is deregistered
+  # This works with the instance's create_before_destroy to maintain healthy targets
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_lb_listener" "http" {
