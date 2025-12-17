@@ -22,13 +22,19 @@ resource "aws_instance" "api_server" {
     })
   }
 
-  # For burstable instances (t2, t3, t4g), use standard mode (not unlimited)
-  # This makes CPU credit exhaustion a real risk at sustained high CPU usage
+  # For burstable instances (t2, t3, t4g), use unlimited mode to prevent
+  # CPU throttling under sustained load (which would cause health check failures)
   dynamic "credit_specification" {
     for_each = local.is_burstable ? [1] : []
     content {
-      cpu_credits = "standard"
+      cpu_credits = var.cpu_credits
     }
+  }
+
+  # Blue-green deployment: create new instance before destroying old one
+  # This ensures ALB always has at least one healthy target during instance type changes
+  lifecycle {
+    create_before_destroy = true
   }
 
   user_data = base64encode(<<-EOF
