@@ -414,6 +414,11 @@ module "shared_security_group" {
 # Customer API access configuration
 locals {
   api_customer_cidrs = {
+    newco_6 = {
+      cidr = "203.0.113.106/32"
+      name = "NewCo 6"
+    }
+
     newco_5 = {
       cidr = "203.0.113.105/32"
       name = "NewCo 5"
