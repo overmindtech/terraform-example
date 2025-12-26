@@ -1,0 +1,62 @@
+name: Sync Demo Branches with Main
+
+on:
+  schedule:
+    # Run every day at 3am UTC (after the signals-demo workflow at 2am UTC)
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-demo-branches
+  cancel-in-progress: false
+
+jobs:
+  sync-demo-branches:
+    name: Sync ${{ matrix.branch }} with main
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch:
+          - demo/env0
+          - demo/spacelift
+          - demo/tfc
+    permissions:
+      contents: write
+    steps:
+      - name: Configure Git
+        run: |
+          git config --global user.name "Platform Automation"
+          git config --global user.email "platform-automation@company.com"
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch all branches
+        run: |
+          git fetch origin --all
+
+      - name: Sync branch with main
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          echo "Syncing ${{ matrix.branch }} with main..."
+          BRANCH="${{ matrix.branch }}"
+          # Checkout or create the branch
+          if git show-ref --verify --quiet refs/remotes/origin/$BRANCH; then
+            git checkout -B $BRANCH origin/$BRANCH
+          else
+            git checkout -B $BRANCH origin/main
+          fi
+          # Check if branch is already in sync with main
+          if git diff --quiet origin/main...HEAD; then
+            echo "${{ matrix.branch }} is already in sync with main"
+          else
+            git reset --hard origin/main
+            git push origin $BRANCH --force
+            echo "Successfully synced ${{ matrix.branch }} with main"
+          fi
+
