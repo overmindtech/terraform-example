@@ -51,10 +51,14 @@ jobs:
           else
             git checkout -B $BRANCH origin/main
           fi
-          # Check if branch is already in sync with main
-          if git diff --quiet origin/main...HEAD; then
-            echo "${{ matrix.branch }} is already in sync with main"
+          # Check if branch commit differs from main
+          BRANCH_COMMIT=$(git rev-parse HEAD)
+          MAIN_COMMIT=$(git rev-parse origin/main)
+          if [ "$BRANCH_COMMIT" = "$MAIN_COMMIT" ]; then
+            echo "${{ matrix.branch }} is already in sync with main (both at $MAIN_COMMIT)"
           else
+            echo "${{ matrix.branch }} is at $BRANCH_COMMIT, main is at $MAIN_COMMIT"
+            echo "Resetting ${{ matrix.branch }} to match main..."
             git reset --hard origin/main
             git push origin $BRANCH --force
             echo "Successfully synced ${{ matrix.branch }} with main"
