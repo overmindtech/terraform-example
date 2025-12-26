@@ -37,7 +37,7 @@ jobs:
 
       - name: Fetch all branches
         run: |
-          git fetch origin --all
+          git fetch origin
 
       - name: Sync branch with main
         env:
