@@ -18,7 +18,7 @@ jobs:
 
   policy-checks:
     runs-on: ubuntu-latest
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && github.event.pull_request.base.ref == 'main'
     needs: execute
     permissions:
       contents: read
@@ -51,6 +51,7 @@ jobs:
 
   execute:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.base.ref == 'main'
     outputs:
       run-url: ${{ steps.submit-plan.outputs.run-url }}
     permissions:
@@ -139,7 +140,7 @@ jobs:
 
   cost-analysis:
     runs-on: ubuntu-latest
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && github.event.pull_request.base.ref == 'main'
     permissions:
       contents: read
       id-token: write
@@ -168,7 +169,7 @@ jobs:
 
   auto-approval:
     runs-on: ubuntu-latest
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && github.event.pull_request.base.ref == 'main'
     needs: execute
     permissions:
       pull-requests: write
