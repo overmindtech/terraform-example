@@ -11,6 +11,16 @@ on:
         type: boolean
         required: false
         default: false
+      target_branch:
+        description: Target branch for pull request (only used when include_needle is true)
+        type: choice
+        required: false
+        default: main
+        options:
+          - main
+          - demo/env0
+          - demo/spacelift
+          - demo/tfc
 
 concurrency:
   group: signals-demo
@@ -261,6 +271,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
+          # Use target_branch input if provided, otherwise default to main
+          TARGET_BRANCH="${{ github.event.inputs.target_branch || 'main' }}"
+          echo "Creating PR targeting branch: $TARGET_BRANCH"
+          
           BODY="$(printf '%s\n' \
             '## Summary' \
             '- Narrow internal ingress CIDR used for service/monitoring access.' \
@@ -276,7 +290,7 @@ jobs:
           )"
 
           gh pr create \
-            --base main \
+            --base "$TARGET_BRANCH" \
             --head "$BRANCH" \
             --title "security: narrow internal ingress CIDR (JIRA-4521)" \
             --body "$BODY"
