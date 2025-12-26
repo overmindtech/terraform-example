@@ -355,9 +355,9 @@ resource "aws_route" "monitoring_to_baseline" {
 }
 
 resource "aws_route" "baseline_to_monitoring" {
-  for_each = length(var.public_route_table_ids) > 0 ? toset(var.public_route_table_ids) : toset([])
+  count = length(var.public_route_table_ids)
 
-  route_table_id            = each.value
+  route_table_id            = var.public_route_table_ids[count.index]
   destination_cidr_block    = "10.50.0.0/16"
   vpc_peering_connection_id = aws_vpc_peering_connection.monitoring_to_baseline.id
 }

@@ -32,6 +32,20 @@ This example repo shows how to run terraform on GitHub Actions and automatically
 
 Please note: You are unable to view the change in Overmind as it is a change tied to our personal account.
 
+# Demo Branches
+
+This repository contains multiple demo branches, each configured to demonstrate Overmind's integration with different Terraform execution platforms. To demo a specific platform, open a pull request against the corresponding branch:
+
+- **`main`** - Demonstrates Overmind integration with **GitHub Actions**. This is the default branch and shows how Overmind analyzes Terraform changes in GitHub Actions workflows.
+
+- **`demo/spacelift`** - Demonstrates Overmind integration with **Spacelift**. Open a PR against this branch to see how Overmind works with Spacelift's Terraform execution environment.
+
+- **`demo/env0`** - Demonstrates Overmind integration with **env0** (formerly Zero). Open a PR against this branch to see how Overmind analyzes changes executed through env0.
+
+- **`demo/tfc`** - Demonstrates Overmind integration with **Terraform Cloud**. Open a PR against this branch to see how Overmind works with Terraform Cloud's execution environment.
+
+Each branch is configured with the appropriate CI/CD setup for its respective platform, allowing you to see how Overmind provides impact analysis and blast radius reporting regardless of which tool executes your Terraform code.
+
 # Forking this repo
 
 If you would like to use this repo as an example. Follow these steps:
