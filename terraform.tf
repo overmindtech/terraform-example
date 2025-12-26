@@ -58,25 +58,6 @@ resource "aws_iam_role" "deploy_role" {
   description          = "This is the role used by terraform running on github actions or Terraform Cloud to deploy."
   max_session_duration = 3600
 
-  inline_policy {
-    // this is required if any part of the deployment accesses public ECR resources
-    name = "AllowPublicECR"
-
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [
-        {
-          Action = [
-            "ecr-public:GetAuthorizationToken",
-            "sts:GetServiceBearerToken"
-          ]
-          Effect   = "Allow"
-          Resource = "*"
-        },
-      ]
-    })
-  }
-  managed_policy_arns = [aws_iam_policy.state_access.arn, "arn:aws:iam::aws:policy/AdministratorAccess"]
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     # Ensure that there is a valid federated principal, even on the non-default environments
@@ -165,6 +146,46 @@ resource "aws_iam_role" "deploy_role" {
 }
 
 # these permissions called out separately for hosting tfstate in a separate locked down account
+# Inline policy for public ECR access (moved from deprecated inline_policy block)
+resource "aws_iam_role_policy" "allow_public_ecr" {
+  name = "AllowPublicECR"
+  role = aws_iam_role.deploy_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ecr-public:GetAuthorizationToken",
+          "sts:GetServiceBearerToken"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+# Managed policy attachments (moved from deprecated managed_policy_arns)
+resource "aws_iam_role_policy_attachment" "state_access" {
+  role       = aws_iam_role.deploy_role.name
+  policy_arn = aws_iam_policy.state_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "administrator_access" {
+  role       = aws_iam_role.deploy_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+# Ensure Terraform exclusively manages all managed policy attachments
+resource "aws_iam_role_policy_attachments_exclusive" "deploy_role" {
+  role_name = aws_iam_role.deploy_role.name
+  policy_arns = [
+    aws_iam_policy.state_access.arn,
+    "arn:aws:iam::aws:policy/AdministratorAccess"
+  ]
+}
+
 resource "aws_iam_policy" "state_access" {
   name        = "TerraformStateAccess-${var.example_env}"
   path        = "/"
