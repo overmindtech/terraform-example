@@ -35,5 +35,5 @@ data "aws_ami" "amazon_linux_2023" {
 locals {
   subnet_ids_to_use = length(var.subnet_ids) > 0 ? var.subnet_ids : (length(data.aws_subnets.selected) > 0 ? data.aws_subnets.selected[0].ids : [])
   # Always use ARM64 AMI for t4g.nano instance type, ignoring provided AMI
-  ami_id_to_use     = data.aws_ami.amazon_linux_2023.id
+  ami_id_to_use = data.aws_ami.amazon_linux_2023.id
 }

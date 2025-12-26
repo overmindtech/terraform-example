@@ -139,13 +139,87 @@ module "api_access" {
   source = "./modules/signals-demo"
 
   # Reuse shared infrastructure from baseline module
-  vpc_id     = module.baseline.vpc_id
-  subnet_ids = module.baseline.public_subnets
-  ami_id     = module.baseline.ami_id
+  vpc_id                 = module.baseline.vpc_id
+  subnet_ids             = module.baseline.public_subnets
+  ami_id                 = module.baseline.ami_id
+  public_route_table_ids = module.baseline.public_route_table_ids
+  example_env            = var.example_env
 
   # Customer CIDRs and other configuration
   customer_cidrs = local.api_customer_cidrs
   internal_cidr  = local.api_internal_cidr
   domain         = local.api_domain
   alert_email    = local.api_alert_email
+}
+
+# ------------------------------------------------------------------------------
+# State migration: moved blocks for resources moved from root to signals-demo module
+# ------------------------------------------------------------------------------
+
+moved {
+  from = aws_vpc.monitoring[0]
+  to   = module.api_access[0].aws_vpc.monitoring
+}
+
+moved {
+  from = aws_subnet.monitoring_a[0]
+  to   = module.api_access[0].aws_subnet.monitoring_a
+}
+
+moved {
+  from = aws_subnet.monitoring_b[0]
+  to   = module.api_access[0].aws_subnet.monitoring_b
+}
+
+moved {
+  from = aws_route_table.monitoring[0]
+  to   = module.api_access[0].aws_route_table.monitoring
+}
+
+moved {
+  from = aws_route_table_association.monitoring_a[0]
+  to   = module.api_access[0].aws_route_table_association.monitoring_a
+}
+
+moved {
+  from = aws_route_table_association.monitoring_b[0]
+  to   = module.api_access[0].aws_route_table_association.monitoring_b
+}
+
+moved {
+  from = aws_vpc_peering_connection.monitoring_to_baseline[0]
+  to   = module.api_access[0].aws_vpc_peering_connection.monitoring_to_baseline
+}
+
+moved {
+  from = aws_route.monitoring_to_baseline[0]
+  to   = module.api_access[0].aws_route.monitoring_to_baseline
+}
+
+# For for_each resources, Terraform will automatically match keys
+# This moved block handles the for_each route resource
+# Note: The exact route table ID key will be preserved automatically
+moved {
+  from = aws_route.baseline_to_monitoring
+  to   = module.api_access[0].aws_route.baseline_to_monitoring
+}
+
+moved {
+  from = aws_lb.monitoring_internal[0]
+  to   = module.api_access[0].aws_lb.monitoring_internal
+}
+
+moved {
+  from = aws_lb_target_group.api_health[0]
+  to   = module.api_access[0].aws_lb_target_group.api_health
+}
+
+moved {
+  from = aws_lb_listener.monitoring_internal_9090[0]
+  to   = module.api_access[0].aws_lb_listener.monitoring_internal_9090
+}
+
+moved {
+  from = aws_lb_target_group_attachment.api_server_ip[0]
+  to   = module.api_access[0].aws_lb_target_group_attachment.api_server_ip
 }

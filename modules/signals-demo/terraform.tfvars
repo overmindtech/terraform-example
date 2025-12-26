@@ -25,5 +25,5 @@ customer_cidrs = {
 # The "needle" scenario changes this to 10.0.0.0/16 (baseline VPC CIDR)
 internal_cidr = "10.0.0.0/8"
 
-domain = "signals-demo-test.demo"
+domain      = "signals-demo-test.demo"
 alert_email = "alerts@example.com"

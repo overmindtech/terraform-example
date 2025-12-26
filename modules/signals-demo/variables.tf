@@ -63,3 +63,14 @@ variable "ami_id" {
   type        = string
   default     = null
 }
+
+variable "example_env" {
+  description = "Environment name for resource tagging"
+  type        = string
+}
+
+variable "public_route_table_ids" {
+  description = "Public route table IDs from baseline module (for VPC peering routes)"
+  type        = list(string)
+  default     = []
+}

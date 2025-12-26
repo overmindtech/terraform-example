@@ -47,3 +47,29 @@ output "route53_nameservers" {
   description = "Nameservers for the Route 53 zone (configure at registrar)"
   value       = aws_route53_zone.api.name_servers
 }
+
+# Monitoring VPC outputs (the "needle in the haystack")
+output "monitoring_vpc_id" {
+  description = "ID of the peered monitoring/shared-services VPC"
+  value       = aws_vpc.monitoring.id
+}
+
+output "vpc_peering_connection_id" {
+  description = "VPC peering connection ID between baseline and monitoring VPC"
+  value       = aws_vpc_peering_connection.monitoring_to_baseline.id
+}
+
+output "monitoring_nlb_arn" {
+  description = "ARN of the internal NLB in the monitoring VPC"
+  value       = aws_lb.monitoring_internal.arn
+}
+
+output "monitoring_nlb_dns_name" {
+  description = "DNS name of the internal NLB in the monitoring VPC"
+  value       = aws_lb.monitoring_internal.dns_name
+}
+
+output "monitoring_target_group_arn" {
+  description = "Target group ARN used to health-check the API instance from the monitoring VPC"
+  value       = aws_lb_target_group.api_health.arn
+}
