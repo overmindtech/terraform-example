@@ -153,7 +153,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
 resource "aws_cloudwatch_log_group" "scale_test" {
   count = local.regional_count.log_groups
 
-  name              = "/ovm-scale/${var.region}/test-${count.index + 1}"
+  name              = "/ovm-scale/${var.region}/${var.unique_suffix}/test-${count.index + 1}"
   retention_in_days = 1 # Minimal retention for cost savings
 
   tags = merge(var.common_tags, {

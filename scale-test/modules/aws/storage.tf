@@ -128,7 +128,7 @@ resource "aws_s3_bucket_policy" "scale_test" {
 resource "aws_ssm_parameter" "scale_test" {
   count = local.regional_count.ssm_parameters
 
-  name        = "/ovm-scale/${var.region}/param-${count.index + 1}"
+  name        = "/ovm-scale/${var.region}/${var.unique_suffix}/param-${count.index + 1}"
   description = "Scale test parameter ${count.index + 1}"
   type        = "String"
   value = jsonencode({
@@ -156,7 +156,7 @@ resource "aws_ssm_parameter" "scale_test" {
 resource "aws_ssm_parameter" "secure" {
   count = ceil(local.regional_count.ssm_parameters / 5) # 1 secure param per 5 regular
 
-  name        = "/ovm-scale/${var.region}/secure-${count.index + 1}"
+  name        = "/ovm-scale/${var.region}/${var.unique_suffix}/secure-${count.index + 1}"
   description = "Scale test secure parameter ${count.index + 1}"
   type        = "SecureString"
   value       = "scale-test-secret-${count.index + 1}-${var.unique_suffix}"
