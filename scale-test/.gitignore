@@ -1,0 +1,25 @@
+# Terraform working files
+.terraform/
+# Note: .terraform.lock.hcl is committed (best practice for reproducible builds)
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+tfplan.json
+crash.log
+crash.*.log
+
+# Generated files
+*.zip
+lambda_dummy.zip
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
