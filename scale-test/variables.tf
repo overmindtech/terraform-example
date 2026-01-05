@@ -113,8 +113,8 @@ variable "gce_machine_type" {
 
 variable "ebs_volume_size" {
   type        = number
-  default     = 4
-  description = "EBS volume size in GB (minimum viable for cost control)"
+  default     = 30
+  description = "EBS volume size in GB (minimum 30GB for Amazon Linux 2023)"
 }
 
 # -----------------------------------------------------------------------------

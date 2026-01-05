@@ -23,9 +23,9 @@ resource "aws_instance" "scale_test" {
     aws_security_group.shared[count.index % length(aws_security_group.shared)].id
   ]
 
-  # Minimal EBS volume
+  # EBS volume (minimum 30GB required for Amazon Linux 2023)
   root_block_device {
-    volume_size           = var.ebs_volume_size
+    volume_size           = max(var.ebs_volume_size, 30)
     volume_type           = "gp3"
     delete_on_termination = true
     encrypted             = true
