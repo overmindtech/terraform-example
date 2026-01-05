@@ -130,16 +130,7 @@ jobs:
           overmind-api-key: ${{ secrets.OVM_API_KEY }}
           infracost-api-key: ${{ secrets.INFRACOST_API_KEY }}
           terraform-plan-json: ${{ env.WORKING_DIR }}/tfplan.json
-
-      - name: Policy Checks
-        uses: overmindtech/policy-signals-action@v1
-        continue-on-error: true
-        if: ${{ inputs.action == 'plan' || inputs.action == 'apply' }}
-        with:
-          policies-path: './policies'
-          terraform-plan-json: ${{ env.WORKING_DIR }}/tfplan.json
-          overmind-api-key: ${{ secrets.OVM_API_KEY }}
-          ticket-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ticket-link: ${{ steps.submit-plan.outputs.change-url }}
 
       - name: Start Overmind Change
         uses: overmindtech/actions/start-change@main
