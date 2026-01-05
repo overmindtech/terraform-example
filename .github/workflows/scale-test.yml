@@ -1,0 +1,175 @@
+name: Scale Test Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+      scale_multiplier:
+        description: 'Resource multiplier (1=100, 10=1000, 100=10000 resources)'
+        required: true
+        type: choice
+        default: '1'
+        options:
+          - '1'
+          - '10'
+          - '100'
+      confirmation:
+        description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
+        required: false
+        type: string
+
+env:
+  TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier }}
+  WORKING_DIR: scale-test
+
+jobs:
+  validate:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate destroy confirmation
+        if: ${{ inputs.action == 'destroy' }}
+        run: |
+          if [ "${{ inputs.confirmation }}" != "DESTROY-SCALE-TEST" ]; then
+            echo "::error::Destroy requires confirmation. Type 'DESTROY-SCALE-TEST' in the confirmation field."
+            exit 1
+          fi
+          echo "Destroy confirmation validated"
+
+  terraform:
+    name: Terraform ${{ inputs.action }} (×${{ inputs.scale_multiplier }})
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    concurrency:
+      group: scale-test-tfstate
+      cancel-in-progress: false
+
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Terraform Init
+        id: init
+        run: |
+          terraform version
+          terraform init -input=false
+
+      - name: Terraform Plan
+        id: plan
+        if: ${{ inputs.action == 'plan' || inputs.action == 'apply' }}
+        run: |
+          set -o pipefail
+          echo "Planning with scale_multiplier=${{ inputs.scale_multiplier }}"
+          terraform plan \
+            -compact-warnings \
+            -no-color \
+            -input=false \
+            -lock-timeout=5m \
+            -out=tfplan 2>&1 | tee terraform_plan.log
+          
+          # Generate JSON plan for Overmind
+          terraform show -json tfplan > tfplan.json
+          
+          # Output summary
+          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Scale Multiplier:** ${{ inputs.scale_multiplier }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action:** ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Resource Changes" >> $GITHUB_STEP_SUMMARY
+          terraform show -no-color tfplan | grep -E "^(Plan:|No changes)" >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Install Overmind CLI
+        uses: overmindtech/actions/install-cli@main
+        continue-on-error: true
+        with:
+          version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Submit Plan to Overmind
+        uses: overmindtech/actions/submit-plan@main
+        continue-on-error: true
+        id: submit-plan
+        if: ${{ inputs.action == 'plan' || inputs.action == 'apply' }}
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+          plan-json: ${{ env.WORKING_DIR }}/tfplan.json
+
+      - name: Start Overmind Change
+        uses: overmindtech/actions/start-change@main
+        continue-on-error: true
+        if: ${{ inputs.action == 'apply' }}
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+      - name: Terraform Apply
+        id: apply
+        if: ${{ inputs.action == 'apply' }}
+        run: |
+          echo "Applying scale test infrastructure (×${{ inputs.scale_multiplier }})"
+          terraform apply \
+            -auto-approve \
+            -no-color \
+            -input=false \
+            -lock-timeout=5m \
+            tfplan
+          
+          echo "## Apply Complete" >> $GITHUB_STEP_SUMMARY
+          echo "Scale test infrastructure deployed with multiplier ×${{ inputs.scale_multiplier }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: End Overmind Change
+        uses: overmindtech/actions/end-change@main
+        continue-on-error: true
+        if: ${{ (inputs.action == 'apply') && (success() || failure() || cancelled()) }}
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+      - name: Terraform Destroy
+        id: destroy
+        if: ${{ inputs.action == 'destroy' }}
+        run: |
+          echo "::warning::Destroying scale test infrastructure (×${{ inputs.scale_multiplier }})"
+          terraform destroy \
+            -auto-approve \
+            -no-color \
+            -input=false \
+            -lock-timeout=10m
+          
+          echo "## Destroy Complete" >> $GITHUB_STEP_SUMMARY
+          echo "Scale test infrastructure destroyed" >> $GITHUB_STEP_SUMMARY
+
+      - name: Output Terraform Summary
+        if: always()
+        run: |
+          echo ""
+          echo "=== Scale Test Summary ==="
+          echo "Action: ${{ inputs.action }}"
+          echo "Multiplier: ${{ inputs.scale_multiplier }}"
+          echo "Status: ${{ job.status }}"
+
