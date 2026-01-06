@@ -32,6 +32,16 @@ output "security_group_ids" {
   value       = aws_security_group.shared[*].id
 }
 
+output "public_route_table_id" {
+  description = "ID of public route table (for VPC peering routes)"
+  value       = aws_route_table.public.id
+}
+
+output "private_route_table_id" {
+  description = "ID of private route table (for VPC peering routes)"
+  value       = aws_route_table.private.id
+}
+
 # -----------------------------------------------------------------------------
 # Compute Outputs
 # -----------------------------------------------------------------------------

@@ -34,6 +34,7 @@ terraform destroy -var="scale_multiplier=1"
 | Scenario | Category | Severity | Blast Radius at 1x | at 10x | at 100x |
 |----------|----------|----------|-------------------|--------|---------|
 | `shared_sg_open` | Security | Critical | ~38 items | ~169 items | **~1500+ items** |
+| `vpc_peering_change` | Network | Medium | ~400+ items | **~800+ items** | **~4000+ items** |
 
 ---
 
@@ -146,6 +147,47 @@ HIGH FAN-OUT ARCHITECTURE:
 | 1x | 4 | 87 | 38 ✅ |
 | 10x | 40 | 492 | 169 ✅ |
 | 100x | 400 | ~5000 | **~1500+** |
+
+---
+
+### `vpc_peering_change` - Modify VPC Peering DNS Settings
+
+| Attribute | Value |
+|-----------|-------|
+| **Category** | Network |
+| **Severity** | Medium |
+| **Reversible** | ✅ Yes |
+| **Change** | Enables DNS resolution on VPC peering between us-east-1 and us-west-2 |
+
+**Why High Blast Radius:** VPC peering connects TWO entire VPCs. Modifying a peering connection affects:
+- All EC2 instances in both VPCs
+- All ENIs, subnets, route tables
+- All security groups and their attached resources
+- All Lambda functions, S3 endpoints, etc.
+
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    VPC PEERING MESH (Full Mesh)                      │
+│                                                                      │
+│  us-east-1 ←──────────────→ us-west-2                               │
+│      ↕                           ↕                                   │
+│      ↕                           ↕                                   │
+│  eu-west-1 ←──────────────→ ap-southeast-1                          │
+│                                                                      │
+│  Each peering connects ~435 resources (at 10x) in each region        │
+│  Modifying one peering → affects 870 resources across 2 VPCs         │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Expected Blast Radius:**
+
+| Multiplier | Resources per VPC | VPCs Affected | Total Items |
+|------------|-------------------|---------------|-------------|
+| 1x | ~100 | 2 | ~400+ |
+| 10x | ~435 | 2 | **~800+** |
+| 100x | ~2000 | 2 | **~4000+** |
 
 ---
 
