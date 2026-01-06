@@ -155,7 +155,9 @@ variable "scenario" {
     
     High fan-out scenarios (large blast radius):
     - shared_sg_open      : Open SSH on SHARED security group (affects all EC2)
-    - vpc_peering_change  : Modify VPC peering (affects all resources in 2 VPCs)
+    - vpc_peering_change  : Modify ALL VPC peerings (affects all 4 VPCs)
+    - central_sns_change  : Modify central SNS policy (affects all SQS queues)
+    - central_s3_change   : Modify central S3 policy (affects all Lambdas)
   EOT
 
   validation {
@@ -166,7 +168,9 @@ variable "scenario" {
       "ec2_downgrade",
       "lambda_timeout",
       "shared_sg_open",
-      "vpc_peering_change"
+      "vpc_peering_change",
+      "central_sns_change",
+      "central_s3_change"
     ], var.scenario)
     error_message = "Invalid scenario. See variable description for valid options."
   }

@@ -118,6 +118,9 @@ resource "aws_lambda_function" "scale_test" {
       SNS_TOPIC_ARN = aws_sns_topic.scale_test[count.index % length(aws_sns_topic.scale_test)].arn
       # Reference to SQS queue (creates cross-service edge)
       SQS_QUEUE_URL = aws_sqs_queue.scale_test[count.index % length(aws_sqs_queue.scale_test)].url
+      # CENTRAL RESOURCES: Cross-region references for maximum blast radius
+      CENTRAL_BUCKET    = var.central_bucket_name
+      CENTRAL_SNS_TOPIC = var.central_sns_topic_arn
     }
   }
 

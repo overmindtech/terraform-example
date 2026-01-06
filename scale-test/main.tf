@@ -124,6 +124,10 @@ module "aws_us_east_1" {
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
   lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
+
+  # Central resources for cross-region connectivity
+  central_bucket_name   = "ovm-scale-central-${local.unique_suffix}"
+  central_sns_topic_arn = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:ovm-scale-central-topic-${local.unique_suffix}"
 }
 
 module "aws_us_west_2" {
@@ -146,6 +150,10 @@ module "aws_us_west_2" {
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
   lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
+
+  # Central resources for cross-region connectivity
+  central_bucket_name   = "ovm-scale-central-${local.unique_suffix}"
+  central_sns_topic_arn = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:ovm-scale-central-topic-${local.unique_suffix}"
 }
 
 module "aws_eu_west_1" {
@@ -168,6 +176,10 @@ module "aws_eu_west_1" {
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
   lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
+
+  # Central resources for cross-region connectivity
+  central_bucket_name   = "ovm-scale-central-${local.unique_suffix}"
+  central_sns_topic_arn = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:ovm-scale-central-topic-${local.unique_suffix}"
 }
 
 module "aws_ap_southeast_1" {
@@ -190,6 +202,10 @@ module "aws_ap_southeast_1" {
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
   lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
+
+  # Central resources for cross-region connectivity
+  central_bucket_name   = "ovm-scale-central-${local.unique_suffix}"
+  central_sns_topic_arn = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:ovm-scale-central-topic-${local.unique_suffix}"
 }
 
 # -----------------------------------------------------------------------------

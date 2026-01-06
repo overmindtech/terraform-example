@@ -69,3 +69,15 @@ variable "lambda_timeout" {
   description = "Lambda timeout in seconds"
 }
 
+variable "central_bucket_name" {
+  type        = string
+  default     = ""
+  description = "Name of central S3 bucket (creates cross-region reference)"
+}
+
+variable "central_sns_topic_arn" {
+  type        = string
+  default     = ""
+  description = "ARN of central SNS topic (creates cross-region reference)"
+}
+

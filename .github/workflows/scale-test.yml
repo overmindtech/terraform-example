@@ -35,6 +35,8 @@ on:
           - 'lambda_timeout'
           - 'shared_sg_open'
           - 'vpc_peering_change'
+          - 'central_sns_change'
+          - 'central_s3_change'
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false
