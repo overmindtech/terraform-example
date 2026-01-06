@@ -5,69 +5,66 @@ This directory contains test scenarios that modify infrastructure to trigger spe
 ## Quick Start
 
 ```bash
-# Apply base infrastructure (no scenario)
-terraform apply -var="scale_multiplier=1"
-
-# Apply with a scenario to trigger risks
-terraform apply -var="scale_multiplier=1" -var="scenario=sg_open_ssh"
-
-# Reset to baseline (remove scenario)
+# Step 1: Apply base infrastructure (no scenario)
 terraform apply -var="scale_multiplier=1" -var="scenario=none"
+
+# Step 2: Run plan with scenario (tests risk detection)
+terraform plan -var="scale_multiplier=1" -var="scenario=sg_open_ssh"
+
+# Step 3: Try different scenarios
+terraform plan -var="scale_multiplier=1" -var="scenario=shared_sg_open"
+
+# Step 4: Destroy when done
+terraform destroy -var="scale_multiplier=1"
 ```
 
-## Scenario Reference
+## Scenario Categories
 
-### Security Scenarios
+### Standard Scenarios (Low-Medium Blast Radius)
 
-#### `sg_open_ssh` - Open SSH to the Internet
+| Scenario | Category | Severity | Blast Radius at 1x |
+|----------|----------|----------|-------------------|
+| `sg_open_ssh` | Security | High | ~20-30 items |
+| `sg_open_all` | Security | Critical | ~20-30 items |
+| `ec2_downgrade` | Performance | Medium | ~20 items |
+| `lambda_timeout` | Reliability | Medium | ~30 items |
+
+### High Fan-Out Scenarios (Large Blast Radius) 🔥
+
+| Scenario | Category | Severity | Blast Radius at 1x | at 10x | at 100x |
+|----------|----------|----------|-------------------|--------|---------|
+| `shared_sg_open` | Security | Critical | ~50 items | ~300 items | **~1500+ items** |
+| `shared_iam_admin` | IAM | Critical | ~40 items | ~250 items | **~1200+ items** |
+
+---
+
+## Standard Scenarios
+
+### `sg_open_ssh` - Open SSH to Internet
 
 | Attribute | Value |
 |-----------|-------|
 | **Category** | Security |
 | **Severity** | High |
 | **Reversible** | ✅ Yes |
-| **Change** | Adds ingress rule allowing port 22 from 0.0.0.0/0 to shared security groups |
+| **Change** | Adds SSH (port 22) ingress rule from 0.0.0.0/0 to individual security groups |
 
-**Expected Risks:**
-- Security exposure: SSH open to internet
-- Blast radius: All EC2 instances in affected security groups
-
-**Expected Blast Radius by Multiplier:**
-
-| Multiplier | Security Groups Affected | EC2 Instances Affected | Total Resources in Blast |
-|------------|-------------------------|------------------------|-------------------------|
-| 1 | 4 (1 per region) | 4 | ~20 |
-| 10 | 4 | 40 | ~200 |
-| 100 | 4 | 400 | ~2,000 |
+**Why Low Blast Radius:** Modifies individual SGs that each have ~1-2 EC2 instances attached.
 
 ---
 
-#### `sg_open_all` - Open All Ports to the Internet
+### `sg_open_all` - Open All Ports to Internet
 
 | Attribute | Value |
 |-----------|-------|
 | **Category** | Security |
 | **Severity** | Critical |
 | **Reversible** | ✅ Yes |
-| **Change** | Adds ingress rule allowing all ports (0-65535) from 0.0.0.0/0 |
-
-**Expected Risks:**
-- Critical security exposure: All ports open to internet
-- Blast radius: All EC2 instances in affected security groups
-
-**Expected Blast Radius by Multiplier:**
-
-| Multiplier | Security Groups Affected | EC2 Instances Affected | Total Resources in Blast |
-|------------|-------------------------|------------------------|-------------------------|
-| 1 | 4 (1 per region) | 4 | ~20 |
-| 10 | 4 | 40 | ~200 |
-| 100 | 4 | 400 | ~2,000 |
+| **Change** | Adds all ports (0-65535) ingress rule from 0.0.0.0/0 |
 
 ---
 
-### Compute Scenarios
-
-#### `ec2_downgrade` - Downgrade Instance Type
+### `ec2_downgrade` - Downgrade Instance Type
 
 | Attribute | Value |
 |-----------|-------|
@@ -76,68 +73,103 @@ terraform apply -var="scale_multiplier=1" -var="scenario=none"
 | **Reversible** | ✅ Yes |
 | **Change** | Changes EC2 instance type from `t3.micro` to `t3.nano` |
 
-**Expected Risks:**
-- Performance degradation: Reduced CPU/memory
-- Capacity risk: May not handle expected load
-
-**Expected Blast Radius by Multiplier:**
-
-| Multiplier | EC2 Instances Modified | Memory Reduction | vCPU Change |
-|------------|------------------------|------------------|-------------|
-| 1 | 4 | 1GB → 0.5GB | 2 → 2 |
-| 10 | 40 | 1GB → 0.5GB | 2 → 2 |
-| 100 | 400 | 1GB → 0.5GB | 2 → 2 |
-
 ---
 
-### IAM Scenarios
-
-#### `iam_broadening` - Overly Permissive IAM Policy
-
-| Attribute | Value |
-|-----------|-------|
-| **Category** | Security / IAM |
-| **Severity** | Critical |
-| **Reversible** | ✅ Yes |
-| **Change** | Adds `*:*` (all actions on all resources) to Lambda execution role policies |
-
-**Expected Risks:**
-- Permission escalation: Roles can now do anything
-- Privilege creep: Violates least-privilege principle
-- Blast radius: All Lambdas using the affected roles
-
-**Expected Blast Radius by Multiplier:**
-
-| Multiplier | IAM Roles Affected | Lambda Functions Affected | Potential Actions Granted |
-|------------|-------------------|---------------------------|---------------------------|
-| 1 | 12 (3 per region) | 8 (2 per region) | All AWS actions |
-| 10 | 12 | 80 | All AWS actions |
-| 100 | 12 | 800 | All AWS actions |
-
----
-
-### Lambda Scenarios
-
-#### `lambda_timeout` - Reduce Lambda Timeout
+### `lambda_timeout` - Reduce Lambda Timeout
 
 | Attribute | Value |
 |-----------|-------|
 | **Category** | Reliability |
 | **Severity** | Medium |
 | **Reversible** | ✅ Yes |
-| **Change** | Reduces Lambda timeout from 30 seconds to 1 second |
+| **Change** | Reduces Lambda timeout from default to 1 second |
 
-**Expected Risks:**
-- Function failure risk: Functions may timeout before completing
-- Reliability degradation: Increased error rate expected
+---
 
-**Expected Blast Radius by Multiplier:**
+## High Fan-Out Scenarios 🔥
 
-| Multiplier | Lambda Functions Affected | Downstream Resources |
-|------------|---------------------------|---------------------|
-| 1 | 8 (2 per region) | SQS queues, SNS topics |
-| 10 | 80 | SQS queues, SNS topics |
-| 100 | 800 | SQS queues, SNS topics |
+These scenarios modify **shared resources** that many other resources depend on, creating large blast radii.
+
+### Architecture
+
+```
+HIGH FAN-OUT ARCHITECTURE:
+
+┌──────────────────────────────────────────────────────────┐
+│  SHARED SECURITY GROUP                                    │
+│  (aws_security_group.high_fanout)                        │
+│                                                          │
+│  Attached to ALL EC2 instances in the region             │
+│  At 100x: 200 EC2 instances per region                   │
+└──────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+   ┌────▼────┐         ┌────▼────┐         ┌────▼────┐
+   │  EC2-1  │         │  EC2-2  │   ...   │ EC2-200 │
+   │  + ENI  │         │  + ENI  │         │  + ENI  │
+   │  + EBS  │         │  + EBS  │         │  + EBS  │
+   └─────────┘         └─────────┘         └─────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  SHARED IAM ROLE                                          │
+│  (aws_iam_role.high_fanout_lambda)                       │
+│                                                          │
+│  Used by ALL Lambda functions in the region              │
+│  At 100x: 200 Lambda functions per region                │
+└──────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+   ┌────▼────┐         ┌────▼────┐         ┌────▼────┐
+   │Lambda-1 │         │Lambda-2 │   ...   │Lambda-200│
+   │  + Logs │         │  + Logs │         │  + Logs  │
+   └─────────┘         └─────────┘         └─────────┘
+```
+
+### `shared_sg_open` - Open SSH on Shared Security Group
+
+| Attribute | Value |
+|-----------|-------|
+| **Category** | Security |
+| **Severity** | Critical |
+| **Reversible** | ✅ Yes |
+| **Change** | Adds SSH ingress from 0.0.0.0/0 to the **shared** security group |
+
+**Why High Blast Radius:** The shared SG is attached to ALL EC2 instances.
+
+**Expected Blast Radius:**
+
+| Multiplier | EC2 Instances | ENIs | EBS Volumes | Total Items |
+|------------|---------------|------|-------------|-------------|
+| 1x | 8 | 8 | 8 | ~50 |
+| 10x | 80 | 80 | 80 | ~300 |
+| 100x | 800 | 800 | 800 | **~1500+** |
+
+---
+
+### `shared_iam_admin` - Add Admin Policy to Shared Lambda Role
+
+| Attribute | Value |
+|-----------|-------|
+| **Category** | Security / IAM |
+| **Severity** | Critical |
+| **Reversible** | ✅ Yes |
+| **Change** | Attaches `*:*` admin policy to the **shared** Lambda execution role |
+
+**Why High Blast Radius:** The shared role is used by ALL Lambda functions.
+
+**Expected Blast Radius:**
+
+| Multiplier | Lambda Functions | CloudWatch Logs | Total Items |
+|------------|------------------|-----------------|-------------|
+| 1x | 8 | 8 | ~40 |
+| 10x | 80 | 80 | ~250 |
+| 100x | 800 | 800 | **~1200+** |
+
+**Note:** This scenario creates a new IAM policy, then attaches it to existing roles. The role attachment is what Overmind maps and analyzes.
 
 ---
 
@@ -155,15 +187,10 @@ For each scenario, validate that Overmind:
 - [ ] Relationship traversal works (e.g., SG → EC2 → EBS)
 - [ ] Count matches expected (see tables above)
 
-### Cost Signals (where applicable)
-- [ ] Cost delta is calculated
-- [ ] Direction is correct (increase/decrease)
-- [ ] Magnitude is reasonable
-
-### Performance (for high-resource scenarios)
+### Performance (for high fan-out scenarios)
 - [ ] Plan analysis completes in reasonable time
 - [ ] No timeouts at 10x or 100x multiplier
-- [ ] Adapter call count is proportional (not exponential)
+- [ ] Blast radius scales proportionally (not exponentially)
 
 ---
 
@@ -171,32 +198,19 @@ For each scenario, validate that Overmind:
 
 ```
 scale-test/
-├── SCENARIOS.md            # This file
-├── scenario_security.tf    # sg_open_ssh, sg_open_all
-├── scenario_compute.tf     # ec2_downgrade
-├── scenario_iam.tf         # iam_broadening
-└── scenario_lambda.tf      # lambda_timeout
+├── SCENARIOS.md              # This file
+├── scenario_security.tf      # sg_open_ssh, sg_open_all
+├── scenario_compute.tf       # ec2_downgrade (note in file)
+├── scenario_lambda.tf        # lambda_timeout (via module variable)
+└── scenario_high_fanout.tf   # shared_sg_open, shared_iam_admin
 ```
-
-Each scenario file uses conditional resources:
-
-```hcl
-resource "aws_security_group_rule" "scenario_open_ssh" {
-  count = var.scenario == "sg_open_ssh" ? 1 : 0
-  # ... risky configuration
-}
-```
-
-When `scenario = "none"` (default), no scenario resources are created.
 
 ---
 
-## Future Scenarios (Phase 2)
+## Removed Scenarios
 
-These require modifications to base infrastructure for relationship density:
-
-| Scenario | Requirement | Expected Fan-Out |
-|----------|-------------|------------------|
-| `shared_sg_change` | 1 SG → 50+ instances | High |
-| `shared_iam_role` | 1 role → 50+ consumers | High |
-| `shared_kms_key` | 1 key → 100+ encrypted resources | Very High |
+| Scenario | Reason |
+|----------|--------|
+| `iam_broadening` | Created new resources (ARN unknown), Overmind couldn't map |
+| `ec2_start_all` | Cost risk (~$3,000/month at 100x) |
+| `ec2_upgrade` | Cost risk (~$20,000/month at 100x) |

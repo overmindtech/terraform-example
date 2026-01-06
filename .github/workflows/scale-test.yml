@@ -30,8 +30,9 @@ on:
           - 'sg_open_ssh'
           - 'sg_open_all'
           - 'ec2_downgrade'
-          - 'iam_broadening'
           - 'lambda_timeout'
+          - 'shared_sg_open'
+          - 'shared_iam_admin'
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false

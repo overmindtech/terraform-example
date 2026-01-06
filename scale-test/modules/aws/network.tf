@@ -157,6 +157,42 @@ resource "aws_security_group" "shared" {
 }
 
 # -----------------------------------------------------------------------------
+# HIGH FAN-OUT: Shared Security Group (attached to ALL EC2 instances)
+# This creates relationship density for blast radius testing
+# Modifying this SG affects ALL instances in the region
+# -----------------------------------------------------------------------------
+
+resource "aws_security_group" "high_fanout" {
+  name        = "${local.name_prefix}-shared-sg"
+  description = "HIGH FAN-OUT: Shared SG attached to ALL EC2 instances for blast radius testing"
+  vpc_id      = aws_vpc.main.id
+
+  # Allow all outbound traffic
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+
+  # Allow inbound from VPC (baseline - safe)
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vpc_cidr]
+    description = "Allow all traffic from VPC (baseline)"
+  }
+
+  tags = merge(var.common_tags, {
+    Name     = "${local.name_prefix}-shared-sg"
+    Purpose  = "high-fanout-testing"
+    Warning  = "Attached to ALL EC2 instances"
+  })
+}
+
+# -----------------------------------------------------------------------------
 # VPC Endpoints (for AWS service access without NAT)
 # -----------------------------------------------------------------------------
 

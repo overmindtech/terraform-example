@@ -19,7 +19,9 @@ resource "aws_instance" "scale_test" {
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
   # Use shared security groups (creates relationship density)
+  # HIGH FAN-OUT: All instances attach to the shared high_fanout SG
   vpc_security_group_ids = [
+    aws_security_group.high_fanout.id,  # Shared SG for high fan-out testing
     aws_security_group.shared[count.index % length(aws_security_group.shared)].id
   ]
 
@@ -99,8 +101,9 @@ resource "aws_lambda_function" "scale_test" {
   handler          = "index.handler"
   runtime          = "nodejs20.x"
 
-  # Use shared IAM roles (creates relationship density)
-  role = aws_iam_role.lambda_execution[count.index % length(aws_iam_role.lambda_execution)].arn
+  # HIGH FAN-OUT: All Lambda functions use the shared role
+  # This creates relationship density for blast radius testing
+  role = aws_iam_role.high_fanout_lambda.arn
 
   memory_size = var.lambda_memory
   timeout     = var.lambda_timeout
@@ -124,8 +127,8 @@ resource "aws_lambda_function" "scale_test" {
   })
 
   depends_on = [
-    aws_iam_role_policy_attachment.lambda_basic,
-    aws_iam_role_policy_attachment.cross_service,
+    aws_iam_role_policy_attachment.high_fanout_lambda_basic,
+    aws_iam_role_policy_attachment.high_fanout_lambda_cross_service,
     aws_cloudwatch_log_group.lambda
   ]
 }

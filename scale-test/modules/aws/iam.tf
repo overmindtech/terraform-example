@@ -172,3 +172,44 @@ resource "aws_iam_role_policy_attachment" "ec2_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# -----------------------------------------------------------------------------
+# HIGH FAN-OUT: Shared Lambda Role (used by ALL Lambda functions)
+# This creates relationship density for blast radius testing
+# Modifying this role's policies affects ALL Lambda functions in the region
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role" "high_fanout_lambda" {
+  name = "${local.name_prefix}-shared-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = merge(var.common_tags, {
+    Name    = "${local.name_prefix}-shared-lambda-role"
+    Purpose = "high-fanout-testing"
+    Warning = "Used by ALL Lambda functions"
+  })
+}
+
+# Attach basic execution policy to shared role
+resource "aws_iam_role_policy_attachment" "high_fanout_lambda_basic" {
+  role       = aws_iam_role.high_fanout_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Attach cross-service policy to shared role (uses first policy)
+resource "aws_iam_role_policy_attachment" "high_fanout_lambda_cross_service" {
+  role       = aws_iam_role.high_fanout_lambda.name
+  policy_arn = aws_iam_policy.cross_service[0].arn
+}
+

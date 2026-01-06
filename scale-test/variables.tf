@@ -149,8 +149,11 @@ variable "scenario" {
     - sg_open_ssh       : Open SSH (port 22) to 0.0.0.0/0
     - sg_open_all       : Open all ports to 0.0.0.0/0
     - ec2_downgrade     : Downgrade EC2 instance type
-    - iam_broadening    : Add overly permissive IAM policy
     - lambda_timeout    : Reduce Lambda timeout drastically
+    
+    High fan-out scenarios (large blast radius):
+    - shared_sg_open    : Open SSH on SHARED security group (affects all EC2)
+    - shared_iam_admin  : Add admin policy to SHARED IAM role (affects all Lambda)
   EOT
 
   validation {
@@ -159,8 +162,9 @@ variable "scenario" {
       "sg_open_ssh",
       "sg_open_all",
       "ec2_downgrade",
-      "iam_broadening",
-      "lambda_timeout"
+      "lambda_timeout",
+      "shared_sg_open",
+      "shared_iam_admin"
     ], var.scenario)
     error_message = "Invalid scenario. See variable description for valid options."
   }
