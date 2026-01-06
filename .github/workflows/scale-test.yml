@@ -20,6 +20,18 @@ on:
           - '1'
           - '10'
           - '100'
+      scenario:
+        description: 'Test scenario (triggers specific risks in Overmind)'
+        required: false
+        type: choice
+        default: 'none'
+        options:
+          - 'none'
+          - 'sg_open_ssh'
+          - 'sg_open_all'
+          - 'ec2_downgrade'
+          - 'iam_broadening'
+          - 'lambda_timeout'
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false
@@ -27,6 +39,7 @@ on:
 
 env:
   TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier }}
+  TF_VAR_scenario: ${{ inputs.scenario }}
   WORKING_DIR: scale-test
 
 jobs:
@@ -44,7 +57,7 @@ jobs:
           echo "Destroy confirmation validated"
 
   terraform:
-    name: Terraform ${{ inputs.action }} (×${{ inputs.scale_multiplier }})
+    name: Terraform ${{ inputs.action }} (×${{ inputs.scale_multiplier }}, scenario=${{ inputs.scenario }})
     needs: validate
     runs-on: ubuntu-latest
     permissions:
@@ -86,7 +99,7 @@ jobs:
         if: ${{ inputs.action == 'plan' || inputs.action == 'apply' }}
         run: |
           set -o pipefail
-          echo "Planning with scale_multiplier=${{ inputs.scale_multiplier }}"
+          echo "Planning with scale_multiplier=${{ inputs.scale_multiplier }}, scenario=${{ inputs.scenario }}"
           terraform plan \
             -compact-warnings \
             -no-color \
@@ -100,6 +113,7 @@ jobs:
           # Output summary
           echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Scale Multiplier:** ${{ inputs.scale_multiplier }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Scenario:** ${{ inputs.scenario }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Action:** ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Resource Changes" >> $GITHUB_STEP_SUMMARY
@@ -183,5 +197,6 @@ jobs:
           echo "=== Scale Test Summary ==="
           echo "Action: ${{ inputs.action }}"
           echo "Multiplier: ${{ inputs.scale_multiplier }}"
+          echo "Scenario: ${{ inputs.scenario }}"
           echo "Status: ${{ job.status }}"
 
