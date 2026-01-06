@@ -32,7 +32,6 @@ on:
           - 'ec2_downgrade'
           - 'lambda_timeout'
           - 'shared_sg_open'
-          - 'shared_iam_admin'
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false

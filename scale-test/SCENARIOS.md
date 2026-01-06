@@ -33,8 +33,7 @@ terraform destroy -var="scale_multiplier=1"
 
 | Scenario | Category | Severity | Blast Radius at 1x | at 10x | at 100x |
 |----------|----------|----------|-------------------|--------|---------|
-| `shared_sg_open` | Security | Critical | ~50 items | ~300 items | **~1500+ items** |
-| `shared_iam_admin` | IAM | Critical | ~40 items | ~250 items | **~1200+ items** |
+| `shared_sg_open` | Security | Critical | ~38 items | ~169 items | **~1500+ items** |
 
 ---
 
@@ -140,36 +139,13 @@ HIGH FAN-OUT ARCHITECTURE:
 
 **Why High Blast Radius:** The shared SG is attached to ALL EC2 instances.
 
-**Expected Blast Radius:**
+**Expected Blast Radius (validated):**
 
-| Multiplier | EC2 Instances | ENIs | EBS Volumes | Total Items |
-|------------|---------------|------|-------------|-------------|
-| 1x | 8 | 8 | 8 | ~50 |
-| 10x | 80 | 80 | 80 | ~300 |
-| 100x | 800 | 800 | 800 | **~1500+** |
-
----
-
-### `shared_iam_admin` - Add Admin Policy to Shared Lambda Role
-
-| Attribute | Value |
-|-----------|-------|
-| **Category** | Security / IAM |
-| **Severity** | Critical |
-| **Reversible** | ✅ Yes |
-| **Change** | Attaches `*:*` admin policy to the **shared** Lambda execution role |
-
-**Why High Blast Radius:** The shared role is used by ALL Lambda functions.
-
-**Expected Blast Radius:**
-
-| Multiplier | Lambda Functions | CloudWatch Logs | Total Items |
-|------------|------------------|-----------------|-------------|
-| 1x | 8 | 8 | ~40 |
-| 10x | 80 | 80 | ~250 |
-| 100x | 800 | 800 | **~1200+** |
-
-**Note:** This scenario creates a new IAM policy, then attaches it to existing roles. The role attachment is what Overmind maps and analyzes.
+| Multiplier | EC2 Instances | Queries | Total Items |
+|------------|---------------|---------|-------------|
+| 1x | 4 | 87 | 38 ✅ |
+| 10x | 40 | 492 | 169 ✅ |
+| 100x | 400 | ~5000 | **~1500+** |
 
 ---
 
@@ -202,7 +178,7 @@ scale-test/
 ├── scenario_security.tf      # sg_open_ssh, sg_open_all
 ├── scenario_compute.tf       # ec2_downgrade (note in file)
 ├── scenario_lambda.tf        # lambda_timeout (via module variable)
-└── scenario_high_fanout.tf   # shared_sg_open, shared_iam_admin
+└── scenario_high_fanout.tf   # shared_sg_open
 ```
 
 ---
@@ -212,5 +188,6 @@ scale-test/
 | Scenario | Reason |
 |----------|--------|
 | `iam_broadening` | Created new resources (ARN unknown), Overmind couldn't map |
+| `shared_iam_admin` | Created new IAM policy (no ARN until apply), Overmind couldn't map |
 | `ec2_start_all` | Cost risk (~$3,000/month at 100x) |
 | `ec2_upgrade` | Cost risk (~$20,000/month at 100x) |

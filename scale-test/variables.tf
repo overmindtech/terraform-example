@@ -153,7 +153,6 @@ variable "scenario" {
     
     High fan-out scenarios (large blast radius):
     - shared_sg_open    : Open SSH on SHARED security group (affects all EC2)
-    - shared_iam_admin  : Add admin policy to SHARED IAM role (affects all Lambda)
   EOT
 
   validation {
@@ -163,8 +162,7 @@ variable "scenario" {
       "sg_open_all",
       "ec2_downgrade",
       "lambda_timeout",
-      "shared_sg_open",
-      "shared_iam_admin"
+      "shared_sg_open"
     ], var.scenario)
     error_message = "Invalid scenario. See variable description for valid options."
   }
