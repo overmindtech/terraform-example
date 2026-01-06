@@ -56,7 +56,7 @@ resource "aws_sns_topic_policy" "central" {
 
 # us-east-1 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_us_east_1" {
-  count    = local.count.sqs_queues
+  count    = length(module.aws_us_east_1.sqs_queue_arns)
   provider = aws.us_east_1
 
   topic_arn = aws_sns_topic.central.arn
@@ -68,7 +68,7 @@ resource "aws_sns_topic_subscription" "central_to_us_east_1" {
 
 # us-west-2 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_us_west_2" {
-  count    = local.count.sqs_queues
+  count    = length(module.aws_us_west_2.sqs_queue_arns)
   provider = aws.us_east_1  # Subscription created in SNS region
 
   topic_arn = aws_sns_topic.central.arn
@@ -80,7 +80,7 @@ resource "aws_sns_topic_subscription" "central_to_us_west_2" {
 
 # eu-west-1 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_eu_west_1" {
-  count    = local.count.sqs_queues
+  count    = length(module.aws_eu_west_1.sqs_queue_arns)
   provider = aws.us_east_1
 
   topic_arn = aws_sns_topic.central.arn
@@ -92,7 +92,7 @@ resource "aws_sns_topic_subscription" "central_to_eu_west_1" {
 
 # ap-southeast-1 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_ap_southeast_1" {
-  count    = local.count.sqs_queues
+  count    = length(module.aws_ap_southeast_1.sqs_queue_arns)
   provider = aws.us_east_1
 
   topic_arn = aws_sns_topic.central.arn
