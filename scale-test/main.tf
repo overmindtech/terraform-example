@@ -77,10 +77,9 @@ locals {
   # These locals modify infrastructure based on the selected scenario
   # -----------------------------------------------------------------------------
 
-  # EC2 instance type (modified by ec2_downgrade/ec2_upgrade scenarios)
+  # EC2 instance type (modified by ec2_downgrade scenario)
   scenario_instance_type = (
     var.scenario == "ec2_downgrade" ? "t3.nano" :
-    var.scenario == "ec2_upgrade" ? "c5.large" :
     var.ec2_instance_type
   )
 

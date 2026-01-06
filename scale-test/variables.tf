@@ -142,15 +142,13 @@ variable "scenario" {
   default     = "none"
   description = <<-EOT
     Test scenario to apply. Each scenario modifies infrastructure to trigger
-    specific risks in Overmind. See scenarios/README.md for details.
+    specific risks in Overmind. See SCENARIOS.md for details.
     
     Available scenarios:
     - none              : No modifications (baseline)
     - sg_open_ssh       : Open SSH (port 22) to 0.0.0.0/0
     - sg_open_all       : Open all ports to 0.0.0.0/0
-    - ec2_start_all     : Start all stopped EC2 instances
     - ec2_downgrade     : Downgrade EC2 instance type
-    - ec2_upgrade       : Upgrade EC2 instance type (cost increase)
     - iam_broadening    : Add overly permissive IAM policy
     - lambda_timeout    : Reduce Lambda timeout drastically
   EOT
@@ -160,9 +158,7 @@ variable "scenario" {
       "none",
       "sg_open_ssh",
       "sg_open_all",
-      "ec2_start_all",
       "ec2_downgrade",
-      "ec2_upgrade",
       "iam_broadening",
       "lambda_timeout"
     ], var.scenario)

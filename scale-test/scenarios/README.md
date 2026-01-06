@@ -67,6 +67,32 @@ terraform apply -var="scale_multiplier=1" -var="scenario=none"
 
 ### Compute Scenarios
 
+#### `ec2_start_all` - Start All Stopped Instances
+
+| Attribute | Value |
+|-----------|-------|
+| **Category** | Cost / Operations |
+| **Severity** | Medium (Cost), Low (Risk) |
+| **Reversible** | ✅ Yes |
+| **Change** | Changes EC2 instance state from `stopped` to `running` |
+
+**Expected Signals:**
+- **Cost increase**: $0 → $X/month (instances now running)
+- Operational change: Instances starting up
+- Blast radius: All instance dependencies (volumes, ENIs, security groups)
+
+**Expected Cost Impact by Multiplier:**
+
+| Multiplier | EC2 Instances | Instance Type | Est. Monthly Cost (us-east-1) |
+|------------|---------------|---------------|-------------------------------|
+| 1 | 4 | t3.micro | ~$30/month |
+| 10 | 40 | t3.micro | ~$300/month |
+| 100 | 400 | t3.micro | ~$3,000/month |
+
+*Note: Costs vary by region. Run `terraform plan` with Infracost for accurate estimates.*
+
+---
+
 #### `ec2_downgrade` - Downgrade Instance Type
 
 | Attribute | Value |
@@ -87,6 +113,29 @@ terraform apply -var="scale_multiplier=1" -var="scenario=none"
 | 1 | 4 | 1GB → 0.5GB | 2 → 2 |
 | 10 | 40 | 1GB → 0.5GB | 2 → 2 |
 | 100 | 400 | 1GB → 0.5GB | 2 → 2 |
+
+---
+
+#### `ec2_upgrade` - Upgrade Instance Type (Cost Increase)
+
+| Attribute | Value |
+|-----------|-------|
+| **Category** | Cost |
+| **Severity** | Low (Risk), High (Cost) |
+| **Reversible** | ✅ Yes |
+| **Change** | Changes EC2 instance type from `t3.micro` to `c5.large` |
+
+**Expected Signals:**
+- **Cost increase**: Significant increase in instance costs
+- Over-provisioning: May be unnecessary for workload
+
+**Expected Cost Impact by Multiplier:**
+
+| Multiplier | EC2 Instances | Old Type | New Type | Monthly Cost Delta |
+|------------|---------------|----------|----------|-------------------|
+| 1 | 4 | t3.micro | c5.large | +$200/month |
+| 10 | 40 | t3.micro | c5.large | +$2,000/month |
+| 100 | 400 | t3.micro | c5.large | +$20,000/month |
 
 ---
 
@@ -167,15 +216,15 @@ For each scenario, validate that Overmind:
 
 ---
 
-## Scenario Files
+## Scenario Architecture
 
 ```
-scale-test/
-├── SCENARIOS.md            # This file
-├── scenario_security.tf    # sg_open_ssh, sg_open_all
-├── scenario_compute.tf     # ec2_downgrade
-├── scenario_iam.tf         # iam_broadening
-└── scenario_lambda.tf      # lambda_timeout
+scenarios/
+├── README.md           # This file
+├── security.tf         # sg_open_ssh, sg_open_all
+├── compute.tf          # ec2_start_all, ec2_downgrade, ec2_upgrade
+├── iam.tf              # iam_broadening
+└── lambda.tf           # lambda_timeout
 ```
 
 Each scenario file uses conditional resources:
@@ -200,3 +249,6 @@ These require modifications to base infrastructure for relationship density:
 | `shared_sg_change` | 1 SG → 50+ instances | High |
 | `shared_iam_role` | 1 role → 50+ consumers | High |
 | `shared_kms_key` | 1 key → 100+ encrypted resources | Very High |
+
+See ticket PRD-XXX for high fan-out scenario implementation.
+
