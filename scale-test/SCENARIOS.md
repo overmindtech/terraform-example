@@ -1,235 +1,170 @@
-# Test Scenarios for Overmind Risk Detection
+# Test Scenarios
 
-This directory contains test scenarios that modify infrastructure to trigger specific risks in Overmind. Each scenario is designed to test risk detection, blast radius analysis, and cost signal generation.
+Scenarios modify infrastructure to trigger specific risks in Overmind. Each scenario is applied on top of the baseline infrastructure.
 
 ## Quick Start
 
 ```bash
-# Step 1: Apply base infrastructure (no scenario)
-terraform apply -var="scale_multiplier=1" -var="scenario=none"
+# 1. Apply baseline infrastructure
+terraform apply -var="scale_multiplier=10" -var="scenario=none"
 
-# Step 2: Run plan with scenario (tests risk detection)
-terraform plan -var="scale_multiplier=1" -var="scenario=sg_open_ssh"
+# 2. Plan with scenario (sends to Overmind for analysis)
+terraform plan -var="scale_multiplier=10" -var="scenario=shared_sg_open"
 
-# Step 3: Try different scenarios
-terraform plan -var="scale_multiplier=1" -var="scenario=shared_sg_open"
+# 3. Try different scenarios
+terraform plan -var="scale_multiplier=10" -var="scenario=vpc_peering_change"
 
-# Step 4: Destroy when done
-terraform destroy -var="scale_multiplier=1"
+# 4. Destroy when done
+terraform destroy -var="scale_multiplier=10"
 ```
 
-## Scenario Categories
+## Scenario Summary
 
-### Standard Scenarios (Low-Medium Blast Radius)
+### Standard Scenarios
 
-| Scenario | Category | Severity | Blast Radius at 1x |
-|----------|----------|----------|-------------------|
-| `sg_open_ssh` | Security | High | ~20-30 items |
-| `sg_open_all` | Security | Critical | ~20-30 items |
-| `ec2_downgrade` | Performance | Medium | ~20 items |
-| `lambda_timeout` | Reliability | Medium | ~30 items |
+| Scenario | Category | Severity | Description |
+|----------|----------|----------|-------------|
+| `sg_open_ssh` | Security | High | Opens SSH (port 22) from 0.0.0.0/0 |
+| `sg_open_all` | Security | Critical | Opens all ports from 0.0.0.0/0 |
+| `ec2_downgrade` | Performance | Medium | Downgrades EC2 from t3.micro to t3.nano |
+| `lambda_timeout` | Reliability | Medium | Reduces Lambda timeout to 1 second |
 
-### High Fan-Out Scenarios (Large Blast Radius) 🔥
+### High Fan-Out Scenarios
 
-| Scenario | Category | Severity | Blast Radius at 1x | at 10x | at 100x |
-|----------|----------|----------|-------------------|--------|---------|
-| `shared_sg_open` | Security | Critical | ~38 items | ~169 items | **~1500+ items** |
-| `vpc_peering_change` | Network | Medium | ~400+ items | **~800+ items** | **~4000+ items** |
-
----
+| Scenario | Category | Blast Radius (10x) | Blast Radius (50x) |
+|----------|----------|-------------------|-------------------|
+| `shared_sg_open` | Security | ~169 items | ~800+ items |
+| `vpc_peering_change` | Network | ~800+ items | ~4000+ items |
 
 ## Standard Scenarios
 
-### `sg_open_ssh` - Open SSH to Internet
+### sg_open_ssh
+
+Opens SSH to the internet on individual security groups.
 
 | Attribute | Value |
 |-----------|-------|
-| **Category** | Security |
-| **Severity** | High |
-| **Reversible** | ✅ Yes |
-| **Change** | Adds SSH (port 22) ingress rule from 0.0.0.0/0 to individual security groups |
+| Category | Security |
+| Severity | High |
+| Change | Adds port 22 ingress from 0.0.0.0/0 |
+| Blast Radius | Low (~20-30 items at 10x) |
 
-**Why Low Blast Radius:** Modifies individual SGs that each have ~1-2 EC2 instances attached.
+### sg_open_all
 
----
-
-### `sg_open_all` - Open All Ports to Internet
+Opens all ports to the internet.
 
 | Attribute | Value |
 |-----------|-------|
-| **Category** | Security |
-| **Severity** | Critical |
-| **Reversible** | ✅ Yes |
-| **Change** | Adds all ports (0-65535) ingress rule from 0.0.0.0/0 |
+| Category | Security |
+| Severity | Critical |
+| Change | Adds ports 0-65535 ingress from 0.0.0.0/0 |
+| Blast Radius | Low (~20-30 items at 10x) |
 
----
+### ec2_downgrade
 
-### `ec2_downgrade` - Downgrade Instance Type
-
-| Attribute | Value |
-|-----------|-------|
-| **Category** | Performance |
-| **Severity** | Medium |
-| **Reversible** | ✅ Yes |
-| **Change** | Changes EC2 instance type from `t3.micro` to `t3.nano` |
-
----
-
-### `lambda_timeout` - Reduce Lambda Timeout
+Downgrades EC2 instance types.
 
 | Attribute | Value |
 |-----------|-------|
-| **Category** | Reliability |
-| **Severity** | Medium |
-| **Reversible** | ✅ Yes |
-| **Change** | Reduces Lambda timeout from default to 1 second |
+| Category | Performance |
+| Severity | Medium |
+| Change | Changes t3.micro to t3.nano |
+| Blast Radius | Low (~20 items at 10x) |
 
----
+### lambda_timeout
 
-## High Fan-Out Scenarios 🔥
-
-These scenarios modify **shared resources** that many other resources depend on, creating large blast radii.
-
-### Architecture
-
-```
-HIGH FAN-OUT ARCHITECTURE:
-
-┌──────────────────────────────────────────────────────────┐
-│  SHARED SECURITY GROUP                                    │
-│  (aws_security_group.high_fanout)                        │
-│                                                          │
-│  Attached to ALL EC2 instances in the region             │
-│  At 100x: 200 EC2 instances per region                   │
-└──────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-   ┌────▼────┐         ┌────▼────┐         ┌────▼────┐
-   │  EC2-1  │         │  EC2-2  │   ...   │ EC2-200 │
-   │  + ENI  │         │  + ENI  │         │  + ENI  │
-   │  + EBS  │         │  + EBS  │         │  + EBS  │
-   └─────────┘         └─────────┘         └─────────┘
-
-┌──────────────────────────────────────────────────────────┐
-│  SHARED IAM ROLE                                          │
-│  (aws_iam_role.high_fanout_lambda)                       │
-│                                                          │
-│  Used by ALL Lambda functions in the region              │
-│  At 100x: 200 Lambda functions per region                │
-└──────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-   ┌────▼────┐         ┌────▼────┐         ┌────▼────┐
-   │Lambda-1 │         │Lambda-2 │   ...   │Lambda-200│
-   │  + Logs │         │  + Logs │         │  + Logs  │
-   └─────────┘         └─────────┘         └─────────┘
-```
-
-### `shared_sg_open` - Open SSH on Shared Security Group
+Reduces Lambda function timeout.
 
 | Attribute | Value |
 |-----------|-------|
-| **Category** | Security |
-| **Severity** | Critical |
-| **Reversible** | ✅ Yes |
-| **Change** | Adds SSH ingress from 0.0.0.0/0 to the **shared** security group |
+| Category | Reliability |
+| Severity | Medium |
+| Change | Sets timeout to 1 second |
+| Blast Radius | Low (~30 items at 10x) |
 
-**Why High Blast Radius:** The shared SG is attached to ALL EC2 instances.
+## High Fan-Out Scenarios
 
-**Expected Blast Radius (validated):**
+These scenarios modify shared resources that many other resources depend on.
 
-| Multiplier | EC2 Instances | Queries | Total Items |
-|------------|---------------|---------|-------------|
-| 1x | 4 | 87 | 38 ✅ |
-| 10x | 40 | 492 | 169 ✅ |
-| 100x | 400 | ~5000 | **~1500+** |
+### shared_sg_open
 
----
-
-### `vpc_peering_change` - Modify VPC Peering DNS Settings
+Opens SSH on the **shared** security group that all EC2 instances use.
 
 | Attribute | Value |
 |-----------|-------|
-| **Category** | Network |
-| **Severity** | Medium |
-| **Reversible** | ✅ Yes |
-| **Change** | Enables DNS resolution on VPC peering between us-east-1 and us-west-2 |
+| Category | Security |
+| Severity | Critical |
+| Change | Adds port 22 ingress from 0.0.0.0/0 to shared SG |
 
-**Why High Blast Radius:** VPC peering connects TWO entire VPCs. Modifying a peering connection affects:
-- All EC2 instances in both VPCs
-- All ENIs, subnets, route tables
-- All security groups and their attached resources
-- All Lambda functions, S3 endpoints, etc.
+**Why High Blast Radius:** The shared SG is attached to ALL EC2 instances in each region.
+
+**Validated Results:**
+
+| Multiplier | EC2 Instances | Blast Radius |
+|------------|---------------|--------------|
+| 1x | 4 | 38 items |
+| 10x | 40 | 169 items |
+| 50x | 200 | ~800 items |
+
+### vpc_peering_change
+
+Modifies VPC peering connection DNS settings.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Network |
+| Severity | Medium |
+| Change | Enables DNS resolution on VPC peering |
+
+**Why High Blast Radius:** VPC peering connects two entire VPCs. Modifying a peering affects all resources in both VPCs.
 
 **Architecture:**
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    VPC PEERING MESH (Full Mesh)                      │
-│                                                                      │
-│  us-east-1 ←──────────────→ us-west-2                               │
-│      ↕                           ↕                                   │
-│      ↕                           ↕                                   │
-│  eu-west-1 ←──────────────→ ap-southeast-1                          │
-│                                                                      │
-│  Each peering connects ~435 resources (at 10x) in each region        │
-│  Modifying one peering → affects 870 resources across 2 VPCs         │
-└─────────────────────────────────────────────────────────────────────┘
+VPC PEERING MESH
+
+  us-east-1 <----------> us-west-2
+      |                      |
+      |                      |
+  eu-west-1 <----------> ap-southeast-1
+
+  6 peering connections forming a full mesh.
+  Modifying one peering affects resources in 2 VPCs.
 ```
 
-**Expected Blast Radius:**
+**Expected Results:**
 
-| Multiplier | Resources per VPC | VPCs Affected | Total Items |
-|------------|-------------------|---------------|-------------|
-| 1x | ~100 | 2 | ~400+ |
-| 10x | ~435 | 2 | **~800+** |
-| 100x | ~2000 | 2 | **~4000+** |
-
----
+| Multiplier | Resources per VPC | Blast Radius |
+|------------|-------------------|--------------|
+| 1x | ~100 | ~400 items |
+| 10x | ~435 | ~800 items |
+| 50x | ~2000 | ~4000 items |
 
 ## Validation Checklist
 
-For each scenario, validate that Overmind:
+For each scenario, verify:
 
-### Risk Detection
-- [ ] Identifies the correct risk type
-- [ ] Assigns appropriate severity
-- [ ] Provides actionable description
+- Risk is detected with correct type and severity
+- Blast radius shows affected resources
+- Relationship traversal works (SG to EC2 to EBS)
+- Analysis completes without timeout
 
-### Blast Radius
-- [ ] Shows affected resources
-- [ ] Relationship traversal works (e.g., SG → EC2 → EBS)
-- [ ] Count matches expected (see tables above)
-
-### Performance (for high fan-out scenarios)
-- [ ] Plan analysis completes in reasonable time
-- [ ] No timeouts at 10x or 100x multiplier
-- [ ] Blast radius scales proportionally (not exponentially)
-
----
-
-## Scenario Files
+## File Structure
 
 ```
 scale-test/
-├── SCENARIOS.md              # This file
 ├── scenario_security.tf      # sg_open_ssh, sg_open_all
-├── scenario_compute.tf       # ec2_downgrade (note in file)
-├── scenario_lambda.tf        # lambda_timeout (via module variable)
-└── scenario_high_fanout.tf   # shared_sg_open
+├── scenario_compute.tf       # ec2_downgrade
+├── scenario_lambda.tf        # lambda_timeout
+├── scenario_high_fanout.tf   # shared_sg_open
+└── scenario_vpc_peering.tf   # vpc_peering_change
 ```
-
----
 
 ## Removed Scenarios
 
 | Scenario | Reason |
 |----------|--------|
-| `iam_broadening` | Created new resources (ARN unknown), Overmind couldn't map |
-| `shared_iam_admin` | Created new IAM policy (no ARN until apply), Overmind couldn't map |
-| `ec2_start_all` | Cost risk (~$3,000/month at 100x) |
-| `ec2_upgrade` | Cost risk (~$20,000/month at 100x) |
+| iam_broadening | New resources have no ARN until apply |
+| shared_iam_admin | New IAM policy has no ARN until apply |
+| ec2_start_all | Cost risk at scale |
+| ec2_upgrade | Cost risk at scale |

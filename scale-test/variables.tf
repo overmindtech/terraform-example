@@ -12,16 +12,18 @@ variable "scale_multiplier" {
   default     = 1
   description = <<-EOT
     Multiplier for resource counts. Controls the total number of resources created:
-    - 1   = ~100 resources (development/testing)
-    - 10  = ~1,000 resources (medium scale test)
-    - 100 = ~10,000 resources (full scale test)
+    - 1   = ~175 resources (baseline)
+    - 5   = ~870 resources (small scale)
+    - 10  = ~1,740 resources (medium scale)
+    - 25  = ~4,350 resources (large scale)
+    - 50  = ~8,700 resources (stress test)
     
-    Resources are distributed across 8 regions (4 AWS + 4 GCP).
+    Resources are distributed across 4 AWS regions.
   EOT
 
   validation {
-    condition     = contains([1, 10, 100], var.scale_multiplier)
-    error_message = "scale_multiplier must be 1, 10, or 100."
+    condition     = contains([1, 5, 10, 25, 50], var.scale_multiplier)
+    error_message = "scale_multiplier must be 1, 5, 10, 25, or 50."
   }
 }
 

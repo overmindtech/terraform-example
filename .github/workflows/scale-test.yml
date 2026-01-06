@@ -12,14 +12,16 @@ on:
           - apply
           - destroy
       scale_multiplier:
-        description: 'Resource multiplier (1=100, 10=1000, 100=10000 resources)'
+        description: 'Resource multiplier (1=175, 10=1740, 50=8700 resources)'
         required: true
         type: choice
         default: '1'
         options:
           - '1'
+          - '5'
           - '10'
-          - '100'
+          - '25'
+          - '50'
       scenario:
         description: 'Test scenario (triggers specific risks in Overmind)'
         required: false
