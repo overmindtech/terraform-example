@@ -71,6 +71,24 @@ locals {
     "europe-west1"    = "${var.vpc_cidr_prefix}.130.0.0/16"
     "asia-southeast1" = "${var.vpc_cidr_prefix}.140.0.0/16"
   }
+
+  # -----------------------------------------------------------------------------
+  # Scenario-Adjusted Values
+  # These locals modify infrastructure based on the selected scenario
+  # -----------------------------------------------------------------------------
+
+  # EC2 instance type (modified by ec2_downgrade/ec2_upgrade scenarios)
+  scenario_instance_type = (
+    var.scenario == "ec2_downgrade" ? "t3.nano" :
+    var.scenario == "ec2_upgrade" ? "c5.large" :
+    var.ec2_instance_type
+  )
+
+  # Lambda timeout (modified by lambda_timeout scenario)
+  scenario_lambda_timeout = (
+    var.scenario == "lambda_timeout" ? 1 :
+    var.lambda_timeout
+  )
 }
 
 # -----------------------------------------------------------------------------
@@ -103,10 +121,10 @@ module "aws_us_east_1" {
 
   enable_ec2        = var.enable_ec2_instances
   enable_lambda     = var.enable_lambda_functions
-  ec2_instance_type = var.ec2_instance_type
+  ec2_instance_type = local.scenario_instance_type  # Scenario-aware
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
-  lambda_timeout    = var.lambda_timeout
+  lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
 }
 
 module "aws_us_west_2" {
@@ -125,10 +143,10 @@ module "aws_us_west_2" {
 
   enable_ec2        = var.enable_ec2_instances
   enable_lambda     = var.enable_lambda_functions
-  ec2_instance_type = var.ec2_instance_type
+  ec2_instance_type = local.scenario_instance_type  # Scenario-aware
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
-  lambda_timeout    = var.lambda_timeout
+  lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
 }
 
 module "aws_eu_west_1" {
@@ -147,10 +165,10 @@ module "aws_eu_west_1" {
 
   enable_ec2        = var.enable_ec2_instances
   enable_lambda     = var.enable_lambda_functions
-  ec2_instance_type = var.ec2_instance_type
+  ec2_instance_type = local.scenario_instance_type  # Scenario-aware
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
-  lambda_timeout    = var.lambda_timeout
+  lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
 }
 
 module "aws_ap_southeast_1" {
@@ -169,10 +187,10 @@ module "aws_ap_southeast_1" {
 
   enable_ec2        = var.enable_ec2_instances
   enable_lambda     = var.enable_lambda_functions
-  ec2_instance_type = var.ec2_instance_type
+  ec2_instance_type = local.scenario_instance_type  # Scenario-aware
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
-  lambda_timeout    = var.lambda_timeout
+  lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
 }
 
 # -----------------------------------------------------------------------------
