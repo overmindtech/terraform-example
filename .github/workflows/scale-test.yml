@@ -35,6 +35,7 @@ on:
           - 'central_sns_change'
           - 'combined_network'
           - 'combined_all'
+          - 'combined_max'
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false

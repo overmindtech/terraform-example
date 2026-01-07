@@ -158,6 +158,7 @@ variable "scenario" {
     Combined scenarios (maximum blast radius):
     - combined_network  : vpc_peering_change + shared_sg_open combined
     - combined_all      : All high-fanout scenarios combined (vpc + sg + sns)
+    - combined_max      : Maximum blast radius (all ports open + vpc + sns + lambda timeout)
     
     Removed scenarios:
     - central_s3_change : Removed (causes investigation timeout)
@@ -171,7 +172,8 @@ variable "scenario" {
       "vpc_peering_change",
       "central_sns_change",
       "combined_network",
-      "combined_all"
+      "combined_all",
+      "combined_max"
     ], var.scenario)
     error_message = "Invalid scenario. See variable description for valid options."
   }

@@ -83,9 +83,10 @@ locals {
     var.ec2_instance_type
   )
 
-  # Lambda timeout (modified by lambda_timeout scenario)
+  # Lambda timeout (modified by lambda_timeout or combined_max scenario)
   scenario_lambda_timeout = (
     var.scenario == "lambda_timeout" ? 1 :
+    var.scenario == "combined_max" ? 1 :
     var.lambda_timeout
   )
 }

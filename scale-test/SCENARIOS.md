@@ -27,6 +27,7 @@ terraform destroy -var="scale_multiplier=25"
 | `central_sns_change` | Messaging | ~332 items | ~478 items |
 | `combined_network` | Network + Security | ~600 items | ~1,200 items |
 | `combined_all` | All | ~800 items | ~1,500 items |
+| `combined_max` | All + Compute | ~900+ items | ~1,500+ items |
 
 ## High Fan-Out Scenarios
 
@@ -151,6 +152,37 @@ Combines ALL high-fanout scenarios (except central_s3 which times out).
 | 25x | ~1,500 items |
 | 50x | ~3,000+ items |
 
+### combined_max
+
+Maximum blast radius scenario for stress testing. Combines everything with additional risky changes.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | All + Compute |
+| Severity | Critical |
+| Changes | VPC peerings + ALL PORTS open (not just SSH) + central SNS + Lambda timeouts |
+| TF Resources | ~25+ resources modified |
+
+**Differences from combined_all:**
+
+- Opens ALL ports (0-65535) instead of just SSH (port 22)
+- Also modifies Lambda function timeouts (reduces to 1 second)
+- Creates more Terraform resources to modify, increasing plan size
+
+**Why Even Larger Blast Radius:** 
+
+- All ports open is a more severe security change that may trigger additional risk hypotheses
+- Lambda timeout changes touch all Lambda functions and their dependencies
+- More resources modified in a single plan means more starting points for blast radius calculation
+
+**Expected Results:**
+
+| Multiplier | Expected Blast Radius |
+|------------|----------------------|
+| 10x | ~900+ items |
+| 25x | ~1,500+ items |
+| 50x | ~3,500+ items |
+
 ## Other Scenarios
 
 ### lambda_timeout
@@ -180,7 +212,7 @@ scale-test/
 ├── scenario_high_fanout.tf   # shared_sg_open
 ├── scenario_vpc_peering.tf   # vpc_peering_change
 ├── scenario_lambda.tf        # lambda_timeout
-└── scenario_combined.tf      # combined_network, combined_all
+└── scenario_combined.tf      # combined_network, combined_all, combined_max
 ```
 
 ## Removed Scenarios

@@ -439,3 +439,242 @@ resource "aws_sns_topic_policy" "combined_all_central" {
   })
 }
 
+# =============================================================================
+# Scenario: combined_max
+# MAXIMUM blast radius scenario - combines everything for stress testing
+# - VPC peering DNS changes (6 peerings)
+# - Shared SG open ALL PORTS (not just SSH)
+# - Central SNS policy change
+# - Lambda timeout changes (via main.tf locals)
+# Expected Blast Radius: 1,200-1,500 items at 25x
+# =============================================================================
+
+locals {
+  scenario_combined_max = var.scenario == "combined_max"
+}
+
+# --- VPC Peering DNS Changes ---
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_us_west_req" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.us_east_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+
+  requester {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_us_west_acc" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.us_west_2
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+
+  accepter {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_eu_west_req" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.us_east_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+
+  requester {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_eu_west_acc" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.eu_west_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+
+  accepter {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_ap_southeast_req" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.us_east_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+
+  requester {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_ap_southeast_acc" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.ap_southeast_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+
+  accepter {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_west_to_eu_west_req" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.us_west_2
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+
+  requester {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_west_to_eu_west_acc" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.eu_west_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+
+  accepter {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_west_to_ap_southeast_req" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.us_west_2
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+
+  requester {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_us_west_to_ap_southeast_acc" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.ap_southeast_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+
+  accepter {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_eu_west_to_ap_southeast_req" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.eu_west_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+
+  requester {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+resource "aws_vpc_peering_connection_options" "max_dns_eu_west_to_ap_southeast_acc" {
+  count    = local.scenario_combined_max ? 1 : 0
+  provider = aws.ap_southeast_1
+
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+
+  accepter {
+    allow_remote_vpc_dns_resolution = true
+  }
+}
+
+# --- Shared Security Group - Open ALL PORTS (Maximum Impact) ---
+
+resource "aws_security_group_rule" "max_sg_all_ports_us_east_1" {
+  count = local.scenario_combined_max ? 1 : 0
+
+  provider          = aws.us_east_1
+  security_group_id = module.aws_us_east_1.high_fanout_sg_id
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "MAX SCENARIO: ALL PORTS open to internet"
+}
+
+resource "aws_security_group_rule" "max_sg_all_ports_us_west_2" {
+  count = local.scenario_combined_max ? 1 : 0
+
+  provider          = aws.us_west_2
+  security_group_id = module.aws_us_west_2.high_fanout_sg_id
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "MAX SCENARIO: ALL PORTS open to internet"
+}
+
+resource "aws_security_group_rule" "max_sg_all_ports_eu_west_1" {
+  count = local.scenario_combined_max ? 1 : 0
+
+  provider          = aws.eu_west_1
+  security_group_id = module.aws_eu_west_1.high_fanout_sg_id
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "MAX SCENARIO: ALL PORTS open to internet"
+}
+
+resource "aws_security_group_rule" "max_sg_all_ports_ap_southeast_1" {
+  count = local.scenario_combined_max ? 1 : 0
+
+  provider          = aws.ap_southeast_1
+  security_group_id = module.aws_ap_southeast_1.high_fanout_sg_id
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "MAX SCENARIO: ALL PORTS open to internet"
+}
+
+# --- Central SNS Policy Change ---
+
+resource "aws_sns_topic_policy" "max_central" {
+  count = local.scenario_combined_max ? 1 : 0
+
+  provider = aws.us_east_1
+  arn      = aws_sns_topic.central.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Id      = "CombinedMaxScenarioPolicy"
+    Statement = [
+      {
+        Sid    = "AllowCrossRegionSQS"
+        Effect = "Allow"
+        Principal = {
+          Service = "sqs.amazonaws.com"
+        }
+        Action   = "sns:Subscribe"
+        Resource = aws_sns_topic.central.arn
+      },
+      {
+        Sid       = "MaxRestrictPublish"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "sns:Publish"
+        Resource  = aws_sns_topic.central.arn
+        Condition = {
+          StringNotEquals = {
+            "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
+  })
+}
+
