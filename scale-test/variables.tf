@@ -148,29 +148,30 @@ variable "scenario" {
     
     Available scenarios:
     - none              : No modifications (baseline)
-    - sg_open_ssh       : Open SSH (port 22) to 0.0.0.0/0
-    - sg_open_all       : Open all ports to 0.0.0.0/0
-    - ec2_downgrade     : Downgrade EC2 instance type
     - lambda_timeout    : Reduce Lambda timeout drastically
     
     High fan-out scenarios (large blast radius):
     - shared_sg_open      : Open SSH on SHARED security group (affects all EC2)
     - vpc_peering_change  : Modify ALL VPC peerings (affects all 4 VPCs)
     - central_sns_change  : Modify central SNS policy (affects all SQS queues)
-    - central_s3_change   : Modify central S3 policy (affects all Lambdas)
+    
+    Combined scenarios (maximum blast radius):
+    - combined_network  : vpc_peering_change + shared_sg_open combined
+    - combined_all      : All high-fanout scenarios combined (vpc + sg + sns)
+    
+    Removed scenarios:
+    - central_s3_change : Removed (causes investigation timeout)
   EOT
 
   validation {
     condition = contains([
       "none",
-      "sg_open_ssh",
-      "sg_open_all",
-      "ec2_downgrade",
       "lambda_timeout",
       "shared_sg_open",
       "vpc_peering_change",
       "central_sns_change",
-      "central_s3_change"
+      "combined_network",
+      "combined_all"
     ], var.scenario)
     error_message = "Invalid scenario. See variable description for valid options."
   }

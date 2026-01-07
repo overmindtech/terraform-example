@@ -29,14 +29,12 @@ on:
         default: 'none'
         options:
           - 'none'
-          - 'sg_open_ssh'
-          - 'sg_open_all'
-          - 'ec2_downgrade'
           - 'lambda_timeout'
           - 'shared_sg_open'
           - 'vpc_peering_change'
           - 'central_sns_change'
-          - 'central_s3_change'
+          - 'combined_network'
+          - 'combined_all'
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false

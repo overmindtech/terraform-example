@@ -6,81 +6,27 @@ Scenarios modify infrastructure to trigger specific risks in Overmind. Each scen
 
 ```bash
 # 1. Apply baseline infrastructure
-terraform apply -var="scale_multiplier=10" -var="scenario=none"
+terraform apply -var="scale_multiplier=25" -var="scenario=none"
 
 # 2. Plan with scenario (sends to Overmind for analysis)
-terraform plan -var="scale_multiplier=10" -var="scenario=shared_sg_open"
+terraform plan -var="scale_multiplier=25" -var="scenario=combined_network"
 
 # 3. Try different scenarios
-terraform plan -var="scale_multiplier=10" -var="scenario=vpc_peering_change"
+terraform plan -var="scale_multiplier=25" -var="scenario=vpc_peering_change"
 
 # 4. Destroy when done
-terraform destroy -var="scale_multiplier=10"
+terraform destroy -var="scale_multiplier=25"
 ```
 
 ## Scenario Summary
 
-### Standard Scenarios
-
-| Scenario | Category | Severity | Description |
-|----------|----------|----------|-------------|
-| `sg_open_ssh` | Security | High | Opens SSH (port 22) from 0.0.0.0/0 |
-| `sg_open_all` | Security | Critical | Opens all ports from 0.0.0.0/0 |
-| `ec2_downgrade` | Performance | Medium | Downgrades EC2 from t3.micro to t3.nano |
-| `lambda_timeout` | Reliability | Medium | Reduces Lambda timeout to 1 second |
-
-### High Fan-Out Scenarios
-
-| Scenario | Category | Blast Radius (10x) | Blast Radius (50x) |
+| Scenario | Category | Blast Radius (10x) | Blast Radius (25x) |
 |----------|----------|-------------------|-------------------|
-| `shared_sg_open` | Security | ~169 items | ~800+ items |
-| `vpc_peering_change` | Network | ~800+ items | ~4000+ items |
-
-## Standard Scenarios
-
-### sg_open_ssh
-
-Opens SSH to the internet on individual security groups.
-
-| Attribute | Value |
-|-----------|-------|
-| Category | Security |
-| Severity | High |
-| Change | Adds port 22 ingress from 0.0.0.0/0 |
-| Blast Radius | Low (~20-30 items at 10x) |
-
-### sg_open_all
-
-Opens all ports to the internet.
-
-| Attribute | Value |
-|-----------|-------|
-| Category | Security |
-| Severity | Critical |
-| Change | Adds ports 0-65535 ingress from 0.0.0.0/0 |
-| Blast Radius | Low (~20-30 items at 10x) |
-
-### ec2_downgrade
-
-Downgrades EC2 instance types.
-
-| Attribute | Value |
-|-----------|-------|
-| Category | Performance |
-| Severity | Medium |
-| Change | Changes t3.micro to t3.nano |
-| Blast Radius | Low (~20 items at 10x) |
-
-### lambda_timeout
-
-Reduces Lambda function timeout.
-
-| Attribute | Value |
-|-----------|-------|
-| Category | Reliability |
-| Severity | Medium |
-| Change | Sets timeout to 1 second |
-| Blast Radius | Low (~30 items at 10x) |
+| `shared_sg_open` | Security | ~169 items | ~400 items |
+| `vpc_peering_change` | Network | ~383 items | ~852 items |
+| `central_sns_change` | Messaging | ~332 items | ~478 items |
+| `combined_network` | Network + Security | ~600 items | ~1,200 items |
+| `combined_all` | All | ~800 items | ~1,500 items |
 
 ## High Fan-Out Scenarios
 
@@ -104,7 +50,7 @@ Opens SSH on the **shared** security group that all EC2 instances use.
 |------------|---------------|--------------|
 | 1x | 4 | 38 items |
 | 10x | 40 | 169 items |
-| 50x | 200 | ~800 items |
+| 25x | 100 | ~400 items |
 
 ### vpc_peering_change
 
@@ -114,7 +60,7 @@ Modifies VPC peering connection DNS settings.
 |-----------|-------|
 | Category | Network |
 | Severity | Medium |
-| Change | Enables DNS resolution on VPC peering |
+| Change | Enables DNS resolution on all 6 VPC peerings |
 
 **Why High Blast Radius:** VPC peering connects two entire VPCs. Modifying a peering affects all resources in both VPCs.
 
@@ -129,16 +75,94 @@ VPC PEERING MESH
   eu-west-1 <----------> ap-southeast-1
 
   6 peering connections forming a full mesh.
-  Modifying one peering affects resources in 2 VPCs.
+  Modifying all peerings affects resources in all 4 VPCs.
 ```
 
-**Expected Results:**
+**Validated Results:**
 
 | Multiplier | Resources per VPC | Blast Radius |
 |------------|-------------------|--------------|
-| 1x | ~100 | ~400 items |
-| 10x | ~435 | ~800 items |
-| 50x | ~2000 | ~4000 items |
+| 10x | ~435 | 383 items |
+| 25x | ~1,100 | 852 items |
+| 50x | ~2,000 | ~1,700 items (estimated) |
+
+### central_sns_change
+
+Modifies the central SNS topic policy that all SQS queues subscribe to.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Messaging |
+| Severity | High |
+| Change | Modifies SNS topic policy |
+
+**Why High Blast Radius:** The central SNS topic has subscriptions from all SQS queues across all regions.
+
+**Validated Results:**
+
+| Multiplier | SQS Queues | Blast Radius |
+|------------|------------|--------------|
+| 10x | ~150 | 332 items |
+| 25x | ~380 | 478 items |
+
+## Combined Scenarios
+
+These scenarios trigger multiple changes simultaneously for maximum blast radius.
+
+### combined_network
+
+Combines `vpc_peering_change` + `shared_sg_open`.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Network + Security |
+| Severity | Critical |
+| Changes | 6 VPC peering DNS changes + 4 shared SG rule additions |
+| TF Resources | ~16 resources modified |
+
+**Why Maximum Blast Radius:** Touches both network layer (VPC peerings affecting routing) and security layer (SGs affecting instances). The overlapping resources are counted once, but the combined risks amplify the analysis.
+
+**Expected Results:**
+
+| Multiplier | Expected Blast Radius |
+|------------|----------------------|
+| 10x | ~600 items |
+| 25x | ~1,200 items |
+| 50x | ~2,500 items |
+
+### combined_all
+
+Combines ALL high-fanout scenarios (except central_s3 which times out).
+
+| Attribute | Value |
+|-----------|-------|
+| Category | All |
+| Severity | Critical |
+| Changes | VPC peerings + shared SGs + central SNS policy |
+| TF Resources | ~20+ resources modified |
+
+**Why Maximum Blast Radius:** Touches network, security, and messaging layers simultaneously.
+
+**Expected Results:**
+
+| Multiplier | Expected Blast Radius |
+|------------|----------------------|
+| 10x | ~800 items |
+| 25x | ~1,500 items |
+| 50x | ~3,000+ items |
+
+## Other Scenarios
+
+### lambda_timeout
+
+Reduces Lambda function timeout from 30s to 1s.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Reliability |
+| Severity | Medium |
+| Change | Sets timeout to 1 second |
+| Blast Radius | ~50 items at 10x |
 
 ## Validation Checklist
 
@@ -153,18 +177,29 @@ For each scenario, verify:
 
 ```
 scale-test/
-├── scenario_security.tf      # sg_open_ssh, sg_open_all
-├── scenario_compute.tf       # ec2_downgrade
-├── scenario_lambda.tf        # lambda_timeout
 ├── scenario_high_fanout.tf   # shared_sg_open
-└── scenario_vpc_peering.tf   # vpc_peering_change
+├── scenario_vpc_peering.tf   # vpc_peering_change
+├── scenario_lambda.tf        # lambda_timeout
+└── scenario_combined.tf      # combined_network, combined_all
 ```
 
 ## Removed Scenarios
 
 | Scenario | Reason |
 |----------|--------|
+| sg_open_ssh | Low blast radius, replaced by shared_sg_open |
+| sg_open_all | Low blast radius, replaced by shared_sg_open |
+| ec2_downgrade | Low blast radius |
+| central_s3_change | Causes investigation timeout at 25x |
 | iam_broadening | New resources have no ARN until apply |
 | shared_iam_admin | New IAM policy has no ARN until apply |
 | ec2_start_all | Cost risk at scale |
 | ec2_upgrade | Cost risk at scale |
+
+## Test Results Summary (25x)
+
+| Change ID | Scenario | Items | Edges | Hypotheses | Status |
+|-----------|----------|-------|-------|------------|--------|
+| 5bbef45a | vpc_peering_change | 852 | 1,876 | 2 proven | Success |
+| 191c07af | central_sns_change | 478 | 1,501 | 2 proven | Success |
+| f373b875 | central_s3_change | 614 | 1,582 | - | Timeout |
