@@ -57,7 +57,6 @@ env:
   TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier }}
   TF_VAR_scenario: ${{ inputs.scenario }}
   TF_VAR_enable_gcp: ${{ inputs.enable_gcp }}
-  TF_VAR_gcp_project_id: ${{ inputs.enable_gcp == true && 'overmind-scale-test' || '' }}
   WORKING_DIR: scale-test
 
 jobs:

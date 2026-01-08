@@ -73,18 +73,10 @@ provider "aws" {
 # -----------------------------------------------------------------------------
 # GCP Providers (4 Regions)
 # -----------------------------------------------------------------------------
-# Note: GCP providers require a project ID even when GCP is disabled.
-# We use a placeholder when gcp_project_id is not set.
-
-locals {
-  # Use actual project ID if set, otherwise use a placeholder
-  # (GCP resources won't be created when enable_gcp is false)
-  gcp_project = var.gcp_project_id != "" ? var.gcp_project_id : "placeholder-project"
-}
 
 provider "google" {
   alias   = "us_central1"
-  project = local.gcp_project
+  project = var.gcp_project_id
   region  = "us-central1"
 
   default_labels = {
@@ -98,7 +90,7 @@ provider "google" {
 
 provider "google" {
   alias   = "us_west1"
-  project = local.gcp_project
+  project = var.gcp_project_id
   region  = "us-west1"
 
   default_labels = {
@@ -112,7 +104,7 @@ provider "google" {
 
 provider "google" {
   alias   = "europe_west1"
-  project = local.gcp_project
+  project = var.gcp_project_id
   region  = "europe-west1"
 
   default_labels = {
@@ -126,7 +118,7 @@ provider "google" {
 
 provider "google" {
   alias   = "asia_southeast1"
-  project = local.gcp_project
+  project = var.gcp_project_id
   region  = "asia-southeast1"
 
   default_labels = {

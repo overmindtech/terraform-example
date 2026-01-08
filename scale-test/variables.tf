@@ -33,8 +33,8 @@ variable "scale_multiplier" {
 
 variable "gcp_project_id" {
   type        = string
-  description = "GCP project ID for scale testing resources. Set to empty string to disable GCP."
-  default     = "" # Set to your GCP project ID to enable GCP resources
+  description = "GCP project ID for scale testing resources"
+  default     = "overmind-scale-test"
 }
 
 variable "enable_gcp" {
