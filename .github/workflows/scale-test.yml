@@ -43,6 +43,11 @@ on:
           - 'gce_downgrade'
           - 'function_timeout'
           - 'combined_gcp_all'
+      enable_gcp:
+        description: 'Enable GCP resources (requires GCP credentials)'
+        required: false
+        type: boolean
+        default: false
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false
@@ -51,6 +56,8 @@ on:
 env:
   TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier }}
   TF_VAR_scenario: ${{ inputs.scenario }}
+  TF_VAR_enable_gcp: ${{ inputs.enable_gcp }}
+  TF_VAR_gcp_project_id: ${{ inputs.enable_gcp == true && 'overmind-scale-test' || '' }}
   WORKING_DIR: scale-test
 
 jobs:
@@ -98,6 +105,18 @@ jobs:
           audience: sts.amazonaws.com
           aws-region: us-east-1
           role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Configure GCP Credentials
+        if: ${{ inputs.enable_gcp == true }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.OVERMIND_SCALE_TEST }}
+
+      - name: Setup GCP SDK
+        if: ${{ inputs.enable_gcp == true }}
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: overmind-scale-test
 
       - name: Terraform Init
         id: init
