@@ -235,3 +235,104 @@ scale-test/
 | 5bbef45a | vpc_peering_change | 852 | 1,876 | 2 proven | Success |
 | 191c07af | central_sns_change | 478 | 1,501 | 2 proven | Success |
 | f373b875 | central_s3_change | 614 | 1,582 | - | Timeout |
+
+---
+
+# GCP Scenarios
+
+GCP scenarios require `enable_gcp = true` and a valid `gcp_project_id`.
+
+## GCP Scenario Summary
+
+| Scenario | Category | Description |
+|----------|----------|-------------|
+| `shared_firewall_open` | Security | Open SSH on shared firewall rule |
+| `central_pubsub_change` | Messaging | Modify central Pub/Sub topic IAM |
+| `gce_downgrade` | Compute | Downgrade GCE machine type |
+| `function_timeout` | Compute | Reduce Cloud Function timeout |
+| `combined_gcp_all` | All | All GCP high-fanout scenarios |
+
+## GCP High Fan-Out Scenarios
+
+### shared_firewall_open
+
+Opens SSH (port 22) on the shared firewall rule that targets all GCE instances via network tag.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Security |
+| Severity | Critical |
+| Change | Adds 0.0.0.0/0 SSH rule to shared firewall |
+
+**Why High Blast Radius:** All GCE instances use the `scale-test` network tag, so modifying the firewall rule affects all instances.
+
+### central_pubsub_change
+
+Modifies the central Pub/Sub topic IAM policy that all regional subscriptions connect to.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Messaging |
+| Severity | High |
+| Change | Adds allAuthenticatedUsers as viewer |
+
+**Why High Blast Radius:** All regional subscriptions connect to the central topic.
+
+## GCP Adapter Coverage Scenarios
+
+### gce_downgrade
+
+Changes GCE machine type from e2-micro to f1-micro.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Compute |
+| Severity | Low |
+| Change | Machine type downgrade |
+
+### function_timeout
+
+Reduces Cloud Function timeout from 60s to 1s.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Compute |
+| Severity | Medium |
+| Change | Timeout reduction |
+
+## GCP Combined Scenario
+
+### combined_gcp_all
+
+Combines all GCP high-fanout scenarios for maximum blast radius.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | All |
+| Severity | Critical |
+| Changes | Firewall open + Pub/Sub IAM change |
+
+## Enabling GCP
+
+To enable GCP scenarios:
+
+```bash
+# Set these variables
+export TF_VAR_enable_gcp=true
+export TF_VAR_gcp_project_id="your-project-id"
+
+# Apply with GCP enabled
+terraform apply -var="scale_multiplier=10" -var="enable_gcp=true" -var="gcp_project_id=your-project-id"
+
+# Run GCP scenario
+terraform plan -var="scale_multiplier=10" -var="enable_gcp=true" -var="gcp_project_id=your-project-id" -var="scenario=shared_firewall_open"
+```
+
+## Lessons Applied from AWS
+
+| AWS Lesson | GCP Application |
+|------------|-----------------|
+| IAM creation doesn't work | Removed SA creation scenarios |
+| High fan-out is key | Shared firewall rule, central Pub/Sub |
+| Modify, don't create | All scenarios modify existing resources |
+| Combined scenarios amplify | combined_gcp_all combines multiple changes |

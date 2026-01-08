@@ -29,6 +29,7 @@ on:
         default: 'none'
         options:
           - 'none'
+          # AWS scenarios
           - 'lambda_timeout'
           - 'shared_sg_open'
           - 'vpc_peering_change'
@@ -36,6 +37,12 @@ on:
           - 'combined_network'
           - 'combined_all'
           - 'combined_max'
+          # GCP scenarios (requires enable_gcp=true)
+          - 'shared_firewall_open'
+          - 'central_pubsub_change'
+          - 'gce_downgrade'
+          - 'function_timeout'
+          - 'combined_gcp_all'
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false

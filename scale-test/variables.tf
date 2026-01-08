@@ -33,8 +33,14 @@ variable "scale_multiplier" {
 
 variable "gcp_project_id" {
   type        = string
-  description = "GCP project ID for scale testing resources"
-  default     = "ovm-scale-test"
+  description = "GCP project ID for scale testing resources. Set to empty string to disable GCP."
+  default     = "" # Set to your GCP project ID to enable GCP resources
+}
+
+variable "enable_gcp" {
+  type        = bool
+  description = "Enable GCP resource creation. Requires gcp_project_id to be set."
+  default     = false
 }
 
 variable "aws_account_id" {
@@ -146,34 +152,45 @@ variable "scenario" {
     Test scenario to apply. Each scenario modifies infrastructure to trigger
     specific risks in Overmind. See SCENARIOS.md for details.
     
-    Available scenarios:
+    AWS Scenarios:
     - none              : No modifications (baseline)
     - lambda_timeout    : Reduce Lambda timeout drastically
     
-    High fan-out scenarios (large blast radius):
+    AWS High fan-out (large blast radius):
     - shared_sg_open      : Open SSH on SHARED security group (affects all EC2)
     - vpc_peering_change  : Modify ALL VPC peerings (affects all 4 VPCs)
     - central_sns_change  : Modify central SNS policy (affects all SQS queues)
     
-    Combined scenarios (maximum blast radius):
+    AWS Combined (maximum blast radius):
     - combined_network  : vpc_peering_change + shared_sg_open combined
-    - combined_all      : All high-fanout scenarios combined (vpc + sg + sns)
-    - combined_max      : Maximum blast radius (all ports open + vpc + sns + lambda timeout)
+    - combined_all      : All AWS high-fanout scenarios combined
+    - combined_max      : Maximum AWS blast radius
     
-    Removed scenarios:
-    - central_s3_change : Removed (causes investigation timeout)
+    GCP Scenarios (requires enable_gcp = true):
+    - shared_firewall_open   : Open SSH on shared firewall rule (affects all GCE)
+    - central_pubsub_change  : Modify central Pub/Sub IAM (affects all subscriptions)
+    - gce_downgrade          : Downgrade GCE machine type
+    - function_timeout       : Reduce Cloud Function timeout
+    - combined_gcp_all       : All GCP high-fanout scenarios combined
   EOT
 
   validation {
     condition = contains([
       "none",
+      # AWS scenarios
       "lambda_timeout",
       "shared_sg_open",
       "vpc_peering_change",
       "central_sns_change",
       "combined_network",
       "combined_all",
-      "combined_max"
+      "combined_max",
+      # GCP scenarios
+      "shared_firewall_open",
+      "central_pubsub_change",
+      "gce_downgrade",
+      "function_timeout",
+      "combined_gcp_all"
     ], var.scenario)
     error_message = "Invalid scenario. See variable description for valid options."
   }

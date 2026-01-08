@@ -89,6 +89,19 @@ locals {
     var.scenario == "combined_max" ? 1 :
     var.lambda_timeout
   )
+
+  # GCE machine type (modified by gce_downgrade scenario)
+  scenario_gce_machine_type = (
+    var.scenario == "gce_downgrade" ? "f1-micro" :
+    "e2-micro"
+  )
+
+  # Cloud Function timeout (modified by function_timeout or combined_gcp_max scenario)
+  scenario_function_timeout = (
+    var.scenario == "function_timeout" ? 1 :
+    var.scenario == "combined_gcp_max" ? 1 :
+    60
+  )
 }
 
 # -----------------------------------------------------------------------------
@@ -212,85 +225,106 @@ module "aws_ap_southeast_1" {
 # -----------------------------------------------------------------------------
 # GCP Modules - Per Region
 # -----------------------------------------------------------------------------
-# These module blocks will be uncommented as modules are implemented in Phase 3
+# Set enable_gcp = true and gcp_project_id to enable GCP resources
 
-# module "gcp_us_central1" {
-#   source = "./modules/gcp"
-#   
-#   providers = {
-#     google = google.us_central1
-#   }
-#   
-#   region            = "us-central1"
-#   project_id        = var.gcp_project_id
-#   scale_multiplier  = var.scale_multiplier
-#   resource_counts   = local.count
-#   vpc_cidr          = local.vpc_cidrs["us-central1"]
-#   unique_suffix     = local.unique_suffix
-#   common_labels     = local.common_tags
-#   
-#   enable_gce        = var.enable_gce_instances
-#   enable_functions  = var.enable_cloud_functions
-#   gce_machine_type  = var.gce_machine_type
-# }
+module "gcp_us_central1" {
+  count  = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  source = "./modules/gcp"
 
-# module "gcp_us_west1" {
-#   source = "./modules/gcp"
-#   
-#   providers = {
-#     google = google.us_west1
-#   }
-#   
-#   region            = "us-west1"
-#   project_id        = var.gcp_project_id
-#   scale_multiplier  = var.scale_multiplier
-#   resource_counts   = local.count
-#   vpc_cidr          = local.vpc_cidrs["us-west1"]
-#   unique_suffix     = local.unique_suffix
-#   common_labels     = local.common_tags
-#   
-#   enable_gce        = var.enable_gce_instances
-#   enable_functions  = var.enable_cloud_functions
-#   gce_machine_type  = var.gce_machine_type
-# }
+  providers = {
+    google = google.us_central1
+  }
 
-# module "gcp_europe_west1" {
-#   source = "./modules/gcp"
-#   
-#   providers = {
-#     google = google.europe_west1
-#   }
-#   
-#   region            = "europe-west1"
-#   project_id        = var.gcp_project_id
-#   scale_multiplier  = var.scale_multiplier
-#   resource_counts   = local.count
-#   vpc_cidr          = local.vpc_cidrs["europe-west1"]
-#   unique_suffix     = local.unique_suffix
-#   common_labels     = local.common_tags
-#   
-#   enable_gce        = var.enable_gce_instances
-#   enable_functions  = var.enable_cloud_functions
-#   gce_machine_type  = var.gce_machine_type
-# }
+  project_id       = var.gcp_project_id
+  region           = "us-central1"
+  scale_multiplier = var.scale_multiplier
+  resource_counts  = local.count
+  vpc_cidr         = local.vpc_cidrs["us-central1"]
+  unique_suffix    = local.unique_suffix
+  common_labels    = local.common_tags
 
-# module "gcp_asia_southeast1" {
-#   source = "./modules/gcp"
-#   
-#   providers = {
-#     google = google.asia_southeast1
-#   }
-#   
-#   region            = "asia-southeast1"
-#   project_id        = var.gcp_project_id
-#   scale_multiplier  = var.scale_multiplier
-#   resource_counts   = local.count
-#   vpc_cidr          = local.vpc_cidrs["asia-southeast1"]
-#   unique_suffix     = local.unique_suffix
-#   common_labels     = local.common_tags
-#   
-#   enable_gce        = var.enable_gce_instances
-#   enable_functions  = var.enable_cloud_functions
-#   gce_machine_type  = var.gce_machine_type
-# }
+  enable_gce       = var.enable_ec2_instances  # Reuse EC2 toggle for GCE
+  enable_functions = var.enable_lambda_functions  # Reuse Lambda toggle for Cloud Functions
+  machine_type     = local.scenario_gce_machine_type
+  function_timeout = local.scenario_function_timeout
+
+  # Central resources for cross-region connectivity
+  central_bucket_name  = var.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic = var.enable_gcp ? google_pubsub_topic.central[0].id : ""
+}
+
+module "gcp_us_west1" {
+  count  = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  source = "./modules/gcp"
+
+  providers = {
+    google = google.us_west1
+  }
+
+  project_id       = var.gcp_project_id
+  region           = "us-west1"
+  scale_multiplier = var.scale_multiplier
+  resource_counts  = local.count
+  vpc_cidr         = local.vpc_cidrs["us-west1"]
+  unique_suffix    = local.unique_suffix
+  common_labels    = local.common_tags
+
+  enable_gce       = var.enable_ec2_instances
+  enable_functions = var.enable_lambda_functions
+  machine_type     = local.scenario_gce_machine_type
+  function_timeout = local.scenario_function_timeout
+
+  central_bucket_name  = var.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic = var.enable_gcp ? google_pubsub_topic.central[0].id : ""
+}
+
+module "gcp_europe_west1" {
+  count  = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  source = "./modules/gcp"
+
+  providers = {
+    google = google.europe_west1
+  }
+
+  project_id       = var.gcp_project_id
+  region           = "europe-west1"
+  scale_multiplier = var.scale_multiplier
+  resource_counts  = local.count
+  vpc_cidr         = local.vpc_cidrs["europe-west1"]
+  unique_suffix    = local.unique_suffix
+  common_labels    = local.common_tags
+
+  enable_gce       = var.enable_ec2_instances
+  enable_functions = var.enable_lambda_functions
+  machine_type     = local.scenario_gce_machine_type
+  function_timeout = local.scenario_function_timeout
+
+  central_bucket_name  = var.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic = var.enable_gcp ? google_pubsub_topic.central[0].id : ""
+}
+
+module "gcp_asia_southeast1" {
+  count  = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  source = "./modules/gcp"
+
+  providers = {
+    google = google.asia_southeast1
+  }
+
+  project_id       = var.gcp_project_id
+  region           = "asia-southeast1"
+  scale_multiplier = var.scale_multiplier
+  resource_counts  = local.count
+  vpc_cidr         = local.vpc_cidrs["asia-southeast1"]
+  unique_suffix    = local.unique_suffix
+  common_labels    = local.common_tags
+
+  enable_gce       = var.enable_ec2_instances
+  enable_functions = var.enable_lambda_functions
+  machine_type     = local.scenario_gce_machine_type
+  function_timeout = local.scenario_function_timeout
+
+  central_bucket_name  = var.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic = var.enable_gcp ? google_pubsub_topic.central[0].id : ""
+}
 
