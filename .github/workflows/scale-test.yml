@@ -106,14 +106,13 @@ jobs:
           aws-region: us-east-1
           role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
 
+      # Always authenticate with GCP - provider validates even when not creating resources
       - name: Configure GCP Credentials
-        if: ${{ inputs.enable_gcp == true }}
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.OVERMIND_SCALE_TEST }}
 
       - name: Setup GCP SDK
-        if: ${{ inputs.enable_gcp == true }}
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: overmind-scale-test
