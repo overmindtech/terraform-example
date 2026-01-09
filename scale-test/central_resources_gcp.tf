@@ -8,6 +8,11 @@
 # All regional Cloud Functions reference this bucket
 # -----------------------------------------------------------------------------
 
+locals {
+  # GCP labels must be lowercase
+  gcp_labels = { for k, v in local.common_tags : lower(k) => lower(tostring(v)) }
+}
+
 resource "google_storage_bucket" "central" {
   count = local.enable_gcp && var.gcp_project_id != "" ? 1 : 0
 
@@ -18,7 +23,7 @@ resource "google_storage_bucket" "central" {
   force_destroy               = true
   uniform_bucket_level_access = true
 
-  labels = merge(local.common_tags, {
+  labels = merge(local.gcp_labels, {
     purpose = "central-fanout"
   })
 
@@ -44,7 +49,7 @@ resource "google_pubsub_topic" "central" {
   project  = var.gcp_project_id
   name     = "ovm-scale-central-topic-${local.unique_suffix}"
 
-  labels = merge(local.common_tags, {
+  labels = merge(local.gcp_labels, {
     purpose = "central-fanout"
   })
 
@@ -66,7 +71,7 @@ resource "google_pubsub_topic" "central_dlq" {
   project  = var.gcp_project_id
   name     = "ovm-scale-central-dlq-${local.unique_suffix}"
 
-  labels = merge(local.common_tags, {
+  labels = merge(local.gcp_labels, {
     purpose = "central-dlq"
   })
 }

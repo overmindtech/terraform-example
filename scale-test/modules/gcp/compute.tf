@@ -14,8 +14,8 @@ resource "google_compute_instance" "scale_test" {
   machine_type = var.machine_type
   zone         = data.google_compute_zones.available.names[count.index % length(data.google_compute_zones.available.names)]
 
-  # Start in stopped state for cost control
-  desired_status = "TERMINATED"
+  # Note: GCP doesn't allow creating instances in stopped state
+  # Instances will be created running - stop manually if needed for cost control
 
   boot_disk {
     initialize_params {
@@ -51,10 +51,6 @@ resource "google_compute_instance" "scale_test" {
 
   # Prevent accidental deletion
   deletion_protection = false
-
-  lifecycle {
-    ignore_changes = [desired_status]
-  }
 }
 
 # -----------------------------------------------------------------------------
