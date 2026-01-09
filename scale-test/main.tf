@@ -263,8 +263,9 @@ module "gcp_us_central1" {
   function_timeout = local.scenario_function_timeout
 
   # Central resources for cross-region connectivity
-  central_bucket_name  = local.enable_gcp ? google_storage_bucket.central[0].name : ""
-  central_pubsub_topic = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  central_bucket_name          = local.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic         = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  enable_central_subscriptions = local.enable_gcp
 }
 
 module "gcp_us_west1" {
@@ -288,8 +289,9 @@ module "gcp_us_west1" {
   machine_type     = local.scenario_gce_machine_type
   function_timeout = local.scenario_function_timeout
 
-  central_bucket_name  = local.enable_gcp ? google_storage_bucket.central[0].name : ""
-  central_pubsub_topic = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  central_bucket_name          = local.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic         = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  enable_central_subscriptions = local.enable_gcp
 }
 
 module "gcp_europe_west1" {
@@ -313,8 +315,9 @@ module "gcp_europe_west1" {
   machine_type     = local.scenario_gce_machine_type
   function_timeout = local.scenario_function_timeout
 
-  central_bucket_name  = local.enable_gcp ? google_storage_bucket.central[0].name : ""
-  central_pubsub_topic = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  central_bucket_name          = local.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic         = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  enable_central_subscriptions = local.enable_gcp
 }
 
 module "gcp_asia_southeast1" {
@@ -338,7 +341,8 @@ module "gcp_asia_southeast1" {
   machine_type     = local.scenario_gce_machine_type
   function_timeout = local.scenario_function_timeout
 
-  central_bucket_name  = local.enable_gcp ? google_storage_bucket.central[0].name : ""
-  central_pubsub_topic = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  central_bucket_name          = local.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic         = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  enable_central_subscriptions = local.enable_gcp
 }
 

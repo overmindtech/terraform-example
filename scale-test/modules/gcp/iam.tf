@@ -8,7 +8,7 @@
 
 resource "google_service_account" "high_fanout" {
   project      = var.project_id
-  account_id   = "${local.name_prefix}-shared-sa"
+  account_id   = "${local.sa_prefix}-shared"
   display_name = "Scale Test Shared Service Account"
   description  = "HIGH FAN-OUT: Used by all GCE instances and Cloud Functions in ${var.region}"
 }
@@ -50,7 +50,7 @@ resource "google_service_account" "per_function" {
   count = local.regional_count.functions
 
   project      = var.project_id
-  account_id   = "${local.name_prefix}-fn-sa-${count.index + 1}"
+  account_id   = "${local.sa_prefix}-fn${count.index + 1}"
   display_name = "Function SA ${count.index + 1}"
   description  = "Service account for Cloud Function ${count.index + 1}"
 }
@@ -61,7 +61,7 @@ resource "google_service_account" "per_function" {
 
 resource "google_service_account" "gce" {
   project      = var.project_id
-  account_id   = "${local.name_prefix}-gce-sa"
+  account_id   = "${local.sa_prefix}-gce"
   display_name = "GCE Service Account"
   description  = "Service account for GCE instances in ${var.region}"
 }

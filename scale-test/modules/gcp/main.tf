@@ -3,8 +3,20 @@
 # =============================================================================
 
 locals {
+  # Short region codes for service account IDs (max 30 chars total)
+  region_codes = {
+    "us-central1"     = "usc1"
+    "us-west1"        = "usw1"
+    "europe-west1"    = "euw1"
+    "asia-southeast1" = "ase1"
+  }
+  region_code = lookup(local.region_codes, var.region, substr(replace(var.region, "-", ""), 0, 4))
+
   # Naming convention
   name_prefix = "ovm-scale-${var.region}-${var.unique_suffix}"
+
+  # Short prefix for service accounts (must be <=30 chars including suffix)
+  sa_prefix = "ovm-${local.region_code}-${var.unique_suffix}"
 
   # Regional resource counts (distribute across regions)
   regional_count = {
@@ -17,10 +29,11 @@ locals {
     firewall_rules   = ceil(var.resource_counts.security_groups / 4)
   }
 
-  # Common labels with region
-  labels = merge(var.common_labels, {
-    region = var.region
-  })
+  # Common labels with region - GCP requires lowercase label keys
+  labels = merge(
+    { for k, v in var.common_labels : lower(k) => v },
+    { region = var.region }
+  )
 
   # Network CIDR parsing
   vpc_cidr_parts = split(".", var.vpc_cidr)

@@ -92,3 +92,9 @@ variable "central_pubsub_topic" {
   description = "Central Pub/Sub topic name for cross-region subscriptions"
 }
 
+variable "enable_central_subscriptions" {
+  type        = bool
+  default     = false
+  description = "Enable subscriptions to central Pub/Sub topic (use boolean to avoid count dependency issues)"
+}
+

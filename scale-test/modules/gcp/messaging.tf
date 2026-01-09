@@ -68,7 +68,7 @@ resource "google_pubsub_topic" "dlq" {
 # -----------------------------------------------------------------------------
 
 resource "google_pubsub_subscription" "central" {
-  count = var.central_pubsub_topic != "" ? local.regional_count.pubsub_subs : 0
+  count = var.enable_central_subscriptions ? local.regional_count.pubsub_subs : 0
 
   project = var.project_id
   name    = "${local.name_prefix}-central-sub-${count.index + 1}"
