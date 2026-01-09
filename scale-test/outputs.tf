@@ -166,21 +166,21 @@ output "validation_info" {
 
 output "aws_us_east_1_summary" {
   description = "Resource summary for AWS us-east-1"
-  value       = module.aws_us_east_1.resource_summary
+  value       = local.enable_aws ? module.aws_us_east_1[0].resource_summary : null
 }
 
 output "aws_us_west_2_summary" {
   description = "Resource summary for AWS us-west-2"
-  value       = module.aws_us_west_2.resource_summary
+  value       = local.enable_aws ? module.aws_us_west_2[0].resource_summary : null
 }
 
 output "aws_eu_west_1_summary" {
   description = "Resource summary for AWS eu-west-1"
-  value       = module.aws_eu_west_1.resource_summary
+  value       = local.enable_aws ? module.aws_eu_west_1[0].resource_summary : null
 }
 
 output "aws_ap_southeast_1_summary" {
   description = "Resource summary for AWS ap-southeast-1"
-  value       = module.aws_ap_southeast_1.resource_summary
+  value       = local.enable_aws ? module.aws_ap_southeast_1[0].resource_summary : null
 }
 
