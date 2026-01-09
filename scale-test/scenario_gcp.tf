@@ -17,7 +17,7 @@
 # -----------------------------------------------------------------------------
 
 resource "google_compute_firewall" "scenario_ssh_open_us_central1" {
-  count = var.enable_gcp && var.scenario == "shared_firewall_open" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "shared_firewall_open" ? 1 : 0
 
   provider    = google.us_central1
   project     = var.gcp_project_id
@@ -35,7 +35,7 @@ resource "google_compute_firewall" "scenario_ssh_open_us_central1" {
 }
 
 resource "google_compute_firewall" "scenario_ssh_open_us_west1" {
-  count = var.enable_gcp && var.scenario == "shared_firewall_open" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "shared_firewall_open" ? 1 : 0
 
   provider    = google.us_west1
   project     = var.gcp_project_id
@@ -53,7 +53,7 @@ resource "google_compute_firewall" "scenario_ssh_open_us_west1" {
 }
 
 resource "google_compute_firewall" "scenario_ssh_open_europe_west1" {
-  count = var.enable_gcp && var.scenario == "shared_firewall_open" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "shared_firewall_open" ? 1 : 0
 
   provider    = google.europe_west1
   project     = var.gcp_project_id
@@ -71,7 +71,7 @@ resource "google_compute_firewall" "scenario_ssh_open_europe_west1" {
 }
 
 resource "google_compute_firewall" "scenario_ssh_open_asia_southeast1" {
-  count = var.enable_gcp && var.scenario == "shared_firewall_open" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "shared_firewall_open" ? 1 : 0
 
   provider    = google.asia_southeast1
   project     = var.gcp_project_id
@@ -95,7 +95,7 @@ resource "google_compute_firewall" "scenario_ssh_open_asia_southeast1" {
 # -----------------------------------------------------------------------------
 
 resource "google_pubsub_topic_iam_member" "scenario_central_pubsub" {
-  count = var.enable_gcp && var.scenario == "central_pubsub_change" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "central_pubsub_change" ? 1 : 0
 
   provider = google.us_central1
   project  = var.gcp_project_id
@@ -130,7 +130,7 @@ resource "google_pubsub_topic_iam_member" "scenario_central_pubsub" {
 
 # Firewall open for combined scenario
 resource "google_compute_firewall" "combined_ssh_open_us_central1" {
-  count = var.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
 
   provider    = google.us_central1
   project     = var.gcp_project_id
@@ -148,7 +148,7 @@ resource "google_compute_firewall" "combined_ssh_open_us_central1" {
 }
 
 resource "google_compute_firewall" "combined_ssh_open_us_west1" {
-  count = var.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
 
   provider    = google.us_west1
   project     = var.gcp_project_id
@@ -166,7 +166,7 @@ resource "google_compute_firewall" "combined_ssh_open_us_west1" {
 }
 
 resource "google_compute_firewall" "combined_ssh_open_europe_west1" {
-  count = var.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
 
   provider    = google.europe_west1
   project     = var.gcp_project_id
@@ -184,7 +184,7 @@ resource "google_compute_firewall" "combined_ssh_open_europe_west1" {
 }
 
 resource "google_compute_firewall" "combined_ssh_open_asia_southeast1" {
-  count = var.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
 
   provider    = google.asia_southeast1
   project     = var.gcp_project_id
@@ -203,7 +203,7 @@ resource "google_compute_firewall" "combined_ssh_open_asia_southeast1" {
 
 # Central Pub/Sub change for combined scenario
 resource "google_pubsub_topic_iam_member" "combined_central_pubsub" {
-  count = var.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
+  count = local.enable_gcp && var.scenario == "combined_gcp_all" ? 1 : 0
 
   provider = google.us_central1
   project  = var.gcp_project_id

@@ -18,10 +18,10 @@
 # -----------------------------------------------------------------------------
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_us_west_req" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -29,10 +29,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_us_west_r
 }
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_us_west_acc" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -44,10 +44,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_us_west_a
 # -----------------------------------------------------------------------------
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_eu_west_req" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -55,10 +55,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_eu_west_r
 }
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_eu_west_acc" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -70,10 +70,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_eu_west_a
 # -----------------------------------------------------------------------------
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_ap_southeast_req" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -81,10 +81,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_ap_southe
 }
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_ap_southeast_acc" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -96,10 +96,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_east_to_ap_southe
 # -----------------------------------------------------------------------------
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_west_to_eu_west_req" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -107,10 +107,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_west_to_eu_west_r
 }
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_west_to_eu_west_acc" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -122,10 +122,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_west_to_eu_west_a
 # -----------------------------------------------------------------------------
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_west_to_ap_southeast_req" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -133,10 +133,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_west_to_ap_southe
 }
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_us_west_to_ap_southeast_acc" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -148,10 +148,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_us_west_to_ap_southe
 # -----------------------------------------------------------------------------
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_eu_west_to_ap_southeast_req" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -159,10 +159,10 @@ resource "aws_vpc_peering_connection_options" "scenario_dns_eu_west_to_ap_southe
 }
 
 resource "aws_vpc_peering_connection_options" "scenario_dns_eu_west_to_ap_southeast_acc" {
-  count    = var.scenario == "vpc_peering_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "vpc_peering_change" ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true

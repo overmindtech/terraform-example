@@ -31,16 +31,26 @@ variable "scale_multiplier" {
 # Cloud Provider Configuration
 # -----------------------------------------------------------------------------
 
+variable "cloud_provider" {
+  type        = string
+  default     = "aws"
+  description = <<-EOT
+    Which cloud provider(s) to deploy:
+    - aws  : AWS only (default)
+    - gcp  : GCP only
+    - both : AWS and GCP
+  EOT
+
+  validation {
+    condition     = contains(["aws", "gcp", "both"], var.cloud_provider)
+    error_message = "cloud_provider must be 'aws', 'gcp', or 'both'."
+  }
+}
+
 variable "gcp_project_id" {
   type        = string
   description = "GCP project ID for scale testing resources"
   default     = "overmind-scale-test"
-}
-
-variable "enable_gcp" {
-  type        = bool
-  description = "Enable GCP resource creation. Requires gcp_project_id to be set."
-  default     = false
 }
 
 variable "aws_account_id" {

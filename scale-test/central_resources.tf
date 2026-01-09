@@ -16,6 +16,7 @@
 # -----------------------------------------------------------------------------
 
 resource "aws_sns_topic" "central" {
+  count    = local.enable_aws ? 1 : 0
   provider = aws.us_east_1
 
   name = "ovm-scale-central-topic-${local.unique_suffix}"
@@ -29,9 +30,10 @@ resource "aws_sns_topic" "central" {
 
 # SNS topic policy allowing cross-region subscriptions
 resource "aws_sns_topic_policy" "central" {
+  count    = local.enable_aws ? 1 : 0
   provider = aws.us_east_1
 
-  arn = aws_sns_topic.central.arn
+  arn = aws_sns_topic.central[0].arn
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -43,7 +45,7 @@ resource "aws_sns_topic_policy" "central" {
           Service = "sqs.amazonaws.com"
         }
         Action   = "sns:Subscribe"
-        Resource = aws_sns_topic.central.arn
+        Resource = aws_sns_topic.central[0].arn
       }
     ]
   })
@@ -56,48 +58,48 @@ resource "aws_sns_topic_policy" "central" {
 
 # us-east-1 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_us_east_1" {
-  count    = length(module.aws_us_east_1.sqs_queue_arns)
+  count    = local.enable_aws ? length(module.aws_us_east_1[0].sqs_queue_arns) : 0
   provider = aws.us_east_1
 
-  topic_arn = aws_sns_topic.central.arn
+  topic_arn = aws_sns_topic.central[0].arn
   protocol  = "sqs"
-  endpoint  = module.aws_us_east_1.sqs_queue_arns[count.index]
+  endpoint  = module.aws_us_east_1[0].sqs_queue_arns[count.index]
 
   depends_on = [aws_sns_topic_policy.central]
 }
 
 # us-west-2 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_us_west_2" {
-  count    = length(module.aws_us_west_2.sqs_queue_arns)
+  count    = local.enable_aws ? length(module.aws_us_west_2[0].sqs_queue_arns) : 0
   provider = aws.us_east_1  # Subscription created in SNS region
 
-  topic_arn = aws_sns_topic.central.arn
+  topic_arn = aws_sns_topic.central[0].arn
   protocol  = "sqs"
-  endpoint  = module.aws_us_west_2.sqs_queue_arns[count.index]
+  endpoint  = module.aws_us_west_2[0].sqs_queue_arns[count.index]
 
   depends_on = [aws_sns_topic_policy.central]
 }
 
 # eu-west-1 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_eu_west_1" {
-  count    = length(module.aws_eu_west_1.sqs_queue_arns)
+  count    = local.enable_aws ? length(module.aws_eu_west_1[0].sqs_queue_arns) : 0
   provider = aws.us_east_1
 
-  topic_arn = aws_sns_topic.central.arn
+  topic_arn = aws_sns_topic.central[0].arn
   protocol  = "sqs"
-  endpoint  = module.aws_eu_west_1.sqs_queue_arns[count.index]
+  endpoint  = module.aws_eu_west_1[0].sqs_queue_arns[count.index]
 
   depends_on = [aws_sns_topic_policy.central]
 }
 
 # ap-southeast-1 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_ap_southeast_1" {
-  count    = length(module.aws_ap_southeast_1.sqs_queue_arns)
+  count    = local.enable_aws ? length(module.aws_ap_southeast_1[0].sqs_queue_arns) : 0
   provider = aws.us_east_1
 
-  topic_arn = aws_sns_topic.central.arn
+  topic_arn = aws_sns_topic.central[0].arn
   protocol  = "sqs"
-  endpoint  = module.aws_ap_southeast_1.sqs_queue_arns[count.index]
+  endpoint  = module.aws_ap_southeast_1[0].sqs_queue_arns[count.index]
 
   depends_on = [aws_sns_topic_policy.central]
 }
@@ -108,6 +110,7 @@ resource "aws_sns_topic_subscription" "central_to_ap_southeast_1" {
 # -----------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "central" {
+  count    = local.enable_aws ? 1 : 0
   provider = aws.us_east_1
 
   bucket = "ovm-scale-central-${local.unique_suffix}"
@@ -120,9 +123,10 @@ resource "aws_s3_bucket" "central" {
 }
 
 resource "aws_s3_bucket_versioning" "central" {
+  count    = local.enable_aws ? 1 : 0
   provider = aws.us_east_1
 
-  bucket = aws_s3_bucket.central.id
+  bucket = aws_s3_bucket.central[0].id
   versioning_configuration {
     status = "Enabled"
   }
@@ -130,9 +134,10 @@ resource "aws_s3_bucket_versioning" "central" {
 
 # Bucket policy allowing cross-region Lambda access
 resource "aws_s3_bucket_policy" "central" {
+  count    = local.enable_aws ? 1 : 0
   provider = aws.us_east_1
 
-  bucket = aws_s3_bucket.central.id
+  bucket = aws_s3_bucket.central[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -142,10 +147,10 @@ resource "aws_s3_bucket_policy" "central" {
         Effect = "Allow"
         Principal = {
           AWS = [
-            module.aws_us_east_1.high_fanout_lambda_role_arn,
-            module.aws_us_west_2.high_fanout_lambda_role_arn,
-            module.aws_eu_west_1.high_fanout_lambda_role_arn,
-            module.aws_ap_southeast_1.high_fanout_lambda_role_arn
+            module.aws_us_east_1[0].high_fanout_lambda_role_arn,
+            module.aws_us_west_2[0].high_fanout_lambda_role_arn,
+            module.aws_eu_west_1[0].high_fanout_lambda_role_arn,
+            module.aws_ap_southeast_1[0].high_fanout_lambda_role_arn
           ]
         }
         Action = [
@@ -153,8 +158,8 @@ resource "aws_s3_bucket_policy" "central" {
           "s3:ListBucket"
         ]
         Resource = [
-          aws_s3_bucket.central.arn,
-          "${aws_s3_bucket.central.arn}/*"
+          aws_s3_bucket.central[0].arn,
+          "${aws_s3_bucket.central[0].arn}/*"
         ]
       }
     ]
@@ -167,10 +172,10 @@ resource "aws_s3_bucket_policy" "central" {
 # -----------------------------------------------------------------------------
 
 resource "aws_sns_topic_policy" "scenario_central_sns" {
-  count    = var.scenario == "central_sns_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "central_sns_change" ? 1 : 0
   provider = aws.us_east_1
 
-  arn = aws_sns_topic.central.arn
+  arn = aws_sns_topic.central[0].arn
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -182,14 +187,14 @@ resource "aws_sns_topic_policy" "scenario_central_sns" {
           Service = "sqs.amazonaws.com"
         }
         Action   = "sns:Subscribe"
-        Resource = aws_sns_topic.central.arn
+        Resource = aws_sns_topic.central[0].arn
       },
       {
         Sid    = "ScenarioRestrictPublish"
         Effect = "Deny"
         Principal = "*"
         Action   = "sns:Publish"
-        Resource = aws_sns_topic.central.arn
+        Resource = aws_sns_topic.central[0].arn
         Condition = {
           StringNotEquals = {
             "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
@@ -206,10 +211,10 @@ resource "aws_sns_topic_policy" "scenario_central_sns" {
 # -----------------------------------------------------------------------------
 
 resource "aws_s3_bucket_policy" "scenario_central_s3" {
-  count    = var.scenario == "central_s3_change" ? 1 : 0
+  count    = local.enable_aws && var.scenario == "central_s3_change" ? 1 : 0
   provider = aws.us_east_1
 
-  bucket = aws_s3_bucket.central.id
+  bucket = aws_s3_bucket.central[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -219,10 +224,10 @@ resource "aws_s3_bucket_policy" "scenario_central_s3" {
         Effect = "Allow"
         Principal = {
           AWS = [
-            module.aws_us_east_1.high_fanout_lambda_role_arn,
-            module.aws_us_west_2.high_fanout_lambda_role_arn,
-            module.aws_eu_west_1.high_fanout_lambda_role_arn,
-            module.aws_ap_southeast_1.high_fanout_lambda_role_arn
+            module.aws_us_east_1[0].high_fanout_lambda_role_arn,
+            module.aws_us_west_2[0].high_fanout_lambda_role_arn,
+            module.aws_eu_west_1[0].high_fanout_lambda_role_arn,
+            module.aws_ap_southeast_1[0].high_fanout_lambda_role_arn
           ]
         }
         Action = [
@@ -230,8 +235,8 @@ resource "aws_s3_bucket_policy" "scenario_central_s3" {
           "s3:ListBucket"
         ]
         Resource = [
-          aws_s3_bucket.central.arn,
-          "${aws_s3_bucket.central.arn}/*"
+          aws_s3_bucket.central[0].arn,
+          "${aws_s3_bucket.central[0].arn}/*"
         ]
       },
       {
@@ -239,7 +244,7 @@ resource "aws_s3_bucket_policy" "scenario_central_s3" {
         Effect = "Deny"
         Principal = "*"
         Action   = "s3:DeleteObject"
-        Resource = "${aws_s3_bucket.central.arn}/*"
+        Resource = "${aws_s3_bucket.central[0].arn}/*"
       }
     ]
   })
@@ -252,4 +257,3 @@ resource "aws_s3_bucket_policy" "scenario_central_s3" {
 data "aws_caller_identity" "current" {
   provider = aws.us_east_1
 }
-

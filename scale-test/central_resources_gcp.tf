@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 
 resource "google_storage_bucket" "central" {
-  count = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  count = local.enable_gcp && var.gcp_project_id != "" ? 1 : 0
 
   provider                    = google.us_central1
   project                     = var.gcp_project_id
@@ -38,7 +38,7 @@ resource "google_storage_bucket" "central" {
 # -----------------------------------------------------------------------------
 
 resource "google_pubsub_topic" "central" {
-  count = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  count = local.enable_gcp && var.gcp_project_id != "" ? 1 : 0
 
   provider = google.us_central1
   project  = var.gcp_project_id
@@ -60,7 +60,7 @@ resource "google_pubsub_topic" "central" {
 
 # Dead letter topic for central topic
 resource "google_pubsub_topic" "central_dlq" {
-  count = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  count = local.enable_gcp && var.gcp_project_id != "" ? 1 : 0
 
   provider = google.us_central1
   project  = var.gcp_project_id

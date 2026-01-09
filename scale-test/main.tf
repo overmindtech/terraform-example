@@ -14,6 +14,16 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
+# Local Variables - Cloud Provider Toggles
+# -----------------------------------------------------------------------------
+
+locals {
+  # Derived from cloud_provider variable
+  enable_aws = var.cloud_provider == "aws" || var.cloud_provider == "both"
+  enable_gcp = var.cloud_provider == "gcp" || var.cloud_provider == "both"
+}
+
+# -----------------------------------------------------------------------------
 # Local Variables - Resource Counts and Distribution
 # -----------------------------------------------------------------------------
 
@@ -119,6 +129,7 @@ resource "random_string" "suffix" {
 # -----------------------------------------------------------------------------
 
 module "aws_us_east_1" {
+  count  = local.enable_aws ? 1 : 0
   source = "./modules/aws"
 
   providers = {
@@ -140,11 +151,12 @@ module "aws_us_east_1" {
   lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
 
   # Central resources for cross-region connectivity
-  central_bucket_name   = "ovm-scale-central-${local.unique_suffix}"
-  central_sns_topic_arn = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:ovm-scale-central-topic-${local.unique_suffix}"
+  central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
+  central_sns_topic_arn = local.enable_aws ? aws_sns_topic.central[0].arn : ""
 }
 
 module "aws_us_west_2" {
+  count  = local.enable_aws ? 1 : 0
   source = "./modules/aws"
 
   providers = {
@@ -166,11 +178,12 @@ module "aws_us_west_2" {
   lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
 
   # Central resources for cross-region connectivity
-  central_bucket_name   = "ovm-scale-central-${local.unique_suffix}"
-  central_sns_topic_arn = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:ovm-scale-central-topic-${local.unique_suffix}"
+  central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
+  central_sns_topic_arn = local.enable_aws ? aws_sns_topic.central[0].arn : ""
 }
 
 module "aws_eu_west_1" {
+  count  = local.enable_aws ? 1 : 0
   source = "./modules/aws"
 
   providers = {
@@ -192,11 +205,12 @@ module "aws_eu_west_1" {
   lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
 
   # Central resources for cross-region connectivity
-  central_bucket_name   = "ovm-scale-central-${local.unique_suffix}"
-  central_sns_topic_arn = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:ovm-scale-central-topic-${local.unique_suffix}"
+  central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
+  central_sns_topic_arn = local.enable_aws ? aws_sns_topic.central[0].arn : ""
 }
 
 module "aws_ap_southeast_1" {
+  count  = local.enable_aws ? 1 : 0
   source = "./modules/aws"
 
   providers = {
@@ -218,8 +232,8 @@ module "aws_ap_southeast_1" {
   lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
 
   # Central resources for cross-region connectivity
-  central_bucket_name   = "ovm-scale-central-${local.unique_suffix}"
-  central_sns_topic_arn = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:ovm-scale-central-topic-${local.unique_suffix}"
+  central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
+  central_sns_topic_arn = local.enable_aws ? aws_sns_topic.central[0].arn : ""
 }
 
 # -----------------------------------------------------------------------------
@@ -228,7 +242,7 @@ module "aws_ap_southeast_1" {
 # Set enable_gcp = true and gcp_project_id to enable GCP resources
 
 module "gcp_us_central1" {
-  count  = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  count  = local.enable_gcp && var.gcp_project_id != "" ? 1 : 0
   source = "./modules/gcp"
 
   providers = {
@@ -249,12 +263,12 @@ module "gcp_us_central1" {
   function_timeout = local.scenario_function_timeout
 
   # Central resources for cross-region connectivity
-  central_bucket_name  = var.enable_gcp ? google_storage_bucket.central[0].name : ""
-  central_pubsub_topic = var.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  central_bucket_name  = local.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
 }
 
 module "gcp_us_west1" {
-  count  = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  count  = local.enable_gcp && var.gcp_project_id != "" ? 1 : 0
   source = "./modules/gcp"
 
   providers = {
@@ -274,12 +288,12 @@ module "gcp_us_west1" {
   machine_type     = local.scenario_gce_machine_type
   function_timeout = local.scenario_function_timeout
 
-  central_bucket_name  = var.enable_gcp ? google_storage_bucket.central[0].name : ""
-  central_pubsub_topic = var.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  central_bucket_name  = local.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
 }
 
 module "gcp_europe_west1" {
-  count  = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  count  = local.enable_gcp && var.gcp_project_id != "" ? 1 : 0
   source = "./modules/gcp"
 
   providers = {
@@ -299,12 +313,12 @@ module "gcp_europe_west1" {
   machine_type     = local.scenario_gce_machine_type
   function_timeout = local.scenario_function_timeout
 
-  central_bucket_name  = var.enable_gcp ? google_storage_bucket.central[0].name : ""
-  central_pubsub_topic = var.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  central_bucket_name  = local.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
 }
 
 module "gcp_asia_southeast1" {
-  count  = var.enable_gcp && var.gcp_project_id != "" ? 1 : 0
+  count  = local.enable_gcp && var.gcp_project_id != "" ? 1 : 0
   source = "./modules/gcp"
 
   providers = {
@@ -324,7 +338,7 @@ module "gcp_asia_southeast1" {
   machine_type     = local.scenario_gce_machine_type
   function_timeout = local.scenario_function_timeout
 
-  central_bucket_name  = var.enable_gcp ? google_storage_bucket.central[0].name : ""
-  central_pubsub_topic = var.enable_gcp ? google_pubsub_topic.central[0].id : ""
+  central_bucket_name  = local.enable_gcp ? google_storage_bucket.central[0].name : ""
+  central_pubsub_topic = local.enable_gcp ? google_pubsub_topic.central[0].id : ""
 }
 

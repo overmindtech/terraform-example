@@ -37,17 +37,21 @@ on:
           - 'combined_network'
           - 'combined_all'
           - 'combined_max'
-          # GCP scenarios (requires enable_gcp=true)
+          # GCP scenarios (requires cloud_provider=gcp or both)
           - 'shared_firewall_open'
           - 'central_pubsub_change'
           - 'gce_downgrade'
           - 'function_timeout'
           - 'combined_gcp_all'
-      enable_gcp:
-        description: 'Enable GCP resources (requires GCP credentials)'
-        required: false
-        type: boolean
-        default: false
+      cloud_provider:
+        description: 'Cloud provider to deploy'
+        required: true
+        type: choice
+        default: 'aws'
+        options:
+          - 'aws'
+          - 'gcp'
+          - 'both'
       confirmation:
         description: 'For destroy: type DESTROY-SCALE-TEST to confirm'
         required: false
@@ -56,7 +60,7 @@ on:
 env:
   TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier }}
   TF_VAR_scenario: ${{ inputs.scenario }}
-  TF_VAR_enable_gcp: ${{ inputs.enable_gcp }}
+  TF_VAR_cloud_provider: ${{ inputs.cloud_provider }}
   WORKING_DIR: scale-test
 
 jobs:
@@ -105,7 +109,8 @@ jobs:
           aws-region: us-east-1
           role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
 
-      # Always authenticate with GCP - provider validates even when not creating resources
+      # Always authenticate with GCP - Terraform validates all providers during init
+      # even when cloud_provider=aws (no GCP resources created)
       - name: Configure GCP Credentials
         uses: google-github-actions/auth@v2
         with:

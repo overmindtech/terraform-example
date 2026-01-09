@@ -10,7 +10,9 @@
 # -----------------------------------------------------------------------------
 
 locals {
-  scenario_combined_network = var.scenario == "combined_network"
+  scenario_combined_network = local.enable_aws && var.scenario == "combined_network"
+  scenario_combined_all     = local.enable_aws && var.scenario == "combined_all"
+  scenario_combined_max     = local.enable_aws && var.scenario == "combined_max"
 }
 
 # --- VPC Peering DNS Changes (from vpc_peering_change) ---
@@ -19,7 +21,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_east_to_us_west_r
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -30,7 +32,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_east_to_us_west_a
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -41,7 +43,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_east_to_eu_west_r
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -52,7 +54,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_east_to_eu_west_a
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -63,7 +65,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_east_to_ap_southe
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -74,7 +76,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_east_to_ap_southe
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -85,7 +87,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_west_to_eu_west_r
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -96,7 +98,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_west_to_eu_west_a
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -107,7 +109,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_west_to_ap_southe
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -118,7 +120,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_us_west_to_ap_southe
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -129,7 +131,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_eu_west_to_ap_southe
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -140,7 +142,7 @@ resource "aws_vpc_peering_connection_options" "combined_dns_eu_west_to_ap_southe
   count    = local.scenario_combined_network ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -153,7 +155,7 @@ resource "aws_security_group_rule" "combined_sg_open_us_east_1" {
   count = local.scenario_combined_network ? 1 : 0
 
   provider          = aws.us_east_1
-  security_group_id = module.aws_us_east_1.high_fanout_sg_id
+  security_group_id = module.aws_us_east_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -166,7 +168,7 @@ resource "aws_security_group_rule" "combined_sg_open_us_west_2" {
   count = local.scenario_combined_network ? 1 : 0
 
   provider          = aws.us_west_2
-  security_group_id = module.aws_us_west_2.high_fanout_sg_id
+  security_group_id = module.aws_us_west_2[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -179,7 +181,7 @@ resource "aws_security_group_rule" "combined_sg_open_eu_west_1" {
   count = local.scenario_combined_network ? 1 : 0
 
   provider          = aws.eu_west_1
-  security_group_id = module.aws_eu_west_1.high_fanout_sg_id
+  security_group_id = module.aws_eu_west_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -192,7 +194,7 @@ resource "aws_security_group_rule" "combined_sg_open_ap_southeast_1" {
   count = local.scenario_combined_network ? 1 : 0
 
   provider          = aws.ap_southeast_1
-  security_group_id = module.aws_ap_southeast_1.high_fanout_sg_id
+  security_group_id = module.aws_ap_southeast_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -210,17 +212,13 @@ resource "aws_security_group_rule" "combined_sg_open_ap_southeast_1" {
 # Expected Blast Radius: 1,500-2,000 items at 25x
 # -----------------------------------------------------------------------------
 
-locals {
-  scenario_combined_all = var.scenario == "combined_all"
-}
-
 # --- VPC Peering DNS Changes ---
 
 resource "aws_vpc_peering_connection_options" "all_dns_us_east_to_us_west_req" {
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -231,7 +229,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_east_to_us_west_acc" {
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -242,7 +240,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_east_to_eu_west_req" {
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -253,7 +251,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_east_to_eu_west_acc" {
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -264,7 +262,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_east_to_ap_southeast_r
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -275,7 +273,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_east_to_ap_southeast_a
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -286,7 +284,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_west_to_eu_west_req" {
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -297,7 +295,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_west_to_eu_west_acc" {
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -308,7 +306,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_west_to_ap_southeast_r
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -319,7 +317,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_us_west_to_ap_southeast_a
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -330,7 +328,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_eu_west_to_ap_southeast_r
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -341,7 +339,7 @@ resource "aws_vpc_peering_connection_options" "all_dns_eu_west_to_ap_southeast_a
   count    = local.scenario_combined_all ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -354,7 +352,7 @@ resource "aws_security_group_rule" "all_sg_open_us_east_1" {
   count = local.scenario_combined_all ? 1 : 0
 
   provider          = aws.us_east_1
-  security_group_id = module.aws_us_east_1.high_fanout_sg_id
+  security_group_id = module.aws_us_east_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -367,7 +365,7 @@ resource "aws_security_group_rule" "all_sg_open_us_west_2" {
   count = local.scenario_combined_all ? 1 : 0
 
   provider          = aws.us_west_2
-  security_group_id = module.aws_us_west_2.high_fanout_sg_id
+  security_group_id = module.aws_us_west_2[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -380,7 +378,7 @@ resource "aws_security_group_rule" "all_sg_open_eu_west_1" {
   count = local.scenario_combined_all ? 1 : 0
 
   provider          = aws.eu_west_1
-  security_group_id = module.aws_eu_west_1.high_fanout_sg_id
+  security_group_id = module.aws_eu_west_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -393,7 +391,7 @@ resource "aws_security_group_rule" "all_sg_open_ap_southeast_1" {
   count = local.scenario_combined_all ? 1 : 0
 
   provider          = aws.ap_southeast_1
-  security_group_id = module.aws_ap_southeast_1.high_fanout_sg_id
+  security_group_id = module.aws_ap_southeast_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 22
   to_port           = 22
@@ -408,7 +406,7 @@ resource "aws_sns_topic_policy" "combined_all_central" {
   count = local.scenario_combined_all ? 1 : 0
 
   provider = aws.us_east_1
-  arn      = aws_sns_topic.central.arn
+  arn      = aws_sns_topic.central[0].arn
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -421,14 +419,14 @@ resource "aws_sns_topic_policy" "combined_all_central" {
           Service = "sqs.amazonaws.com"
         }
         Action   = "sns:Subscribe"
-        Resource = aws_sns_topic.central.arn
+        Resource = aws_sns_topic.central[0].arn
       },
       {
         Sid       = "CombinedAllRestrictPublish"
         Effect    = "Deny"
         Principal = "*"
         Action    = "sns:Publish"
-        Resource  = aws_sns_topic.central.arn
+        Resource  = aws_sns_topic.central[0].arn
         Condition = {
           StringNotEquals = {
             "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
@@ -449,17 +447,13 @@ resource "aws_sns_topic_policy" "combined_all_central" {
 # Expected Blast Radius: 1,200-1,500 items at 25x
 # =============================================================================
 
-locals {
-  scenario_combined_max = var.scenario == "combined_max"
-}
-
 # --- VPC Peering DNS Changes ---
 
 resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_us_west_req" {
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -470,7 +464,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_us_west_acc" {
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_us_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -481,7 +475,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_eu_west_req" {
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -492,7 +486,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_eu_west_acc" {
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_eu_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -503,7 +497,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_ap_southeast_r
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.us_east_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -514,7 +508,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_east_to_ap_southeast_a
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_east_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -525,7 +519,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_west_to_eu_west_req" {
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -536,7 +530,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_west_to_eu_west_acc" {
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_eu_west[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -547,7 +541,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_west_to_ap_southeast_r
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.us_west_2
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -558,7 +552,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_us_west_to_ap_southeast_a
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.us_west_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -569,7 +563,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_eu_west_to_ap_southeast_r
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.eu_west_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast[0].id
 
   requester {
     allow_remote_vpc_dns_resolution = true
@@ -580,7 +574,7 @@ resource "aws_vpc_peering_connection_options" "max_dns_eu_west_to_ap_southeast_a
   count    = local.scenario_combined_max ? 1 : 0
   provider = aws.ap_southeast_1
 
-  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.eu_west_to_ap_southeast[0].id
 
   accepter {
     allow_remote_vpc_dns_resolution = true
@@ -593,7 +587,7 @@ resource "aws_security_group_rule" "max_sg_all_ports_us_east_1" {
   count = local.scenario_combined_max ? 1 : 0
 
   provider          = aws.us_east_1
-  security_group_id = module.aws_us_east_1.high_fanout_sg_id
+  security_group_id = module.aws_us_east_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 0
   to_port           = 65535
@@ -606,7 +600,7 @@ resource "aws_security_group_rule" "max_sg_all_ports_us_west_2" {
   count = local.scenario_combined_max ? 1 : 0
 
   provider          = aws.us_west_2
-  security_group_id = module.aws_us_west_2.high_fanout_sg_id
+  security_group_id = module.aws_us_west_2[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 0
   to_port           = 65535
@@ -619,7 +613,7 @@ resource "aws_security_group_rule" "max_sg_all_ports_eu_west_1" {
   count = local.scenario_combined_max ? 1 : 0
 
   provider          = aws.eu_west_1
-  security_group_id = module.aws_eu_west_1.high_fanout_sg_id
+  security_group_id = module.aws_eu_west_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 0
   to_port           = 65535
@@ -632,7 +626,7 @@ resource "aws_security_group_rule" "max_sg_all_ports_ap_southeast_1" {
   count = local.scenario_combined_max ? 1 : 0
 
   provider          = aws.ap_southeast_1
-  security_group_id = module.aws_ap_southeast_1.high_fanout_sg_id
+  security_group_id = module.aws_ap_southeast_1[0].high_fanout_sg_id
   type              = "ingress"
   from_port         = 0
   to_port           = 65535
@@ -647,7 +641,7 @@ resource "aws_sns_topic_policy" "max_central" {
   count = local.scenario_combined_max ? 1 : 0
 
   provider = aws.us_east_1
-  arn      = aws_sns_topic.central.arn
+  arn      = aws_sns_topic.central[0].arn
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -660,14 +654,14 @@ resource "aws_sns_topic_policy" "max_central" {
           Service = "sqs.amazonaws.com"
         }
         Action   = "sns:Subscribe"
-        Resource = aws_sns_topic.central.arn
+        Resource = aws_sns_topic.central[0].arn
       },
       {
         Sid       = "MaxRestrictPublish"
         Effect    = "Deny"
         Principal = "*"
         Action    = "sns:Publish"
-        Resource  = aws_sns_topic.central.arn
+        Resource  = aws_sns_topic.central[0].arn
         Condition = {
           StringNotEquals = {
             "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
@@ -677,4 +671,3 @@ resource "aws_sns_topic_policy" "max_central" {
     ]
   })
 }
-
