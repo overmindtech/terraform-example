@@ -43,7 +43,7 @@ module "api_server" {
   source = "./modules/api-server"
 
   enabled       = true
-  instance_type = "c5.large"
+  instance_type = "t3.large"
 
   vpc_id         = module.baseline.vpc_id
   public_subnets = module.baseline.public_subnets
