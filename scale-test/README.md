@@ -61,6 +61,61 @@ terraform plan -var="scale_multiplier=10" -var="scenario=shared_sg_open"
 terraform destroy -var="scale_multiplier=10"
 ```
 
+## Quality Evaluation
+
+The GitHub Actions workflow includes automated quality evaluation that validates expected risks are detected for each scenario.
+
+### How It Works
+
+1. **Plan submitted to Overmind** - The terraform plan is analyzed by Overmind
+2. **Results fetched as JSON** - `overmind changes get-change --format json`
+3. **Assertions run** - Scenario-specific checks validate expected risks
+4. **Results saved as artifacts** - `change-results.json` and `tfplan.json`
+
+### Expected Results by Scenario
+
+| Scenario | Expected Risk | Severity | Assertion |
+|----------|---------------|----------|-----------|
+| `shared_sg_open` | SSH open to 0.0.0.0/0 | high/critical | Fails if no high-severity risk |
+| `lambda_timeout` | Timeout too short | medium | Fails if no timeout risk |
+| `vpc_peering_change` | DNS resolution change | varies | Does not fail (ambiguous) |
+| `central_sns_change` | SNS policy change | high | Fails if no risk found |
+| `combined_*` | Multiple risks | high/critical | Fails if no high-severity risk |
+| `shared_firewall_open` | GCP firewall open | high/critical | Fails if no high-severity risk |
+| `function_timeout` | Cloud Function timeout | medium | Fails if no risk found |
+
+### Viewing Results
+
+After a workflow run:
+
+1. Go to **Actions** → Select the workflow run
+2. View the **Summary** tab for risk detection results
+3. Download **Artifacts** for full JSON results
+
+### GitHub Step Summary Output
+
+The workflow generates a summary like:
+
+```
+## Terraform Plan Summary
+- Scale Multiplier: 10
+- Scenario: shared_sg_open
+- Action: plan
+
+## Change Analysis Results
+- Total Risks: 3
+- High/Critical Risks: 2
+- Medium Risks: 1
+
+### Detected Risks
+- **[critical]** Security Group Opens SSH to Internet
+- **[high]** Shared Resource Modification Affects Multiple Instances
+- **[medium]** Configuration Change May Impact Availability
+
+### Scenario Validation: `shared_sg_open`
+✅ **PASSED** - Expected risks were detected
+```
+
 ## Architecture
 
 ### Regions

@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+
+# PromptFoo output
+eval-results.json
+.promptfoo/
+
+# Logs
+*.log

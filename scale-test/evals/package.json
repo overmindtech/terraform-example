@@ -1,0 +1,14 @@
+{
+  "name": "scale-test-evals",
+  "version": "1.0.0",
+  "description": "PromptFoo quality evaluations for Overmind risk analysis",
+  "private": true,
+  "scripts": {
+    "eval": "promptfoo eval",
+    "eval:view": "promptfoo view",
+    "eval:ci": "promptfoo eval --output eval-results.json"
+  },
+  "dependencies": {
+    "promptfoo": "^0.98.0"
+  }
+}

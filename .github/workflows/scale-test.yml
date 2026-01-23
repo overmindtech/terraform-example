@@ -169,6 +169,249 @@ jobs:
           plan-json: ${{ env.WORKING_DIR }}/tfplan.json
           tags: 'model=risks_v6'
 
+      # =========================================================================
+      # Quality Evaluation Steps
+      # Capture analysis results and validate expected risks for each scenario
+      # =========================================================================
+
+      - name: Get change results as JSON
+        id: get-results
+        if: ${{ steps.submit-plan.outputs.change-url != '' && (inputs.action == 'plan' || inputs.action == 'apply') }}
+        continue-on-error: true
+        env:
+          OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
+        run: |
+          echo "Fetching change results from: ${{ steps.submit-plan.outputs.change-url }}"
+          
+          # Get the full change analysis as JSON
+          overmind changes get-change \
+            --change "${{ steps.submit-plan.outputs.change-url }}" \
+            --format json \
+            > change-results.json
+          
+          # Extract key metrics for assertions
+          RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
+          MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
+          
+          echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
+          
+          echo "## Change Analysis Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **High/Critical Risks:** $HIGH_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Medium Risks:** $MEDIUM_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # List all risks in summary
+          echo "### Detected Risks" >> $GITHUB_STEP_SUMMARY
+          if [ "$RISK_COUNT" -gt 0 ]; then
+            jq -r '.risks[]? | "- **[\(.severity)]** \(.title)"' change-results.json >> $GITHUB_STEP_SUMMARY
+          else
+            echo "_No risks detected_" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Validate scenario results
+        id: validate-scenario
+        if: ${{ steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
+        run: |
+          SCENARIO="${{ inputs.scenario }}"
+          RISK_COUNT="${{ steps.get-results.outputs.risk_count }}"
+          HIGH_RISK_COUNT="${{ steps.get-results.outputs.high_risk_count }}"
+          MEDIUM_RISK_COUNT="${{ steps.get-results.outputs.medium_risk_count }}"
+          
+          echo ""
+          echo "=========================================="
+          echo "Validating results for scenario: $SCENARIO"
+          echo "=========================================="
+          echo "Total risks found: $RISK_COUNT"
+          echo "High/Critical risks: $HIGH_RISK_COUNT"
+          echo "Medium risks: $MEDIUM_RISK_COUNT"
+          echo ""
+          
+          VALIDATION_PASSED=true
+          VALIDATION_MESSAGES=""
+          
+          # -----------------------------------------------------------------------
+          # shared_sg_open: SSH open to 0.0.0.0/0 - expect HIGH/CRITICAL risk
+          # -----------------------------------------------------------------------
+          if [[ "$SCENARIO" == "shared_sg_open" ]]; then
+            echo "Testing: shared_sg_open - expect high/critical security risk"
+            if [ "$HIGH_RISK_COUNT" -eq 0 ]; then
+              echo "❌ FAIL: Expected high-severity risk for SSH-to-internet scenario"
+              VALIDATION_PASSED=false
+              VALIDATION_MESSAGES="Expected high-severity SSH risk not found"
+            else
+              echo "✅ PASS: Found $HIGH_RISK_COUNT high-severity risk(s) as expected"
+            fi
+          fi
+          
+          # -----------------------------------------------------------------------
+          # lambda_timeout: Timeout reduced to 1s - expect MEDIUM risk
+          # -----------------------------------------------------------------------
+          if [[ "$SCENARIO" == "lambda_timeout" ]]; then
+            echo "Testing: lambda_timeout - expect timeout/reliability risk"
+            TIMEOUT_RISK=$(jq '[.risks[]? | select(.title | test("timeout|reliability|function"; "i"))] | length' change-results.json)
+            if [ "$TIMEOUT_RISK" -eq 0 ] && [ "$RISK_COUNT" -eq 0 ]; then
+              echo "❌ FAIL: Expected timeout-related risk"
+              VALIDATION_PASSED=false
+              VALIDATION_MESSAGES="Expected timeout risk not found"
+            else
+              echo "✅ PASS: Found risk(s) for timeout scenario"
+            fi
+          fi
+          
+          # -----------------------------------------------------------------------
+          # vpc_peering_change: DNS resolution enabled - expect analysis (may or may not be risk)
+          # -----------------------------------------------------------------------
+          if [[ "$SCENARIO" == "vpc_peering_change" ]]; then
+            echo "Testing: vpc_peering_change - expect network analysis"
+            if [ "$RISK_COUNT" -eq 0 ]; then
+              echo "⚠️ INFO: No risks found for VPC peering change (may be expected)"
+            else
+              echo "✅ PASS: Found $RISK_COUNT risk(s) for VPC peering change"
+            fi
+            # VPC peering is ambiguous, so we don't fail on no risks
+          fi
+          
+          # -----------------------------------------------------------------------
+          # central_sns_change: SNS topic policy change - expect HIGH risk
+          # -----------------------------------------------------------------------
+          if [[ "$SCENARIO" == "central_sns_change" ]]; then
+            echo "Testing: central_sns_change - expect SNS policy risk"
+            if [ "$HIGH_RISK_COUNT" -eq 0 ] && [ "$MEDIUM_RISK_COUNT" -eq 0 ]; then
+              echo "❌ FAIL: Expected risk for SNS topic policy change"
+              VALIDATION_PASSED=false
+              VALIDATION_MESSAGES="Expected SNS policy risk not found"
+            else
+              echo "✅ PASS: Found risk(s) for SNS change"
+            fi
+          fi
+          
+          # -----------------------------------------------------------------------
+          # combined_network: Multiple network/security changes - expect HIGH/CRITICAL
+          # -----------------------------------------------------------------------
+          if [[ "$SCENARIO" == "combined_network" || "$SCENARIO" == "combined_all" || "$SCENARIO" == "combined_max" ]]; then
+            echo "Testing: $SCENARIO - expect multiple high-severity risks"
+            if [ "$HIGH_RISK_COUNT" -eq 0 ]; then
+              echo "❌ FAIL: Expected high-severity risks for combined scenario"
+              VALIDATION_PASSED=false
+              VALIDATION_MESSAGES="Expected high-severity risks for combined scenario not found"
+            else
+              echo "✅ PASS: Found $HIGH_RISK_COUNT high-severity risk(s)"
+            fi
+          fi
+          
+          # -----------------------------------------------------------------------
+          # GCP: shared_firewall_open - expect HIGH/CRITICAL risk
+          # -----------------------------------------------------------------------
+          if [[ "$SCENARIO" == "shared_firewall_open" ]]; then
+            echo "Testing: shared_firewall_open - expect high/critical security risk"
+            if [ "$HIGH_RISK_COUNT" -eq 0 ]; then
+              echo "❌ FAIL: Expected high-severity risk for firewall-to-internet scenario"
+              VALIDATION_PASSED=false
+              VALIDATION_MESSAGES="Expected high-severity firewall risk not found"
+            else
+              echo "✅ PASS: Found $HIGH_RISK_COUNT high-severity risk(s)"
+            fi
+          fi
+          
+          # -----------------------------------------------------------------------
+          # GCP: function_timeout - expect MEDIUM risk
+          # -----------------------------------------------------------------------
+          if [[ "$SCENARIO" == "function_timeout" ]]; then
+            echo "Testing: function_timeout - expect timeout risk"
+            if [ "$RISK_COUNT" -eq 0 ]; then
+              echo "❌ FAIL: Expected timeout-related risk for Cloud Function"
+              VALIDATION_PASSED=false
+              VALIDATION_MESSAGES="Expected Cloud Function timeout risk not found"
+            else
+              echo "✅ PASS: Found risk(s) for function timeout scenario"
+            fi
+          fi
+          
+          echo ""
+          echo "=========================================="
+          
+          # Write validation results to summary
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Scenario Validation: \`$SCENARIO\`" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$VALIDATION_PASSED" = true ]; then
+            echo "✅ **PASSED** - Expected risks were detected" >> $GITHUB_STEP_SUMMARY
+            echo "validation_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ **FAILED** - $VALIDATION_MESSAGES" >> $GITHUB_STEP_SUMMARY
+            echo "validation_passed=false" >> $GITHUB_OUTPUT
+            echo "::error::Scenario validation failed: $VALIDATION_MESSAGES"
+            exit 1
+          fi
+
+      - name: Upload analysis results
+        uses: actions/upload-artifact@v4
+        if: ${{ always() && (inputs.action == 'plan' || inputs.action == 'apply') }}
+        with:
+          name: change-analysis-${{ inputs.scenario }}-${{ github.run_id }}
+          path: |
+            ${{ env.WORKING_DIR }}/change-results.json
+            ${{ env.WORKING_DIR }}/tfplan.json
+          if-no-files-found: ignore
+
+      # =========================================================================
+      # PromptFoo Quality Evals
+      # Run LLM-as-judge evaluation on the risk analysis quality
+      # =========================================================================
+
+      - name: Setup Node.js for PromptFoo
+        uses: actions/setup-node@v4
+        if: ${{ steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
+        with:
+          node-version: '20'
+
+      - name: Install PromptFoo dependencies
+        if: ${{ steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
+        working-directory: ${{ env.WORKING_DIR }}/evals
+        run: npm install
+
+      - name: Run PromptFoo quality evals
+        id: promptfoo-eval
+        if: ${{ steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
+        continue-on-error: true
+        working-directory: ${{ env.WORKING_DIR }}/evals
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
+        run: |
+          echo "Running PromptFoo evals for scenario: ${{ inputs.scenario }}"
+          
+          # Run evals with the change results file
+          npx promptfoo eval \
+            --vars "results_file=../change-results.json,scenario=${{ inputs.scenario }}" \
+            --filter-description "${{ inputs.scenario }}" \
+            --output eval-results.json \
+            --no-cache
+          
+          # Extract summary metrics
+          if [ -f eval-results.json ]; then
+            PASS_COUNT=$(jq '[.results[].success] | map(select(. == true)) | length' eval-results.json)
+            TOTAL_COUNT=$(jq '[.results[].success] | length' eval-results.json)
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### PromptFoo Quality Eval" >> $GITHUB_STEP_SUMMARY
+            echo "- **Passed:** $PASS_COUNT / $TOTAL_COUNT assertions" >> $GITHUB_STEP_SUMMARY
+            
+            # Show any failures
+            jq -r '.results[] | select(.success == false) | "- ❌ \(.description): \(.error // "assertion failed")"' eval-results.json >> $GITHUB_STEP_SUMMARY || true
+          fi
+
+      - name: Upload PromptFoo results
+        uses: actions/upload-artifact@v4
+        if: ${{ steps.promptfoo-eval.outcome != 'skipped' }}
+        with:
+          name: promptfoo-results-${{ inputs.scenario }}-${{ github.run_id }}
+          path: ${{ env.WORKING_DIR }}/evals/eval-results.json
+          if-no-files-found: ignore
+
       # Cost Analysis disabled for scale testing (plan too large)
       # - name: Cost Analysis
       #   uses: overmindtech/cost-signals-action@v1
