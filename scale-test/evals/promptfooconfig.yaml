@@ -187,6 +187,50 @@ tests:
         metric: quality_score
 
   # ===========================================================================
+  # combined_all: All AWS high-fanout scenarios combined
+  # ===========================================================================
+  - description: "combined_all: Should detect multiple high-severity risks"
+    vars:
+      scenario: combined_all
+      expected: "Should detect multiple high/critical risks for all combined AWS changes"
+    assert:
+      - type: javascript
+        value: "vars.high_risk_count > 0"
+        metric: has_high_risk
+      - type: javascript
+        value: "vars.risk_count >= 2"
+        metric: multiple_risks
+      - type: llm-rubric
+        value: |
+          The combined_all scenario includes VPC peering changes, shared security group 
+          modifications, and SNS policy changes. The analysis should identify multiple 
+          distinct risks across network, security, and messaging layers.
+          Score 1 if multiple significant risks are identified, 0 if not.
+        metric: quality_score
+
+  # ===========================================================================
+  # combined_max: Maximum blast radius scenario
+  # ===========================================================================
+  - description: "combined_max: Should detect critical risks for max scenario"
+    vars:
+      scenario: combined_max
+      expected: "Should detect critical risks including all-ports-open and Lambda timeout"
+    assert:
+      - type: javascript
+        value: "vars.high_risk_count > 0"
+        metric: has_high_risk
+      - type: javascript
+        value: "vars.risk_count >= 2"
+        metric: multiple_risks
+      - type: llm-rubric
+        value: |
+          The combined_max scenario is the most severe: it opens ALL ports (0-65535) 
+          instead of just SSH, modifies Lambda timeouts, and includes all other changes.
+          The analysis should identify this as extremely risky with multiple critical issues.
+          Score 1 if the severity is appropriately identified as critical, 0 if not.
+        metric: quality_score
+
+  # ===========================================================================
   # GCP: shared_firewall_open
   # ===========================================================================
   - description: "shared_firewall_open: Should detect GCP firewall risk"
@@ -209,4 +253,101 @@ tests:
           Opening SSH on a GCP firewall to 0.0.0.0/0 is a critical security issue,
           similar to AWS security groups. All instances with the network tag are exposed.
           Score 1 if risks correctly identify firewall/SSH exposure, 0 if not.
+        metric: quality_score
+
+  # ===========================================================================
+  # GCP: central_pubsub_change
+  # ===========================================================================
+  - description: "central_pubsub_change: Should detect Pub/Sub IAM risk"
+    vars:
+      scenario: central_pubsub_change
+      expected: "Should detect risk for central Pub/Sub topic IAM policy change"
+    assert:
+      - type: javascript
+        value: "vars.risk_count > 0"
+        metric: has_risk
+      - type: javascript
+        value: |
+          const risks = vars.risks || [];
+          return risks.some(r => 
+            /pub.?sub|topic|iam|policy|messaging|allAuthenticatedUsers/i.test(r.title + ' ' + r.description)
+          );
+        metric: mentions_pubsub
+      - type: llm-rubric
+        value: |
+          Modifying the central Pub/Sub topic IAM policy to add allAuthenticatedUsers 
+          is a security risk. All regional subscriptions connect to this topic.
+          The assessment should identify the overly permissive access grant.
+          Score 1 if the analysis captures this IAM/messaging risk, 0 if not.
+        metric: quality_score
+
+  # ===========================================================================
+  # GCP: gce_downgrade
+  # ===========================================================================
+  - description: "gce_downgrade: Should analyze GCE machine type change"
+    vars:
+      scenario: gce_downgrade
+      expected: "May or may not flag as risk - machine type downgrade from e2-micro to f1-micro"
+    assert:
+      - type: javascript
+        value: |
+          const risks = vars.risks || [];
+          if (risks.length === 0) return true; // No risks is acceptable for minor downgrade
+          return risks.some(r => 
+            /machine.?type|gce|compute|instance|downgrade|capacity|performance/i.test(r.title + ' ' + r.description)
+          );
+        metric: relevant_analysis
+      - type: llm-rubric
+        value: |
+          Downgrading GCE machine type from e2-micro to f1-micro is a minor change.
+          It may cause slight performance degradation but is not critical.
+          If flagged as a risk, it should be low severity. If not flagged, that's acceptable.
+          Score 1 if the analysis is proportionate to the actual risk, 0 if overblown.
+        metric: quality_score
+
+  # ===========================================================================
+  # GCP: function_timeout
+  # ===========================================================================
+  - description: "function_timeout: Should detect Cloud Function timeout risk"
+    vars:
+      scenario: function_timeout
+      expected: "Should detect risk for Cloud Function timeout reduced to 1 second"
+    assert:
+      - type: javascript
+        value: "vars.risk_count > 0"
+        metric: has_risk
+      - type: javascript
+        value: |
+          const risks = vars.risks || [];
+          return risks.some(r => 
+            /timeout|function|cloud.?function|reliability|1.?second/i.test(r.title + ' ' + r.description)
+          );
+        metric: mentions_timeout
+      - type: llm-rubric
+        value: |
+          Reducing Cloud Function timeout from 60s to 1s will cause widespread failures.
+          Most function operations cannot complete in 1 second.
+          Score 1 if risks identify this reliability concern, 0 if not.
+        metric: quality_score
+
+  # ===========================================================================
+  # GCP: combined_gcp_all
+  # ===========================================================================
+  - description: "combined_gcp_all: Should detect multiple GCP risks"
+    vars:
+      scenario: combined_gcp_all
+      expected: "Should detect multiple risks for combined GCP changes"
+    assert:
+      - type: javascript
+        value: "vars.high_risk_count > 0"
+        metric: has_high_risk
+      - type: javascript
+        value: "vars.risk_count >= 1"
+        metric: multiple_risks
+      - type: llm-rubric
+        value: |
+          The combined_gcp_all scenario includes firewall open to internet and 
+          Pub/Sub IAM changes. The analysis should identify multiple GCP-specific
+          security and access control risks.
+          Score 1 if multiple risks are identified with appropriate severity, 0 if not.
         metric: quality_score
