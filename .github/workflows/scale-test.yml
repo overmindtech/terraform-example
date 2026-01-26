@@ -154,7 +154,7 @@ jobs:
 
       - name: Install Overmind CLI
         uses: overmindtech/actions/install-cli@main
-        continue-on-error: true
+        id: install-cli
         with:
           version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -182,6 +182,12 @@ jobs:
           OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
         run: |
           echo "Fetching change results from: ${{ steps.submit-plan.outputs.change-url }}"
+          
+          # Verify overmind CLI is available
+          if ! command -v overmind &> /dev/null; then
+            echo "::error::Overmind CLI not found. Install step may have failed."
+            exit 1
+          fi
           
           # Get the full change analysis as JSON
           overmind changes get-change \
