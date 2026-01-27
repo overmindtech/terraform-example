@@ -138,11 +138,12 @@ jobs:
             -no-color \
             -input=false \
             -lock-timeout=5m \
+            -parallelism=100 \
             -out=tfplan 2>&1 | tee terraform_plan.log
-          
+
           # Generate JSON plan for Overmind
           terraform show -json tfplan > tfplan.json
-          
+
           # Output summary
           echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Scale Multiplier:** ${{ inputs.scale_multiplier }}" >> $GITHUB_STEP_SUMMARY
@@ -182,34 +183,34 @@ jobs:
           OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
         run: |
           echo "Fetching change results from: ${{ steps.submit-plan.outputs.change-url }}"
-          
+
           # Verify overmind CLI is available
           if ! command -v overmind &> /dev/null; then
             echo "::error::Overmind CLI not found. Install step may have failed."
             exit 1
           fi
-          
+
           # Get the full change analysis as JSON
           overmind changes get-change \
             --change "${{ steps.submit-plan.outputs.change-url }}" \
             --format json \
             > change-results.json
-          
+
           # Extract key metrics for assertions
           RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
           HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
           MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
-          
+
           echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
           echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
           echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
-          
+
           echo "## Change Analysis Results" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "- **High/Critical Risks:** $HIGH_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "- **Medium Risks:** $MEDIUM_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # List all risks in summary
           echo "### Detected Risks" >> $GITHUB_STEP_SUMMARY
           if [ "$RISK_COUNT" -gt 0 ]; then
@@ -226,7 +227,7 @@ jobs:
           RISK_COUNT="${{ steps.get-results.outputs.risk_count }}"
           HIGH_RISK_COUNT="${{ steps.get-results.outputs.high_risk_count }}"
           MEDIUM_RISK_COUNT="${{ steps.get-results.outputs.medium_risk_count }}"
-          
+
           echo ""
           echo "=========================================="
           echo "Validating results for scenario: $SCENARIO"
@@ -235,10 +236,10 @@ jobs:
           echo "High/Critical risks: $HIGH_RISK_COUNT"
           echo "Medium risks: $MEDIUM_RISK_COUNT"
           echo ""
-          
+
           VALIDATION_PASSED=true
           VALIDATION_MESSAGES=""
-          
+
           # -----------------------------------------------------------------------
           # shared_sg_open: SSH open to 0.0.0.0/0 - expect HIGH/CRITICAL risk
           # -----------------------------------------------------------------------
@@ -252,7 +253,7 @@ jobs:
               echo "✅ PASS: Found $HIGH_RISK_COUNT high-severity risk(s) as expected"
             fi
           fi
-          
+
           # -----------------------------------------------------------------------
           # lambda_timeout: Timeout reduced to 1s - expect MEDIUM risk
           # -----------------------------------------------------------------------
@@ -267,7 +268,7 @@ jobs:
               echo "✅ PASS: Found risk(s) for timeout scenario"
             fi
           fi
-          
+
           # -----------------------------------------------------------------------
           # vpc_peering_change: DNS resolution enabled - expect analysis (may or may not be risk)
           # -----------------------------------------------------------------------
@@ -280,7 +281,7 @@ jobs:
             fi
             # VPC peering is ambiguous, so we don't fail on no risks
           fi
-          
+
           # -----------------------------------------------------------------------
           # central_sns_change: SNS topic policy change - expect HIGH risk
           # -----------------------------------------------------------------------
@@ -294,7 +295,7 @@ jobs:
               echo "✅ PASS: Found risk(s) for SNS change"
             fi
           fi
-          
+
           # -----------------------------------------------------------------------
           # combined_network: Multiple network/security changes - expect HIGH/CRITICAL
           # -----------------------------------------------------------------------
@@ -308,7 +309,7 @@ jobs:
               echo "✅ PASS: Found $HIGH_RISK_COUNT high-severity risk(s)"
             fi
           fi
-          
+
           # -----------------------------------------------------------------------
           # GCP: shared_firewall_open - expect HIGH/CRITICAL risk
           # -----------------------------------------------------------------------
@@ -322,7 +323,7 @@ jobs:
               echo "✅ PASS: Found $HIGH_RISK_COUNT high-severity risk(s)"
             fi
           fi
-          
+
           # -----------------------------------------------------------------------
           # GCP: function_timeout - expect MEDIUM risk
           # -----------------------------------------------------------------------
@@ -336,14 +337,14 @@ jobs:
               echo "✅ PASS: Found risk(s) for function timeout scenario"
             fi
           fi
-          
+
           echo ""
           echo "=========================================="
-          
+
           # Write validation results to summary
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Scenario Validation: \`$SCENARIO\`" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "$VALIDATION_PASSED" = true ]; then
             echo "✅ **PASSED** - Expected risks were detected" >> $GITHUB_STEP_SUMMARY
             echo "validation_passed=true" >> $GITHUB_OUTPUT
@@ -389,23 +390,23 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
         run: |
           echo "Running PromptFoo evals for scenario: ${{ inputs.scenario }}"
-          
+
           # Run evals with the change results file
           npx promptfoo eval \
             --vars "results_file=../change-results.json,scenario=${{ inputs.scenario }}" \
             --filter-description "${{ inputs.scenario }}" \
             --output eval-results.json \
             --no-cache
-          
+
           # Extract summary metrics
           if [ -f eval-results.json ]; then
             PASS_COUNT=$(jq '[.results[].success] | map(select(. == true)) | length' eval-results.json)
             TOTAL_COUNT=$(jq '[.results[].success] | length' eval-results.json)
-            
+
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### PromptFoo Quality Eval" >> $GITHUB_STEP_SUMMARY
             echo "- **Passed:** $PASS_COUNT / $TOTAL_COUNT assertions" >> $GITHUB_STEP_SUMMARY
-            
+
             # Show any failures
             jq -r '.results[] | select(.success == false) | "- ❌ \(.description): \(.error // "assertion failed")"' eval-results.json >> $GITHUB_STEP_SUMMARY || true
           fi
@@ -446,8 +447,9 @@ jobs:
             -no-color \
             -input=false \
             -lock-timeout=5m \
+            -parallelism=100 \
             tfplan
-          
+
           echo "## Apply Complete" >> $GITHUB_STEP_SUMMARY
           echo "Scale test infrastructure deployed with multiplier ×${{ inputs.scale_multiplier }}" >> $GITHUB_STEP_SUMMARY
 
@@ -467,8 +469,9 @@ jobs:
             -auto-approve \
             -no-color \
             -input=false \
+            -parallelism=100 \
             -lock-timeout=10m
-          
+
           echo "## Destroy Complete" >> $GITHUB_STEP_SUMMARY
           echo "Scale test infrastructure destroyed" >> $GITHUB_STEP_SUMMARY
 
@@ -481,4 +484,3 @@ jobs:
           echo "Multiplier: ${{ inputs.scale_multiplier }}"
           echo "Scenario: ${{ inputs.scenario }}"
           echo "Status: ${{ job.status }}"
-
