@@ -176,6 +176,9 @@ variable "scenario" {
     - combined_all      : All AWS high-fanout scenarios combined
     - combined_max      : Maximum AWS blast radius
     
+    AWS Manual Test Scenarios (require terraform state rm):
+    - kms_orphan_simulation : Simulates duplicate KMS key creation (see SCENARIOS.md)
+    
     GCP Scenarios (requires enable_gcp = true):
     - shared_firewall_open   : Open SSH on shared firewall rule (affects all GCE)
     - central_pubsub_change  : Modify central Pub/Sub IAM (affects all subscriptions)
@@ -195,6 +198,8 @@ variable "scenario" {
       "combined_network",
       "combined_all",
       "combined_max",
+      # AWS manual test scenarios
+      "kms_orphan_simulation",
       # GCP scenarios
       "shared_firewall_open",
       "central_pubsub_change",

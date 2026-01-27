@@ -37,6 +37,8 @@ on:
           - 'combined_network'
           - 'combined_all'
           - 'combined_max'
+          # AWS KMS orphan detection
+          - 'kms_orphan_simulation'
           # GCP scenarios (requires cloud_provider=gcp or both)
           - 'shared_firewall_open'
           - 'central_pubsub_change'
@@ -307,6 +309,29 @@ jobs:
               VALIDATION_MESSAGES="Expected high-severity risks for combined scenario not found"
             else
               echo "✅ PASS: Found $HIGH_RISK_COUNT high-severity risk(s)"
+            fi
+          fi
+
+          # -----------------------------------------------------------------------
+          # kms_orphan_simulation: Duplicate KMS key creation - expect CRITICAL risk
+          # Tests detection of orphaned KMS keys and data loss implications
+          # -----------------------------------------------------------------------
+          if [[ "$SCENARIO" == "kms_orphan_simulation" ]]; then
+            echo "Testing: kms_orphan_simulation - expect critical data loss / security risk"
+            # Look for risks related to KMS, encryption, duplicate, or data loss
+            KMS_RISK=$(jq '[.risks[]? | select(.title | test("kms|encrypt|duplicate|orphan|data.loss"; "i"))] | length' change-results.json)
+            if [ "$HIGH_RISK_COUNT" -eq 0 ] && [ "$KMS_RISK" -eq 0 ]; then
+              echo "❌ FAIL: Expected high-severity risk for KMS duplicate key scenario"
+              echo "   - Expected: Detection of duplicate KMS key creation"
+              echo "   - Expected: Data loss risk warning"
+              echo "   - Expected: Encryption mismatch detection"
+              VALIDATION_PASSED=false
+              VALIDATION_MESSAGES="Expected KMS orphan/duplicate key risk not found"
+            else
+              echo "✅ PASS: Found risk(s) for KMS orphan simulation scenario"
+              if [ "$KMS_RISK" -gt 0 ]; then
+                echo "   - Found $KMS_RISK KMS-related risk(s)"
+              fi
             fi
           fi
 
