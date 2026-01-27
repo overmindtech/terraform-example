@@ -166,6 +166,10 @@ jobs:
             exit 1
           fi
 
+      - name: Record Overmind start time
+        id: overmind-start
+        run: echo "start_time=$(date +%s%3N)" >> $GITHUB_OUTPUT
+
       - name: Submit Plan to Overmind
         uses: overmindtech/actions/submit-plan@main
         continue-on-error: true
@@ -190,6 +194,12 @@ jobs:
             --format json \
             > change-results.json
 
+          # Calculate duration
+          END_TIME=$(date +%s%3N)
+          START_TIME=${{ steps.overmind-start.outputs.start_time }}
+          DURATION_MS=$((END_TIME - START_TIME))
+          echo "overmind_duration_ms=$DURATION_MS" >> $GITHUB_OUTPUT
+
           RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
           HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
           MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
@@ -201,6 +211,7 @@ jobs:
           echo "## Nightly Scenario: ${{ matrix.scenario }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "- **High/Critical:** $HIGH_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Duration:** $((DURATION_MS / 1000))s" >> $GITHUB_STEP_SUMMARY
 
       - name: Send results to dashboard
         if: always() && steps.get-results.outcome == 'success'
@@ -220,6 +231,7 @@ jobs:
             "scenario": "${{ matrix.scenario }}",
             "cloudProvider": "aws",
             "scaleMultiplier": 1,
+            "overmindDurationMs": ${{ steps.get-results.outputs.overmind_duration_ms || 0 }},
             "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
             "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
             "mediumRiskCount": ${{ steps.get-results.outputs.medium_risk_count || 0 }},
@@ -364,6 +376,11 @@ jobs:
             exit 1
           fi
 
+      - name: Record Overmind start time
+        id: overmind-start
+        if: ${{ inputs.action == 'plan' || inputs.action == 'apply' }}
+        run: echo "start_time=$(date +%s%3N)" >> $GITHUB_OUTPUT
+
       - name: Submit Plan to Overmind
         uses: overmindtech/actions/submit-plan@main
         continue-on-error: true
@@ -398,6 +415,13 @@ jobs:
             --format json \
             > change-results.json
 
+          # Calculate Overmind duration
+          END_TIME=$(date +%s%3N)
+          START_TIME=${{ steps.overmind-start.outputs.start_time }}
+          DURATION_MS=$((END_TIME - START_TIME))
+          echo "overmind_duration_ms=$DURATION_MS" >> $GITHUB_OUTPUT
+          echo "Overmind analysis took ${DURATION_MS}ms"
+
           # Extract key metrics for assertions
           RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
           HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
@@ -410,6 +434,7 @@ jobs:
           echo "## Change Analysis Results" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "- **High/Critical Risks:** $HIGH_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Analysis Duration:** $((DURATION_MS / 1000))s" >> $GITHUB_STEP_SUMMARY
           echo "- **Medium Risks:** $MEDIUM_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -712,6 +737,7 @@ jobs:
             "scenario": "${{ inputs.scenario }}",
             "cloudProvider": "${{ inputs.cloud_provider }}",
             "scaleMultiplier": ${{ inputs.scale_multiplier }},
+            "overmindDurationMs": ${{ steps.get-results.outputs.overmind_duration_ms || 0 }},
             "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
             "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
             "mediumRiskCount": ${{ steps.get-results.outputs.medium_risk_count || 0 }},
