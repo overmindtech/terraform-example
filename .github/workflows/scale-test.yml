@@ -172,12 +172,12 @@ jobs:
           
           if command -v overmind &> /dev/null; then
             echo "Overmind CLI already in PATH"
-            overmind version
+            overmind --version
           elif [ -f "$GITHUB_WORKSPACE/overmindtech/overmind" ]; then
             echo "Found CLI at $GITHUB_WORKSPACE/overmindtech/overmind, adding to PATH"
             chmod +x "$GITHUB_WORKSPACE/overmindtech/overmind"
             echo "$GITHUB_WORKSPACE/overmindtech" >> $GITHUB_PATH
-            "$GITHUB_WORKSPACE/overmindtech/overmind" version
+            "$GITHUB_WORKSPACE/overmindtech/overmind" --version
           else
             echo "::error::Overmind CLI not found. Contents of workspace:"
             ls -la "$GITHUB_WORKSPACE/"
@@ -210,7 +210,7 @@ jobs:
 
           # Show CLI version for debugging
           echo "Using Overmind CLI:"
-          overmind version
+          overmind --version
 
           # Get the full change analysis as JSON
           overmind changes get-change \
