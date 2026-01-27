@@ -71,14 +71,14 @@ jobs:
   # Nightly Scheduled Runs - All AWS Scenarios
   # =========================================================================
   nightly-scenarios:
-    name: Nightly - ${{ matrix.scenario }}
+    name: Nightly - ${{ matrix.scenario }} @ ${{ matrix.scale }}x
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     concurrency:
-      group: scale-test-tfstate-${{ matrix.scenario }}
+      group: scale-test-tfstate-${{ matrix.scenario }}-${{ matrix.scale }}x
       cancel-in-progress: false
     
     strategy:
@@ -93,9 +93,12 @@ jobs:
           - combined_network
           - combined_all
           - kms_orphan_simulation
+        scale:
+          - 1
+          - 10
 
     env:
-      TF_VAR_scale_multiplier: 1
+      TF_VAR_scale_multiplier: ${{ matrix.scale }}
       TF_VAR_scenario: ${{ matrix.scenario }}
       TF_VAR_cloud_provider: aws
 
@@ -227,10 +230,10 @@ jobs:
           
           cat <<EOF > /tmp/payload.json
           {
-            "runId": "${{ github.run_id }}-${{ matrix.scenario }}",
+            "runId": "${{ github.run_id }}-${{ matrix.scenario }}-${{ matrix.scale }}x",
             "scenario": "${{ matrix.scenario }}",
             "cloudProvider": "aws",
-            "scaleMultiplier": 1,
+            "scaleMultiplier": ${{ matrix.scale }},
             "overmindDurationMs": ${{ steps.get-results.outputs.overmind_duration_ms || 0 }},
             "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
             "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
