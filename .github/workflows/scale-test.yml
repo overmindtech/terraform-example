@@ -1,6 +1,10 @@
 name: Scale Test Infrastructure
 
 on:
+  # Nightly scheduled runs - all scenarios
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC daily
+  
   workflow_dispatch:
     inputs:
       action:
@@ -484,6 +488,85 @@ jobs:
       #     name: promptfoo-results-${{ inputs.scenario }}-${{ github.run_id }}
       #     path: ${{ env.WORKING_DIR }}/evals/eval-results.json
       #     if-no-files-found: ignore
+
+      # =========================================================================
+      # Send Results to Dashboard
+      # Posts metrics to private Vercel dashboard for trend analysis
+      # =========================================================================
+      
+      - name: Send results to dashboard
+        id: send-dashboard
+        if: ${{ always() && steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
+        continue-on-error: true
+        env:
+          DASHBOARD_URL: ${{ secrets.SCALE_DASHBOARD_URL }}
+          DASHBOARD_API_KEY: ${{ secrets.SCALE_DASHBOARD_API_KEY }}
+        run: |
+          # Skip if dashboard not configured
+          if [ -z "$DASHBOARD_URL" ] || [ -z "$DASHBOARD_API_KEY" ]; then
+            echo "Dashboard not configured, skipping..."
+            exit 0
+          fi
+          
+          echo "Sending results to dashboard..."
+          
+          # Get eval results if available
+          EVAL_PASS_COUNT=0
+          EVAL_FAIL_COUNT=0
+          EVAL_SCORE=0
+          if [ -f "evals/eval-results.json" ]; then
+            EVAL_PASS_COUNT=$(jq '[.results[]?.success] | map(select(. == true)) | length' evals/eval-results.json 2>/dev/null || echo 0)
+            EVAL_FAIL_COUNT=$(jq '[.results[]?.success] | map(select(. == false)) | length' evals/eval-results.json 2>/dev/null || echo 0)
+            TOTAL=$(($EVAL_PASS_COUNT + $EVAL_FAIL_COUNT))
+            if [ "$TOTAL" -gt 0 ]; then
+              EVAL_SCORE=$(echo "scale=2; $EVAL_PASS_COUNT / $TOTAL" | bc)
+            fi
+          fi
+          
+          # Determine validation status
+          VALIDATION_PASSED=false
+          if [ "${{ steps.validate-scenario.outputs.validation_passed }}" == "true" ]; then
+            VALIDATION_PASSED=true
+          fi
+          
+          # Build JSON payload
+          cat <<EOF > /tmp/dashboard-payload.json
+          {
+            "runId": "${{ github.run_id }}",
+            "scenario": "${{ inputs.scenario }}",
+            "cloudProvider": "${{ inputs.cloud_provider }}",
+            "scaleMultiplier": ${{ inputs.scale_multiplier }},
+            "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
+            "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
+            "mediumRiskCount": ${{ steps.get-results.outputs.medium_risk_count || 0 }},
+            "validationPassed": $VALIDATION_PASSED,
+            "evalPassCount": $EVAL_PASS_COUNT,
+            "evalFailCount": $EVAL_FAIL_COUNT,
+            "evalScore": $EVAL_SCORE,
+            "workflowRunUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+          
+          echo "Payload:"
+          cat /tmp/dashboard-payload.json
+          
+          # Send to dashboard API
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$DASHBOARD_URL/api/results" \
+            -H "Authorization: Bearer $DASHBOARD_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/dashboard-payload.json)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Results sent to dashboard successfully"
+            echo "$BODY"
+          else
+            echo "⚠️ Failed to send results to dashboard (HTTP $HTTP_CODE)"
+            echo "$BODY"
+            # Don't fail the workflow for dashboard issues
+          fi
 
       # Cost Analysis disabled for scale testing (plan too large)
       # - name: Cost Analysis

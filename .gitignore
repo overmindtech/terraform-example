@@ -37,3 +37,6 @@ MEMORY-DEMO-QUICKSTART.md
 
 # Overmind analysis results
 **/change-results.json
+
+# Temporary dashboard build (move to private repo)
+_dashboard-temp/
