@@ -158,9 +158,39 @@ jobs:
       - name: Install Overmind CLI
         uses: overmindtech/actions/install-cli@main
         id: install-cli
+        continue-on-error: true
         with:
           version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify or install Overmind CLI
+        id: verify-cli
+        run: |
+          # Check if CLI was installed by the action
+          if command -v overmind &> /dev/null; then
+            echo "Overmind CLI found in PATH"
+            overmind version
+          else
+            echo "Overmind CLI not in PATH, installing manually..."
+            
+            # Download latest release
+            curl -sL https://github.com/overmindtech/cli/releases/latest/download/overmind_linux_amd64.tar.gz -o overmind.tar.gz
+            tar -xzf overmind.tar.gz
+            chmod +x overmind
+            
+            # Move to a location in PATH
+            sudo mv overmind /usr/local/bin/
+            rm -f overmind.tar.gz
+            
+            # Verify installation
+            if command -v overmind &> /dev/null; then
+              echo "Overmind CLI installed successfully"
+              overmind version
+            else
+              echo "::error::Failed to install Overmind CLI"
+              exit 1
+            fi
+          fi
 
       - name: Submit Plan to Overmind
         uses: overmindtech/actions/submit-plan@main
@@ -186,11 +216,9 @@ jobs:
         run: |
           echo "Fetching change results from: ${{ steps.submit-plan.outputs.change-url }}"
 
-          # Verify overmind CLI is available
-          if ! command -v overmind &> /dev/null; then
-            echo "::error::Overmind CLI not found. Install step may have failed."
-            exit 1
-          fi
+          # Show CLI version for debugging
+          echo "Using Overmind CLI:"
+          overmind version
 
           # Get the full change analysis as JSON
           overmind changes get-change \
