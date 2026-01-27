@@ -9,6 +9,6 @@
     "eval:ci": "promptfoo eval --output eval-results.json"
   },
   "dependencies": {
-    "promptfoo": "^0.98.0"
+    "promptfoo": "^0.120.0"
   }
 }

@@ -437,9 +437,11 @@ jobs:
           echo "Running PromptFoo evals for scenario: ${{ inputs.scenario }}"
 
           # Run evals with the change results file
+          # --filter-pattern filters tests by description regex
           npx promptfoo eval \
-            --vars "results_file=../change-results.json,scenario=${{ inputs.scenario }}" \
-            --filter-description "${{ inputs.scenario }}" \
+            --var "results_file=../change-results.json" \
+            --var "scenario=${{ inputs.scenario }}" \
+            --filter-pattern "${{ inputs.scenario }}" \
             --output eval-results.json \
             --no-cache
 
