@@ -437,6 +437,19 @@ jobs:
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
 
+      # reauthenticate after potentially long running terraform plan or submit-plan steps as credentials may have expired
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Configure GCP Credentials
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.OVERMIND_SCALE_TEST }}
+
       - name: Terraform Apply
         id: apply
         if: ${{ inputs.action == 'apply' }}
@@ -459,6 +472,19 @@ jobs:
         if: ${{ (inputs.action == 'apply') && (success() || failure() || cancelled()) }}
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
+
+      # reauthenticate after potentially long running end-change step as credentials may have expired
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Configure GCP Credentials
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.OVERMIND_SCALE_TEST }}
 
       - name: Terraform Destroy
         id: destroy
