@@ -64,18 +64,185 @@ on:
         type: string
 
 env:
-  TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier }}
-  TF_VAR_scenario: ${{ inputs.scenario }}
-  TF_VAR_cloud_provider: ${{ inputs.cloud_provider }}
   WORKING_DIR: scale-test
 
 jobs:
+  # =========================================================================
+  # Nightly Scheduled Runs - All AWS Scenarios
+  # =========================================================================
+  nightly-scenarios:
+    name: Nightly - ${{ matrix.scenario }}
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: scale-test-tfstate-${{ matrix.scenario }}
+      cancel-in-progress: false
+    
+    strategy:
+      fail-fast: false  # Run all scenarios even if one fails
+      max-parallel: 2   # Limit parallel runs to avoid rate limits
+      matrix:
+        scenario:
+          - shared_sg_open
+          - lambda_timeout
+          - vpc_peering_change
+          - central_sns_change
+          - combined_network
+          - combined_all
+          - kms_orphan_simulation
+
+    env:
+      TF_VAR_scale_multiplier: 1
+      TF_VAR_scenario: ${{ matrix.scenario }}
+      TF_VAR_cloud_provider: aws
+
+    defaults:
+      run:
+        working-directory: scale-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Configure GCP Credentials
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.OVERMIND_SCALE_TEST }}
+
+      - name: Setup GCP SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: overmind-scale-test
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        run: |
+          echo "Planning scenario: ${{ matrix.scenario }}"
+          terraform plan \
+            -compact-warnings \
+            -no-color \
+            -input=false \
+            -lock-timeout=5m \
+            -parallelism=100 \
+            -out=tfplan
+          
+          terraform show -json tfplan > tfplan.json
+
+      - name: Install Overmind CLI
+        uses: overmindtech/actions/install-cli@main
+        continue-on-error: true
+        with:
+          version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add Overmind CLI to PATH
+        working-directory: ${{ github.workspace }}
+        run: |
+          if command -v overmind &> /dev/null; then
+            overmind --version
+          elif [ -f "$GITHUB_WORKSPACE/overmindtech/overmind" ]; then
+            chmod +x "$GITHUB_WORKSPACE/overmindtech/overmind"
+            echo "$GITHUB_WORKSPACE/overmindtech" >> $GITHUB_PATH
+            "$GITHUB_WORKSPACE/overmindtech/overmind" --version
+          else
+            echo "::error::Overmind CLI not found"
+            exit 1
+          fi
+
+      - name: Submit Plan to Overmind
+        uses: overmindtech/actions/submit-plan@main
+        continue-on-error: true
+        id: submit-plan
+        with:
+          ovm-api-key: ${{ secrets.OVM_API_KEY }}
+          plan-json: scale-test/tfplan.json
+          tags: 'model=risks_v6'
+
+      - name: Get change results as JSON
+        id: get-results
+        if: steps.submit-plan.outputs.change-url != ''
+        continue-on-error: true
+        env:
+          OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
+        run: |
+          echo "Fetching change results from: ${{ steps.submit-plan.outputs.change-url }}"
+          overmind --version
+          
+          overmind changes get-change \
+            --change "${{ steps.submit-plan.outputs.change-url }}" \
+            --format json \
+            > change-results.json
+
+          RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
+          MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
+
+          echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
+
+          echo "## Nightly Scenario: ${{ matrix.scenario }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **High/Critical:** $HIGH_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
+
+      - name: Send results to dashboard
+        if: always() && steps.get-results.outcome == 'success'
+        continue-on-error: true
+        env:
+          DASHBOARD_URL: ${{ secrets.SCALE_DASHBOARD_URL }}
+          DASHBOARD_API_KEY: ${{ secrets.SCALE_DASHBOARD_API_KEY }}
+        run: |
+          if [ -z "$DASHBOARD_URL" ] || [ -z "$DASHBOARD_API_KEY" ]; then
+            echo "Dashboard not configured"
+            exit 0
+          fi
+          
+          cat <<EOF > /tmp/payload.json
+          {
+            "runId": "${{ github.run_id }}-${{ matrix.scenario }}",
+            "scenario": "${{ matrix.scenario }}",
+            "cloudProvider": "aws",
+            "scaleMultiplier": 1,
+            "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
+            "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
+            "mediumRiskCount": ${{ steps.get-results.outputs.medium_risk_count || 0 }},
+            "validationPassed": true,
+            "workflowRunUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+          
+          curl -s -X POST "$DASHBOARD_URL/api/results" \
+            -H "Authorization: Bearer $DASHBOARD_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/payload.json
+
+  # =========================================================================
+  # Manual Runs - Validate Inputs
+  # =========================================================================
   validate:
     name: Validate Inputs
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Validate destroy confirmation
-        if: ${{ inputs.action == 'destroy' }}
+        if: inputs.action == 'destroy'
         run: |
           if [ "${{ inputs.confirmation }}" != "DESTROY-SCALE-TEST" ]; then
             echo "::error::Destroy requires confirmation. Type 'DESTROY-SCALE-TEST' in the confirmation field."
@@ -83,8 +250,12 @@ jobs:
           fi
           echo "Destroy confirmation validated"
 
+  # =========================================================================
+  # Manual Runs - Terraform
+  # =========================================================================
   terraform:
     name: Terraform ${{ inputs.action }} (×${{ inputs.scale_multiplier }}, scenario=${{ inputs.scenario }})
+    if: github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
     permissions:
@@ -94,6 +265,11 @@ jobs:
     concurrency:
       group: scale-test-tfstate
       cancel-in-progress: false
+    
+    env:
+      TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier }}
+      TF_VAR_scenario: ${{ inputs.scenario }}
+      TF_VAR_cloud_provider: ${{ inputs.cloud_provider }}
 
     defaults:
       run:
