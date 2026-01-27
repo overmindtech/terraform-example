@@ -1,37 +1,20 @@
 # PromptFoo Quality Evaluation for Overmind Risk Analysis
 # Evaluates the quality of detected risks from change-results.json
+#
+# Variables passed from CI:
+#   - scenario: The test scenario name (e.g., shared_sg_open)
+#   - risk_count: Total number of risks detected
+#   - high_risk_count: Number of high/critical severity risks
+#   - risks_json: JSON array of risk objects
 
 description: Overmind Risk Analysis Quality Eval
 
 # We're evaluating existing results, not calling an LLM for generation
 # The "provider" here is just for the LLM-as-judge assertions
 providers:
-  - id: openai:gpt-4o-mini
+  - id: openai:gpt-5
     config:
       temperature: 0
-
-# Default assertions applied to all tests
-defaultTest:
-  options:
-    # Load the change results from the file passed via --vars
-    transformVars: |
-      (vars) => {
-        const fs = require('fs');
-        const resultsPath = vars.results_file || '../change-results.json';
-        try {
-          const data = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
-          return {
-            ...vars,
-            risks: data.risks || [],
-            risk_count: (data.risks || []).length,
-            high_risk_count: (data.risks || []).filter(r => r.severity === 'high' || r.severity === 'critical').length,
-            change_data: data
-          };
-        } catch (e) {
-          console.error('Failed to load results:', e.message);
-          return { ...vars, risks: [], risk_count: 0, high_risk_count: 0, change_data: {} };
-        }
-      }
 
 # The prompts section - we pass the risks as context for evaluation
 prompts:
@@ -40,16 +23,11 @@ prompts:
 
     Scenario: {{scenario}}
     Expected behavior: {{expected}}
-
-    Detected Risks:
-    {{#each risks}}
-    - [{{severity}}] {{title}}
-      Description: {{description}}
-    {{/each}}
-
-    {{#if (eq risk_count 0)}}
-    No risks were detected.
-    {{/if}}
+    
+    Total risks detected: {{risk_count}}
+    High/critical risks: {{high_risk_count}}
+    
+    Risk details (JSON): {{risks_json}}
 
 tests:
   # ===========================================================================
@@ -57,20 +35,21 @@ tests:
   # ===========================================================================
   - description: "shared_sg_open: Should detect critical SSH exposure risk"
     vars:
-      scenario: shared_sg_open
       expected: "Should detect high/critical risk for SSH (port 22) open to 0.0.0.0/0"
     assert:
       # Must have at least one high-severity risk
       - type: javascript
-        value: "vars.high_risk_count > 0"
+        value: "parseInt(context.vars.high_risk_count) > 0"
         metric: has_high_risk
-      # Should mention SSH or port 22 or security group
+      # Should mention SSH or port 22 or security group in the risks JSON
       - type: javascript
         value: |
-          const risks = vars.risks || [];
-          return risks.some(r => 
-            /ssh|port.?22|security.?group|0\.0\.0\.0/i.test(r.title + ' ' + r.description)
-          );
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            return risks.some(r => 
+              /ssh|port.?22|security.?group|0\.0\.0\.0/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return false; }
         metric: mentions_ssh
       # LLM-as-judge: Is this a good risk assessment?
       - type: llm-rubric
@@ -86,20 +65,21 @@ tests:
   # ===========================================================================
   - description: "lambda_timeout: Should detect timeout reliability risk"
     vars:
-      scenario: lambda_timeout
       expected: "Should detect medium risk for Lambda timeout reduced to 1 second"
     assert:
       # Must have at least one risk
       - type: javascript
-        value: "vars.risk_count > 0"
+        value: "parseInt(context.vars.risk_count) > 0"
         metric: has_risk
       # Should mention timeout or Lambda or reliability
       - type: javascript
         value: |
-          const risks = vars.risks || [];
-          return risks.some(r => 
-            /timeout|lambda|function|reliability|1.?second/i.test(r.title + ' ' + r.description)
-          );
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            return risks.some(r => 
+              /timeout|lambda|function|reliability|1.?second/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return false; }
         metric: mentions_timeout
       # LLM-as-judge quality
       - type: llm-rubric
@@ -115,18 +95,19 @@ tests:
   # ===========================================================================
   - description: "vpc_peering_change: Should provide meaningful network analysis"
     vars:
-      scenario: vpc_peering_change
       expected: "May or may not flag as risk - should provide thoughtful analysis"
     assert:
       # This one is ambiguous - we just check that IF risks exist, they're relevant
       - type: javascript
         value: |
-          const risks = vars.risks || [];
-          if (risks.length === 0) return true; // No risks is acceptable
-          // If risks exist, they should mention VPC, peering, DNS, or network
-          return risks.some(r => 
-            /vpc|peering|dns|network|resolution|connectivity/i.test(r.title + ' ' + r.description)
-          );
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            if (risks.length === 0) return true; // No risks is acceptable
+            // If risks exist, they should mention VPC, peering, DNS, or network
+            return risks.some(r => 
+              /vpc|peering|dns|network|resolution|connectivity/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return true; }
         metric: relevant_analysis
       # LLM-as-judge quality
       - type: llm-rubric
@@ -143,18 +124,19 @@ tests:
   # ===========================================================================
   - description: "central_sns_change: Should detect SNS policy risk"
     vars:
-      scenario: central_sns_change
       expected: "Should detect risk for central SNS topic policy change"
     assert:
       - type: javascript
-        value: "vars.risk_count > 0"
+        value: "parseInt(context.vars.risk_count) > 0"
         metric: has_risk
       - type: javascript
         value: |
-          const risks = vars.risks || [];
-          return risks.some(r => 
-            /sns|topic|policy|messaging|notification/i.test(r.title + ' ' + r.description)
-          );
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            return risks.some(r => 
+              /sns|topic|policy|messaging|notification/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return false; }
         metric: mentions_sns
       - type: llm-rubric
         value: |
@@ -168,15 +150,14 @@ tests:
   # ===========================================================================
   - description: "combined_network: Should detect multiple high-severity risks"
     vars:
-      scenario: combined_network
       expected: "Should detect multiple high/critical risks for combined security/network changes"
     assert:
       - type: javascript
-        value: "vars.high_risk_count > 0"
+        value: "parseInt(context.vars.high_risk_count) > 0"
         metric: has_high_risk
       # Should find more than one risk for combined scenarios
       - type: javascript
-        value: "vars.risk_count >= 1"
+        value: "parseInt(context.vars.risk_count) >= 1"
         metric: multiple_risks
       - type: llm-rubric
         value: |
@@ -191,14 +172,13 @@ tests:
   # ===========================================================================
   - description: "combined_all: Should detect multiple high-severity risks"
     vars:
-      scenario: combined_all
       expected: "Should detect multiple high/critical risks for all combined AWS changes"
     assert:
       - type: javascript
-        value: "vars.high_risk_count > 0"
+        value: "parseInt(context.vars.high_risk_count) > 0"
         metric: has_high_risk
       - type: javascript
-        value: "vars.risk_count >= 2"
+        value: "parseInt(context.vars.risk_count) >= 2"
         metric: multiple_risks
       - type: llm-rubric
         value: |
@@ -213,14 +193,13 @@ tests:
   # ===========================================================================
   - description: "combined_max: Should detect critical risks for max scenario"
     vars:
-      scenario: combined_max
       expected: "Should detect critical risks including all-ports-open and Lambda timeout"
     assert:
       - type: javascript
-        value: "vars.high_risk_count > 0"
+        value: "parseInt(context.vars.high_risk_count) > 0"
         metric: has_high_risk
       - type: javascript
-        value: "vars.risk_count >= 2"
+        value: "parseInt(context.vars.risk_count) >= 2"
         metric: multiple_risks
       - type: llm-rubric
         value: |
@@ -231,22 +210,50 @@ tests:
         metric: quality_score
 
   # ===========================================================================
+  # kms_orphan_simulation: KMS key duplication scenario
+  # ===========================================================================
+  - description: "kms_orphan_simulation: Should detect KMS/encryption risk"
+    vars:
+      expected: "Should detect risk for duplicate KMS key creation and potential data loss"
+    assert:
+      - type: javascript
+        value: "parseInt(context.vars.risk_count) > 0"
+        metric: has_risk
+      - type: javascript
+        value: |
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            return risks.some(r => 
+              /kms|encrypt|key|orphan|duplicate|data.?loss/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return false; }
+        metric: mentions_kms
+      - type: llm-rubric
+        value: |
+          Creating duplicate KMS keys can lead to data encrypted with orphaned keys,
+          causing data loss or access issues. The analysis should identify encryption
+          or key management risks.
+          Score 1 if risks identify KMS/encryption concerns, 0 if not.
+        metric: quality_score
+
+  # ===========================================================================
   # GCP: shared_firewall_open
   # ===========================================================================
   - description: "shared_firewall_open: Should detect GCP firewall risk"
     vars:
-      scenario: shared_firewall_open
       expected: "Should detect high/critical risk for GCP firewall open to internet"
     assert:
       - type: javascript
-        value: "vars.high_risk_count > 0"
+        value: "parseInt(context.vars.high_risk_count) > 0"
         metric: has_high_risk
       - type: javascript
         value: |
-          const risks = vars.risks || [];
-          return risks.some(r => 
-            /firewall|ssh|port.?22|0\.0\.0\.0|internet|gcp|gce/i.test(r.title + ' ' + r.description)
-          );
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            return risks.some(r => 
+              /firewall|ssh|port.?22|0\.0\.0\.0|internet|gcp|gce/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return false; }
         metric: mentions_firewall
       - type: llm-rubric
         value: |
@@ -260,18 +267,19 @@ tests:
   # ===========================================================================
   - description: "central_pubsub_change: Should detect Pub/Sub IAM risk"
     vars:
-      scenario: central_pubsub_change
       expected: "Should detect risk for central Pub/Sub topic IAM policy change"
     assert:
       - type: javascript
-        value: "vars.risk_count > 0"
+        value: "parseInt(context.vars.risk_count) > 0"
         metric: has_risk
       - type: javascript
         value: |
-          const risks = vars.risks || [];
-          return risks.some(r => 
-            /pub.?sub|topic|iam|policy|messaging|allAuthenticatedUsers/i.test(r.title + ' ' + r.description)
-          );
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            return risks.some(r => 
+              /pub.?sub|topic|iam|policy|messaging|allAuthenticatedUsers/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return false; }
         metric: mentions_pubsub
       - type: llm-rubric
         value: |
@@ -286,16 +294,17 @@ tests:
   # ===========================================================================
   - description: "gce_downgrade: Should analyze GCE machine type change"
     vars:
-      scenario: gce_downgrade
       expected: "May or may not flag as risk - machine type downgrade from e2-micro to f1-micro"
     assert:
       - type: javascript
         value: |
-          const risks = vars.risks || [];
-          if (risks.length === 0) return true; // No risks is acceptable for minor downgrade
-          return risks.some(r => 
-            /machine.?type|gce|compute|instance|downgrade|capacity|performance/i.test(r.title + ' ' + r.description)
-          );
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            if (risks.length === 0) return true; // No risks is acceptable for minor downgrade
+            return risks.some(r => 
+              /machine.?type|gce|compute|instance|downgrade|capacity|performance/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return true; }
         metric: relevant_analysis
       - type: llm-rubric
         value: |
@@ -310,18 +319,19 @@ tests:
   # ===========================================================================
   - description: "function_timeout: Should detect Cloud Function timeout risk"
     vars:
-      scenario: function_timeout
       expected: "Should detect risk for Cloud Function timeout reduced to 1 second"
     assert:
       - type: javascript
-        value: "vars.risk_count > 0"
+        value: "parseInt(context.vars.risk_count) > 0"
         metric: has_risk
       - type: javascript
         value: |
-          const risks = vars.risks || [];
-          return risks.some(r => 
-            /timeout|function|cloud.?function|reliability|1.?second/i.test(r.title + ' ' + r.description)
-          );
+          try {
+            const risks = JSON.parse(context.vars.risks_json || '[]');
+            return risks.some(r => 
+              /timeout|function|cloud.?function|reliability|1.?second/i.test((r.title || '') + ' ' + (r.description || ''))
+            );
+          } catch (e) { return false; }
         metric: mentions_timeout
       - type: llm-rubric
         value: |
@@ -335,14 +345,13 @@ tests:
   # ===========================================================================
   - description: "combined_gcp_all: Should detect multiple GCP risks"
     vars:
-      scenario: combined_gcp_all
       expected: "Should detect multiple risks for combined GCP changes"
     assert:
       - type: javascript
-        value: "vars.high_risk_count > 0"
+        value: "parseInt(context.vars.high_risk_count) > 0"
         metric: has_high_risk
       - type: javascript
-        value: "vars.risk_count >= 1"
+        value: "parseInt(context.vars.risk_count) >= 1"
         metric: multiple_risks
       - type: llm-rubric
         value: |

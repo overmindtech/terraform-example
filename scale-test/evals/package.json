@@ -6,9 +6,16 @@
   "scripts": {
     "eval": "promptfoo eval",
     "eval:view": "promptfoo view",
-    "eval:ci": "promptfoo eval --output eval-results.json"
+    "eval:ci": "promptfoo eval --output eval-results.json",
+    "test:local": "npm run test:shared_sg_open",
+    "test:shared_sg_open": "promptfoo eval --var 'scenario=shared_sg_open' --var 'risk_count=2' --var 'high_risk_count=1' --var 'risks_json=[{\"title\":\"SSH Port Open to Internet\",\"description\":\"Security group allows SSH from 0.0.0.0/0\",\"severity\":\"critical\"}]' --filter-pattern shared_sg_open --no-cache",
+    "test:lambda_timeout": "promptfoo eval --var 'scenario=lambda_timeout' --var 'risk_count=1' --var 'high_risk_count=0' --var 'risks_json=[{\"title\":\"Lambda Timeout Too Short\",\"description\":\"Lambda timeout reduced to 1 second\",\"severity\":\"medium\"}]' --filter-pattern lambda_timeout --no-cache",
+    "test:validate": "promptfoo eval --help > /dev/null && echo 'Config valid'"
   },
   "dependencies": {
     "promptfoo": "^0.120.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

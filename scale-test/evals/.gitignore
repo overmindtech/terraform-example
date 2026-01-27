@@ -7,3 +7,6 @@ eval-results.json
 
 # Logs
 *.log
+
+# Test data (local testing only)
+test-data/

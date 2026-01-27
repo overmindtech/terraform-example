@@ -400,15 +400,15 @@ jobs:
             exit 1
           fi
 
-      - name: Upload analysis results
-        uses: actions/upload-artifact@v4
-        if: ${{ always() && (inputs.action == 'plan' || inputs.action == 'apply') }}
-        with:
-          name: change-analysis-${{ inputs.scenario }}-${{ github.run_id }}
-          path: |
-            ${{ env.WORKING_DIR }}/change-results.json
-            ${{ env.WORKING_DIR }}/tfplan.json
-          if-no-files-found: ignore
+      # NOTE: Artifact upload disabled for public repo - change-results.json may contain
+      # internal system prompts. Only tfplan.json is safe to upload if needed.
+      # - name: Upload analysis results
+      #   uses: actions/upload-artifact@v4
+      #   if: ${{ always() && (inputs.action == 'plan' || inputs.action == 'apply') }}
+      #   with:
+      #     name: change-analysis-${{ inputs.scenario }}-${{ github.run_id }}
+      #     path: ${{ env.WORKING_DIR }}/tfplan.json
+      #     if-no-files-found: ignore
 
       # =========================================================================
       # PromptFoo Quality Evals
@@ -433,14 +433,31 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}/evals
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
+          CHANGE_RESULTS_PATH: ${{ github.workspace }}/${{ env.WORKING_DIR }}/change-results.json
         run: |
           echo "Running PromptFoo evals for scenario: ${{ inputs.scenario }}"
-
-          # Run evals with the change results file
+          echo "Results file: $CHANGE_RESULTS_PATH"
+          
+          # Verify results file exists
+          if [ ! -f "$CHANGE_RESULTS_PATH" ]; then
+            echo "::warning::Change results file not found at $CHANGE_RESULTS_PATH"
+            exit 0
+          fi
+          
+          # Extract metrics from change-results.json
+          RISK_COUNT=$(jq '.risks | length // 0' "$CHANGE_RESULTS_PATH")
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' "$CHANGE_RESULTS_PATH")
+          RISKS_JSON=$(jq -c '.risks // []' "$CHANGE_RESULTS_PATH")
+          
+          echo "Risk count: $RISK_COUNT, High risk count: $HIGH_RISK_COUNT"
+          
+          # Run evals with pre-extracted data
           # --filter-pattern filters tests by description regex
           npx promptfoo eval \
-            --var "results_file=../change-results.json" \
             --var "scenario=${{ inputs.scenario }}" \
+            --var "risk_count=$RISK_COUNT" \
+            --var "high_risk_count=$HIGH_RISK_COUNT" \
+            --var "risks_json=$RISKS_JSON" \
             --filter-pattern "${{ inputs.scenario }}" \
             --output eval-results.json \
             --no-cache
@@ -458,13 +475,15 @@ jobs:
             jq -r '.results[] | select(.success == false) | "- ❌ \(.description): \(.error // "assertion failed")"' eval-results.json >> $GITHUB_STEP_SUMMARY || true
           fi
 
-      - name: Upload PromptFoo results
-        uses: actions/upload-artifact@v4
-        if: ${{ always() && steps.promptfoo-eval.outcome != 'skipped' }}
-        with:
-          name: promptfoo-results-${{ inputs.scenario }}-${{ github.run_id }}
-          path: ${{ env.WORKING_DIR }}/evals/eval-results.json
-          if-no-files-found: ignore
+      # NOTE: Artifact upload disabled for public repo - eval results may reference
+      # internal system prompts from change-results.json
+      # - name: Upload PromptFoo results
+      #   uses: actions/upload-artifact@v4
+      #   if: ${{ always() && steps.promptfoo-eval.outcome != 'skipped' }}
+      #   with:
+      #     name: promptfoo-results-${{ inputs.scenario }}-${{ github.run_id }}
+      #     path: ${{ env.WORKING_DIR }}/evals/eval-results.json
+      #     if-no-files-found: ignore
 
       # Cost Analysis disabled for scale testing (plan too large)
       # - name: Cost Analysis

@@ -9,6 +9,9 @@ tfplan.json
 crash.log
 crash.*.log
 
+# Overmind analysis results (may contain internal system prompts)
+change-results.json
+
 # Generated files
 *.zip
 lambda_dummy.zip
