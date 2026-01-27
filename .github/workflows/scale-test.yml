@@ -417,18 +417,18 @@ jobs:
 
       - name: Setup Node.js for PromptFoo
         uses: actions/setup-node@v4
-        if: ${{ steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
+        if: ${{ always() && steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
         with:
           node-version: '20'
 
       - name: Install PromptFoo dependencies
-        if: ${{ steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
+        if: ${{ always() && steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
         working-directory: ${{ env.WORKING_DIR }}/evals
         run: npm install
 
       - name: Run PromptFoo quality evals
         id: promptfoo-eval
-        if: ${{ steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
+        if: ${{ always() && steps.get-results.outcome == 'success' && inputs.scenario != 'none' }}
         continue-on-error: true
         working-directory: ${{ env.WORKING_DIR }}/evals
         env:
@@ -458,7 +458,7 @@ jobs:
 
       - name: Upload PromptFoo results
         uses: actions/upload-artifact@v4
-        if: ${{ steps.promptfoo-eval.outcome != 'skipped' }}
+        if: ${{ always() && steps.promptfoo-eval.outcome != 'skipped' }}
         with:
           name: promptfoo-results-${{ inputs.scenario }}-${{ github.run_id }}
           path: ${{ env.WORKING_DIR }}/evals/eval-results.json
