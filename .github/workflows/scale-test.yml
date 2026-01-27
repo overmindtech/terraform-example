@@ -163,33 +163,25 @@ jobs:
           version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify or install Overmind CLI
+      - name: Add Overmind CLI to PATH
         id: verify-cli
+        working-directory: ${{ github.workspace }}
         run: |
-          # Check if CLI was installed by the action
+          # The install-cli action downloads to $GITHUB_WORKSPACE/overmindtech/overmind
+          # We need to add it to PATH for subsequent steps
+          
           if command -v overmind &> /dev/null; then
-            echo "Overmind CLI found in PATH"
+            echo "Overmind CLI already in PATH"
             overmind version
+          elif [ -f "$GITHUB_WORKSPACE/overmindtech/overmind" ]; then
+            echo "Found CLI at $GITHUB_WORKSPACE/overmindtech/overmind, adding to PATH"
+            chmod +x "$GITHUB_WORKSPACE/overmindtech/overmind"
+            echo "$GITHUB_WORKSPACE/overmindtech" >> $GITHUB_PATH
+            "$GITHUB_WORKSPACE/overmindtech/overmind" version
           else
-            echo "Overmind CLI not in PATH, installing manually..."
-            
-            # Download latest release
-            curl -sL https://github.com/overmindtech/cli/releases/latest/download/overmind_linux_amd64.tar.gz -o overmind.tar.gz
-            tar -xzf overmind.tar.gz
-            chmod +x overmind
-            
-            # Move to a location in PATH
-            sudo mv overmind /usr/local/bin/
-            rm -f overmind.tar.gz
-            
-            # Verify installation
-            if command -v overmind &> /dev/null; then
-              echo "Overmind CLI installed successfully"
-              overmind version
-            else
-              echo "::error::Failed to install Overmind CLI"
-              exit 1
-            fi
+            echo "::error::Overmind CLI not found. Contents of workspace:"
+            ls -la "$GITHUB_WORKSPACE/"
+            exit 1
           fi
 
       - name: Submit Plan to Overmind
