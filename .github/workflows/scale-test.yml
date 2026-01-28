@@ -203,15 +203,28 @@ jobs:
           RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
           HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
           MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
+          
+          # Extract blast radius and discovery metrics
+          BLAST_RADIUS_NODES=$(jq '.change.metadata.numAffectedItems // 0' change-results.json)
+          BLAST_RADIUS_EDGES=$(jq '.change.metadata.numAffectedEdges // 0' change-results.json)
+          OBSERVATIONS=$(jq '.change.metadata.total_observations // 0' change-results.json)
+          HYPOTHESES=$(jq '.hypotheses | length // 0' change-results.json)
 
           echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
           echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
           echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "blast_radius_nodes=$BLAST_RADIUS_NODES" >> $GITHUB_OUTPUT
+          echo "blast_radius_edges=$BLAST_RADIUS_EDGES" >> $GITHUB_OUTPUT
+          echo "observations=$OBSERVATIONS" >> $GITHUB_OUTPUT
+          echo "hypotheses=$HYPOTHESES" >> $GITHUB_OUTPUT
 
           echo "## Nightly Scenario: ${{ matrix.scenario }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "- **High/Critical:** $HIGH_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "- **Duration:** $((DURATION_MS / 1000))s" >> $GITHUB_STEP_SUMMARY
+          echo "- **Blast Radius:** $BLAST_RADIUS_NODES nodes, $BLAST_RADIUS_EDGES edges" >> $GITHUB_STEP_SUMMARY
+          echo "- **Observations:** $OBSERVATIONS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Hypotheses:** $HYPOTHESES" >> $GITHUB_STEP_SUMMARY
 
       - name: Send results to dashboard
         if: always() && steps.get-results.outcome == 'success'
@@ -235,6 +248,10 @@ jobs:
             "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
             "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
             "mediumRiskCount": ${{ steps.get-results.outputs.medium_risk_count || 0 }},
+            "blastRadiusNodes": ${{ steps.get-results.outputs.blast_radius_nodes || 0 }},
+            "blastRadiusEdges": ${{ steps.get-results.outputs.blast_radius_edges || 0 }},
+            "observations": ${{ steps.get-results.outputs.observations || 0 }},
+            "hypotheses": ${{ steps.get-results.outputs.hypotheses || 0 }},
             "validationPassed": true,
             "workflowRunUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
@@ -426,16 +443,29 @@ jobs:
           RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
           HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
           MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
+          
+          # Extract blast radius and discovery metrics
+          BLAST_RADIUS_NODES=$(jq '.change.metadata.numAffectedItems // 0' change-results.json)
+          BLAST_RADIUS_EDGES=$(jq '.change.metadata.numAffectedEdges // 0' change-results.json)
+          OBSERVATIONS=$(jq '.change.metadata.total_observations // 0' change-results.json)
+          HYPOTHESES=$(jq '.hypotheses | length // 0' change-results.json)
 
           echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
           echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
           echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "blast_radius_nodes=$BLAST_RADIUS_NODES" >> $GITHUB_OUTPUT
+          echo "blast_radius_edges=$BLAST_RADIUS_EDGES" >> $GITHUB_OUTPUT
+          echo "observations=$OBSERVATIONS" >> $GITHUB_OUTPUT
+          echo "hypotheses=$HYPOTHESES" >> $GITHUB_OUTPUT
 
           echo "## Change Analysis Results" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "- **High/Critical Risks:** $HIGH_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
           echo "- **Analysis Duration:** $((DURATION_MS / 1000))s" >> $GITHUB_STEP_SUMMARY
           echo "- **Medium Risks:** $MEDIUM_RISK_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Blast Radius:** $BLAST_RADIUS_NODES nodes, $BLAST_RADIUS_EDGES edges" >> $GITHUB_STEP_SUMMARY
+          echo "- **Observations:** $OBSERVATIONS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Hypotheses:** $HYPOTHESES" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # List all risks in summary
@@ -576,6 +606,10 @@ jobs:
             "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
             "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
             "mediumRiskCount": ${{ steps.get-results.outputs.medium_risk_count || 0 }},
+            "blastRadiusNodes": ${{ steps.get-results.outputs.blast_radius_nodes || 0 }},
+            "blastRadiusEdges": ${{ steps.get-results.outputs.blast_radius_edges || 0 }},
+            "observations": ${{ steps.get-results.outputs.observations || 0 }},
+            "hypotheses": ${{ steps.get-results.outputs.hypotheses || 0 }},
             "validationPassed": true,
             "evalPassCount": $EVAL_PASS_COUNT,
             "evalFailCount": $EVAL_FAIL_COUNT,
