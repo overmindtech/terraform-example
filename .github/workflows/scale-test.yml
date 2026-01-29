@@ -228,6 +228,58 @@ jobs:
           echo "- **Observations:** $OBSERVATIONS" >> $GITHUB_STEP_SUMMARY
           echo "- **Hypotheses:** $HYPOTHESES" >> $GITHUB_STEP_SUMMARY
 
+      # =========================================================================
+      # PromptFoo Quality Evals (Nightly)
+      # =========================================================================
+
+      - name: Setup Node.js for PromptFoo
+        uses: actions/setup-node@v4
+        if: ${{ always() && steps.get-results.outcome == 'success' }}
+        with:
+          node-version: '20'
+
+      - name: Install PromptFoo dependencies
+        if: ${{ always() && steps.get-results.outcome == 'success' }}
+        working-directory: scale-test/evals
+        run: npm install
+
+      - name: Run PromptFoo quality evals
+        id: promptfoo-eval
+        if: ${{ always() && steps.get-results.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: scale-test/evals
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
+          CHANGE_RESULTS_PATH: ${{ github.workspace }}/scale-test/change-results.json
+        run: |
+          echo "Running PromptFoo evals for scenario: ${{ matrix.scenario }}"
+          
+          # Extract data for eval
+          RISK_COUNT=$(jq '.risks | length // 0' $CHANGE_RESULTS_PATH)
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' $CHANGE_RESULTS_PATH)
+          RISKS_JSON=$(jq -c '.risks // []' $CHANGE_RESULTS_PATH)
+          
+          # Run evals
+          npx promptfoo eval \
+            --var "scenario=${{ matrix.scenario }}" \
+            --var "risk_count=$RISK_COUNT" \
+            --var "high_risk_count=$HIGH_RISK_COUNT" \
+            --var "risks_json=$RISKS_JSON" \
+            --filter-pattern "${{ matrix.scenario }}" \
+            --output eval-results.json
+          
+          # Parse results for summary
+          if [ -f "eval-results.json" ]; then
+            PASS_COUNT=$(jq '[.results[]?.success] | map(select(. == true)) | length' eval-results.json)
+            TOTAL_COUNT=$(jq '[.results[]?.success] | length' eval-results.json)
+            echo "eval_pass_count=$PASS_COUNT" >> $GITHUB_OUTPUT
+            echo "eval_fail_count=$((TOTAL_COUNT - PASS_COUNT))" >> $GITHUB_OUTPUT
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### PromptFoo Quality Eval" >> $GITHUB_STEP_SUMMARY
+            echo "- **Passed:** $PASS_COUNT / $TOTAL_COUNT assertions" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Send results to dashboard
         if: always() && steps.get-results.outcome == 'success'
         continue-on-error: true
@@ -238,6 +290,15 @@ jobs:
           if [ -z "$DASHBOARD_URL" ] || [ -z "$DASHBOARD_API_KEY" ]; then
             echo "Dashboard not configured"
             exit 0
+          fi
+          
+          # Get eval results if available
+          EVAL_PASS_COUNT=${{ steps.promptfoo-eval.outputs.eval_pass_count || 0 }}
+          EVAL_FAIL_COUNT=${{ steps.promptfoo-eval.outputs.eval_fail_count || 0 }}
+          TOTAL=$((EVAL_PASS_COUNT + EVAL_FAIL_COUNT))
+          EVAL_SCORE=0
+          if [ "$TOTAL" -gt 0 ]; then
+            EVAL_SCORE=$(echo "scale=2; $EVAL_PASS_COUNT / $TOTAL" | bc)
           fi
           
           cat <<EOF > /tmp/payload.json
@@ -255,6 +316,9 @@ jobs:
             "observations": ${{ steps.get-results.outputs.observations || 0 }},
             "hypotheses": ${{ steps.get-results.outputs.hypotheses || 0 }},
             "validationPassed": true,
+            "evalPassCount": $EVAL_PASS_COUNT,
+            "evalFailCount": $EVAL_FAIL_COUNT,
+            "evalScore": $EVAL_SCORE,
             "workflowRunUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
           EOF
