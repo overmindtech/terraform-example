@@ -33,6 +33,7 @@ on:
         default: 'none'
         options:
           - 'none'
+          - 'run_all_nightly'  # Runs all 7 AWS scenarios at 25x (like scheduled nightly)
           # AWS scenarios
           - 'lambda_timeout'
           - 'shared_sg_open'
@@ -72,7 +73,7 @@ jobs:
   # =========================================================================
   nightly-scenarios:
     name: Nightly - ${{ matrix.scenario }} @ 25x
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || inputs.scenario == 'run_all_nightly'
     runs-on: ubuntu-latest
     permissions:
       contents: read
