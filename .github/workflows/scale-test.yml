@@ -172,14 +172,34 @@ jobs:
         run: echo "start_time=$(date +%s%3N)" >> $GITHUB_OUTPUT
 
       - name: Submit Plan to Overmind
-        uses: overmindtech/actions/submit-plan@main
-        continue-on-error: true
         id: submit-plan
-        with:
-          ovm-api-key: ${{ secrets.OVM_API_KEY }}
-          plan-json: scale-test/tfplan.json
-          tags: 'model=risks_v6,scenario=${{ matrix.scenario }}'
-          title: 'Scale Test - ${{ matrix.scenario }} @ 25x'
+        continue-on-error: true
+        env:
+          OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
+        run: |
+          # Use unique ticket link per scenario to create separate changes
+          TICKET_LINK="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}?scenario=${{ matrix.scenario }}"
+          
+          overmind changes submit-plan \
+            --title "Scale Test - ${{ matrix.scenario }} @ 25x" \
+            --description "Nightly scale test for scenario: ${{ matrix.scenario }}" \
+            --ticket-link "$TICKET_LINK" \
+            --tags "model=risks_v6,scenario=${{ matrix.scenario }}" \
+            scale-test/tfplan.json \
+            > /tmp/change-url.txt
+          
+          CHANGE_URL=$(cat /tmp/change-url.txt)
+          echo "change-url=$CHANGE_URL" >> $GITHUB_OUTPUT
+          echo "Submitted change: $CHANGE_URL"
+          
+          # Wait for change analysis to complete (fetch the change to trigger wait)
+          echo "Waiting for change analysis to complete..."
+          overmind changes get-change \
+            --change "$CHANGE_URL" \
+            --format markdown \
+            > /tmp/change-summary.md
+          
+          echo "Change analysis complete"
 
       - name: Get change results as JSON
         id: get-results
