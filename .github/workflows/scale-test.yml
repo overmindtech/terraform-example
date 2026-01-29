@@ -84,7 +84,7 @@ jobs:
     
     strategy:
       fail-fast: false  # Run all scenarios even if one fails
-      max-parallel: 1   # Run one at a time - all scenarios share same Terraform state
+      max-parallel: 2   # Run 2 at a time
       matrix:
         scenario:
           - shared_sg_open
