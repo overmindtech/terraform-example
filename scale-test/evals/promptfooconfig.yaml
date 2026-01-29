@@ -66,29 +66,66 @@ tests:
   - description: "lambda_timeout: Should detect timeout reliability risk"
     vars:
       expected: "Should detect medium risk for Lambda timeout reduced to 1 second"
+      # Ground truth: The expected risk that MUST be detected
+      ground_truth_title: "Reducing Lambda timeout to 1s will terminate executions before SQS delete/S3/HTTP completes, causing retries, duplicates, DLQ traffic, and failed snapshot I/O"
+      ground_truth_description: |
+        Multiple Lambda functions are being reduced from a 3-second to a 1-second timeout 
+        while they interact with SQS and S3. At 1 second, cold starts, network latency, 
+        and normal SQS/S3/HTTP operations that previously completed in 1-3 seconds will 
+        be terminated by Lambda before cleanup or DeleteMessage can occur.
+        
+        When these functions time out, SQS messages remain invisible until the queue's 
+        VisibilityTimeout expires, then are retried, causing duplicate deliveries, backlogs, 
+        and DLQ traffic. In-flight S3/HTTP calls will be aborted, surfacing as 5xx/timeouts.
+      ground_truth_severity: "medium"
+      ground_truth_concepts: "Lambda, timeout, 1 second, SQS, S3, retries, DLQ, function termination"
     assert:
       # Must have at least one risk
       - type: javascript
         value: "parseInt(context.vars.risk_count) > 0"
         metric: has_risk
-      # Should mention timeout or Lambda or reliability
+      # LLM semantic match: Does any detected risk match the ground truth?
+      # Note: Extra risks from polluting changes are fine - we only check if expected risk exists
+      - type: llm-rubric
+        value: |
+          You are evaluating whether the EXPECTED risk was detected. Additional risks are acceptable.
+          
+          EXPECTED RISK (ground truth):
+          Title: {{ground_truth_title}}
+          Key concepts: {{ground_truth_concepts}}
+          Expected severity: {{ground_truth_severity}}
+          
+          DETECTED RISKS:
+          {{risks_json}}
+          
+          EVALUATION CRITERIA:
+          1. Does at least ONE detected risk semantically match the expected risk?
+             - It should identify Lambda timeout reduction
+             - It should mention consequences (retries, failures, SQS issues, etc.)
+             - Exact wording is NOT required - semantic similarity counts
+          
+          2. Is the severity appropriate? (medium or higher is acceptable)
+          
+          3. IGNORE any additional risks - they may be from other infrastructure changes.
+             Only check if the EXPECTED risk is present.
+          
+          Score 1 if the expected Lambda timeout risk is detected with appropriate severity.
+          Score 0 if the expected risk is missing or severity is too low (e.g., "low" for this scenario).
+        metric: ground_truth_match
+      # Secondary check: Severity should be medium or higher
       - type: javascript
         value: |
           try {
             const risks = JSON.parse(context.vars.risks_json || '[]');
-            return risks.some(r => 
-              /timeout|lambda|function|reliability|1.?second/i.test((r.title || '') + ' ' + (r.description || ''))
-            );
+            // Check if any risk related to Lambda/timeout has severity >= 2 (medium)
+            // Severity: 1=low, 2=medium, 3=high, 4=critical
+            return risks.some(r => {
+              const isRelevant = /timeout|lambda|function/i.test((r.title || '') + ' ' + (r.description || ''));
+              const severityOk = r.severity >= 2 || /medium|high|critical/i.test(r.severity);
+              return isRelevant && severityOk;
+            });
           } catch (e) { return false; }
-        metric: mentions_timeout
-      # LLM-as-judge quality
-      - type: llm-rubric
-        value: |
-          The risk assessment should identify that reducing a Lambda function timeout 
-          to 1 second is problematic. Most Lambda operations need more than 1 second.
-          This could cause widespread function failures.
-          Score 1 if risks identify this reliability concern, 0 if not.
-        metric: quality_score
+        metric: severity_appropriate
 
   # ===========================================================================
   # vpc_peering_change: DNS resolution enabled
