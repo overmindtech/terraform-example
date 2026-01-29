@@ -242,6 +242,13 @@ jobs:
           OBSERVATIONS=$(jq '.change.metadata.total_observations // 0' change-results.json)
           HYPOTHESES=$(jq '.hypotheses | length // 0' change-results.json)
 
+          # Extract risks array with title and severity (convert numeric severity to string)
+          # Severity: 1=low, 2=medium, 3=high, 4=critical
+          RISKS_JSON=$(jq -c '[.risks[]? | {
+            title: .title,
+            severity: (if .severity == 4 then "critical" elif .severity == 3 then "high" elif .severity == 2 then "medium" else "low" end)
+          }]' change-results.json)
+          
           echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
           echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
           echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
@@ -249,6 +256,9 @@ jobs:
           echo "blast_radius_edges=$BLAST_RADIUS_EDGES" >> $GITHUB_OUTPUT
           echo "observations=$OBSERVATIONS" >> $GITHUB_OUTPUT
           echo "hypotheses=$HYPOTHESES" >> $GITHUB_OUTPUT
+          
+          # Save risks JSON to file (too long for GITHUB_OUTPUT)
+          echo "$RISKS_JSON" > /tmp/risks.json
 
           echo "## Nightly Scenario: ${{ matrix.scenario }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
@@ -331,27 +341,48 @@ jobs:
             EVAL_SCORE=$(echo "scale=2; $EVAL_PASS_COUNT / $TOTAL" | bc)
           fi
           
-          cat <<EOF > /tmp/payload.json
-          {
-            "runId": "${{ github.run_id }}-${{ matrix.scenario }}",
-            "scenario": "${{ matrix.scenario }}",
-            "cloudProvider": "aws",
-            "scaleMultiplier": 25,
-            "overmindDurationMs": ${{ steps.get-results.outputs.overmind_duration_ms || 0 }},
-            "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
-            "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
-            "mediumRiskCount": ${{ steps.get-results.outputs.medium_risk_count || 0 }},
-            "blastRadiusNodes": ${{ steps.get-results.outputs.blast_radius_nodes || 0 }},
-            "blastRadiusEdges": ${{ steps.get-results.outputs.blast_radius_edges || 0 }},
-            "observations": ${{ steps.get-results.outputs.observations || 0 }},
-            "hypotheses": ${{ steps.get-results.outputs.hypotheses || 0 }},
-            "validationPassed": true,
-            "evalPassCount": $EVAL_PASS_COUNT,
-            "evalFailCount": $EVAL_FAIL_COUNT,
-            "evalScore": $EVAL_SCORE,
-            "workflowRunUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }
-          EOF
+          # Read risks array from file
+          RISKS_JSON=$(cat /tmp/risks.json 2>/dev/null || echo '[]')
+          
+          # Build payload with risks array
+          jq -n \
+            --arg runId "${{ github.run_id }}-${{ matrix.scenario }}" \
+            --arg scenario "${{ matrix.scenario }}" \
+            --arg cloudProvider "aws" \
+            --argjson scaleMultiplier 25 \
+            --argjson overmindDurationMs "${{ steps.get-results.outputs.overmind_duration_ms || 0 }}" \
+            --argjson riskCount "${{ steps.get-results.outputs.risk_count || 0 }}" \
+            --argjson highRiskCount "${{ steps.get-results.outputs.high_risk_count || 0 }}" \
+            --argjson mediumRiskCount "${{ steps.get-results.outputs.medium_risk_count || 0 }}" \
+            --argjson blastRadiusNodes "${{ steps.get-results.outputs.blast_radius_nodes || 0 }}" \
+            --argjson blastRadiusEdges "${{ steps.get-results.outputs.blast_radius_edges || 0 }}" \
+            --argjson observations "${{ steps.get-results.outputs.observations || 0 }}" \
+            --argjson hypotheses "${{ steps.get-results.outputs.hypotheses || 0 }}" \
+            --argjson evalPassCount "$EVAL_PASS_COUNT" \
+            --argjson evalFailCount "$EVAL_FAIL_COUNT" \
+            --argjson evalScore "$EVAL_SCORE" \
+            --argjson risks "$RISKS_JSON" \
+            --arg workflowRunUrl "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{
+              runId: $runId,
+              scenario: $scenario,
+              cloudProvider: $cloudProvider,
+              scaleMultiplier: $scaleMultiplier,
+              overmindDurationMs: $overmindDurationMs,
+              riskCount: $riskCount,
+              highRiskCount: $highRiskCount,
+              mediumRiskCount: $mediumRiskCount,
+              risks: $risks,
+              blastRadiusNodes: $blastRadiusNodes,
+              blastRadiusEdges: $blastRadiusEdges,
+              observations: $observations,
+              hypotheses: $hypotheses,
+              validationPassed: true,
+              evalPassCount: $evalPassCount,
+              evalFailCount: $evalFailCount,
+              evalScore: $evalScore,
+              workflowRunUrl: $workflowRunUrl
+            }' > /tmp/payload.json
           
           curl -s -X POST "$DASHBOARD_URL/api/results" \
             -H "Authorization: Bearer $DASHBOARD_API_KEY" \
@@ -546,6 +577,12 @@ jobs:
           OBSERVATIONS=$(jq '.change.metadata.total_observations // 0' change-results.json)
           HYPOTHESES=$(jq '.hypotheses | length // 0' change-results.json)
 
+          # Extract risks array with title and severity
+          RISKS_JSON=$(jq -c '[.risks[]? | {
+            title: .title,
+            severity: (if .severity == 4 then "critical" elif .severity == 3 then "high" elif .severity == 2 then "medium" else "low" end)
+          }]' change-results.json)
+          
           echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
           echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
           echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
@@ -553,6 +590,9 @@ jobs:
           echo "blast_radius_edges=$BLAST_RADIUS_EDGES" >> $GITHUB_OUTPUT
           echo "observations=$OBSERVATIONS" >> $GITHUB_OUTPUT
           echo "hypotheses=$HYPOTHESES" >> $GITHUB_OUTPUT
+          
+          # Save risks JSON to file
+          echo "$RISKS_JSON" > /tmp/risks.json
 
           echo "## Change Analysis Results" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Risks:** $RISK_COUNT" >> $GITHUB_STEP_SUMMARY
@@ -691,28 +731,48 @@ jobs:
             fi
           fi
           
-          # Build JSON payload
-          cat <<EOF > /tmp/dashboard-payload.json
-          {
-            "runId": "${{ github.run_id }}",
-            "scenario": "${{ inputs.scenario }}",
-            "cloudProvider": "${{ inputs.cloud_provider }}",
-            "scaleMultiplier": ${{ inputs.scale_multiplier }},
-            "overmindDurationMs": ${{ steps.get-results.outputs.overmind_duration_ms || 0 }},
-            "riskCount": ${{ steps.get-results.outputs.risk_count || 0 }},
-            "highRiskCount": ${{ steps.get-results.outputs.high_risk_count || 0 }},
-            "mediumRiskCount": ${{ steps.get-results.outputs.medium_risk_count || 0 }},
-            "blastRadiusNodes": ${{ steps.get-results.outputs.blast_radius_nodes || 0 }},
-            "blastRadiusEdges": ${{ steps.get-results.outputs.blast_radius_edges || 0 }},
-            "observations": ${{ steps.get-results.outputs.observations || 0 }},
-            "hypotheses": ${{ steps.get-results.outputs.hypotheses || 0 }},
-            "validationPassed": true,
-            "evalPassCount": $EVAL_PASS_COUNT,
-            "evalFailCount": $EVAL_FAIL_COUNT,
-            "evalScore": $EVAL_SCORE,
-            "workflowRunUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }
-          EOF
+          # Read risks array from file
+          RISKS_JSON=$(cat /tmp/risks.json 2>/dev/null || echo '[]')
+          
+          # Build JSON payload with risks array
+          jq -n \
+            --arg runId "${{ github.run_id }}" \
+            --arg scenario "${{ inputs.scenario }}" \
+            --arg cloudProvider "${{ inputs.cloud_provider }}" \
+            --argjson scaleMultiplier "${{ inputs.scale_multiplier }}" \
+            --argjson overmindDurationMs "${{ steps.get-results.outputs.overmind_duration_ms || 0 }}" \
+            --argjson riskCount "${{ steps.get-results.outputs.risk_count || 0 }}" \
+            --argjson highRiskCount "${{ steps.get-results.outputs.high_risk_count || 0 }}" \
+            --argjson mediumRiskCount "${{ steps.get-results.outputs.medium_risk_count || 0 }}" \
+            --argjson blastRadiusNodes "${{ steps.get-results.outputs.blast_radius_nodes || 0 }}" \
+            --argjson blastRadiusEdges "${{ steps.get-results.outputs.blast_radius_edges || 0 }}" \
+            --argjson observations "${{ steps.get-results.outputs.observations || 0 }}" \
+            --argjson hypotheses "${{ steps.get-results.outputs.hypotheses || 0 }}" \
+            --argjson evalPassCount "$EVAL_PASS_COUNT" \
+            --argjson evalFailCount "$EVAL_FAIL_COUNT" \
+            --argjson evalScore "$EVAL_SCORE" \
+            --argjson risks "$RISKS_JSON" \
+            --arg workflowRunUrl "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{
+              runId: $runId,
+              scenario: $scenario,
+              cloudProvider: $cloudProvider,
+              scaleMultiplier: $scaleMultiplier,
+              overmindDurationMs: $overmindDurationMs,
+              riskCount: $riskCount,
+              highRiskCount: $highRiskCount,
+              mediumRiskCount: $mediumRiskCount,
+              risks: $risks,
+              blastRadiusNodes: $blastRadiusNodes,
+              blastRadiusEdges: $blastRadiusEdges,
+              observations: $observations,
+              hypotheses: $hypotheses,
+              validationPassed: true,
+              evalPassCount: $evalPassCount,
+              evalFailCount: $evalFailCount,
+              evalScore: $evalScore,
+              workflowRunUrl: $workflowRunUrl
+            }' > /tmp/dashboard-payload.json
           
           echo "Payload:"
           cat /tmp/dashboard-payload.json
