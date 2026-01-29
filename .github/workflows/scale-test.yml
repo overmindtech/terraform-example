@@ -180,15 +180,25 @@ jobs:
           # Use unique ticket link per scenario to create separate changes
           TICKET_LINK="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}?scenario=${{ matrix.scenario }}"
           
+          echo "Submitting plan with unique ticket link: $TICKET_LINK"
+          
+          # Capture output and extract the URL (should be the last line or contain https://)
           overmind changes submit-plan \
             --title "Scale Test - ${{ matrix.scenario }} @ 25x" \
             --description "Nightly scale test for scenario: ${{ matrix.scenario }}" \
             --ticket-link "$TICKET_LINK" \
             --tags "model=risks_v6,scenario=${{ matrix.scenario }}" \
-            scale-test/tfplan.json \
-            > /tmp/change-url.txt
+            scale-test/tfplan.json 2>&1 | tee /tmp/submit-output.txt
           
-          CHANGE_URL=$(cat /tmp/change-url.txt)
+          # Extract the change URL (line containing https://app.overmind.tech/changes/)
+          CHANGE_URL=$(grep -oE 'https://app\.overmind\.tech/changes/[a-f0-9-]+' /tmp/submit-output.txt | head -1)
+          
+          if [ -z "$CHANGE_URL" ]; then
+            echo "::error::Could not extract change URL from submit-plan output"
+            cat /tmp/submit-output.txt
+            exit 1
+          fi
+          
           echo "change-url=$CHANGE_URL" >> $GITHUB_OUTPUT
           echo "Submitted change: $CHANGE_URL"
           
