@@ -84,7 +84,7 @@ jobs:
     
     strategy:
       fail-fast: false  # Run all scenarios even if one fails
-      max-parallel: 2   # Run 2 at a time
+      max-parallel: 1   # Run sequentially - shared Terraform state + unique change per scenario
       matrix:
         scenario:
           - shared_sg_open
@@ -178,7 +178,8 @@ jobs:
         with:
           ovm-api-key: ${{ secrets.OVM_API_KEY }}
           plan-json: scale-test/tfplan.json
-          tags: 'model=risks_v6'
+          tags: 'model=risks_v6,scenario=${{ matrix.scenario }}'
+          title: 'Scale Test - ${{ matrix.scenario }} @ 25x'
 
       - name: Get change results as JSON
         id: get-results
