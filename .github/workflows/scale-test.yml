@@ -188,7 +188,7 @@ jobs:
             --description "Nightly scale test for scenario: ${{ matrix.scenario }}" \
             --ticket-link "$TICKET_LINK" \
             --tags "model=risks_v6,scenario=${{ matrix.scenario }}" \
-            scale-test/tfplan.json 2>&1 | tee /tmp/submit-output.txt
+            tfplan.json 2>&1 | tee /tmp/submit-output.txt
           
           # Extract the change URL (line containing https://app.overmind.tech/changes/)
           CHANGE_URL=$(grep -oE 'https://app\.overmind\.tech/changes/[a-f0-9-]+' /tmp/submit-output.txt | head -1)
