@@ -411,7 +411,8 @@ jobs:
   # =========================================================================
   terraform:
     name: Terraform ${{ inputs.action }} (×${{ inputs.scale_multiplier }}, scenario=${{ inputs.scenario }})
-    if: github.event_name == 'workflow_dispatch'
+    # Skip this job when run_all_nightly is selected (that triggers nightly-scenarios instead)
+    if: github.event_name == 'workflow_dispatch' && inputs.scenario != 'run_all_nightly'
     needs: validate
     runs-on: ubuntu-latest
     permissions:
