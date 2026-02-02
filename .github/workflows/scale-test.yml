@@ -233,7 +233,8 @@ jobs:
           echo "overmind_duration_ms=$DURATION_MS" >> $GITHUB_OUTPUT
 
           RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
-          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
+          # Severity is a string: "low", "medium", "high"
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high")] | length' change-results.json)
           MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
           
           # Extract blast radius and discovery metrics
@@ -242,12 +243,9 @@ jobs:
           OBSERVATIONS=$(jq '.change.metadata.total_observations // 0' change-results.json)
           HYPOTHESES=$(jq '.hypotheses | length // 0' change-results.json)
 
-          # Extract risks array with title and severity (convert numeric severity to string)
-          # Severity: 1=low, 2=medium, 3=high, 4=critical
-          RISKS_JSON=$(jq -c '[.risks[]? | {
-            title: .title,
-            severity: (if .severity == 4 then "critical" elif .severity == 3 then "high" elif .severity == 2 then "medium" else "low" end)
-          }]' change-results.json)
+          # Extract risks array with title and severity
+          # Severity is already a string: "low", "medium", "high"
+          RISKS_JSON=$(jq -c '[.risks[]? | {title: .title, severity: .severity, description: .description}]' change-results.json)
           
           echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
           echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
@@ -296,7 +294,8 @@ jobs:
           
           # Extract data for eval
           RISK_COUNT=$(jq '.risks | length // 0' $CHANGE_RESULTS_PATH)
-          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' $CHANGE_RESULTS_PATH)
+          # Severity is a string: "low", "medium", "high"
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high")] | length' $CHANGE_RESULTS_PATH)
           RISKS_JSON=$(jq -c '.risks // []' $CHANGE_RESULTS_PATH)
           
           # Run evals
@@ -569,7 +568,8 @@ jobs:
 
           # Extract key metrics for assertions
           RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
-          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' change-results.json)
+          # Severity is a string: "low", "medium", "high"
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high")] | length' change-results.json)
           MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
           
           # Extract blast radius and discovery metrics
@@ -578,11 +578,9 @@ jobs:
           OBSERVATIONS=$(jq '.change.metadata.total_observations // 0' change-results.json)
           HYPOTHESES=$(jq '.hypotheses | length // 0' change-results.json)
 
-          # Extract risks array with title and severity
-          RISKS_JSON=$(jq -c '[.risks[]? | {
-            title: .title,
-            severity: (if .severity == 4 then "critical" elif .severity == 3 then "high" elif .severity == 2 then "medium" else "low" end)
-          }]' change-results.json)
+          # Extract risks array with title, severity, and description
+          # Severity is already a string: "low", "medium", "high"
+          RISKS_JSON=$(jq -c '[.risks[]? | {title: .title, severity: .severity, description: .description}]' change-results.json)
           
           echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
           echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
@@ -659,7 +657,8 @@ jobs:
           
           # Extract metrics from change-results.json
           RISK_COUNT=$(jq '.risks | length // 0' "$CHANGE_RESULTS_PATH")
-          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high" or .severity == "critical")] | length' "$CHANGE_RESULTS_PATH")
+          # Severity is a string: "low", "medium", "high"
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high")] | length' "$CHANGE_RESULTS_PATH")
           RISKS_JSON=$(jq -c '.risks // []' "$CHANGE_RESULTS_PATH")
           
           echo "Risk count: $RISK_COUNT, High risk count: $HIGH_RISK_COUNT"

@@ -74,9 +74,13 @@ provider "aws" {
 # GCP Providers (4 Regions)
 # -----------------------------------------------------------------------------
 
+# GCP Providers are defined but won't be used when cloud_provider=aws
+# Terraform requires them to be defined because modules reference them
+# Credentials errors can be ignored when GCP modules are disabled (count=0)
+
 provider "google" {
   alias   = "us_central1"
-  project = var.gcp_project_id
+  project = var.cloud_provider == "gcp" || var.cloud_provider == "both" ? var.gcp_project_id : "dummy"
   region  = "us-central1"
 
   default_labels = {
@@ -90,7 +94,7 @@ provider "google" {
 
 provider "google" {
   alias   = "us_west1"
-  project = var.gcp_project_id
+  project = var.cloud_provider == "gcp" || var.cloud_provider == "both" ? var.gcp_project_id : "dummy"
   region  = "us-west1"
 
   default_labels = {
@@ -104,7 +108,7 @@ provider "google" {
 
 provider "google" {
   alias   = "europe_west1"
-  project = var.gcp_project_id
+  project = var.cloud_provider == "gcp" || var.cloud_provider == "both" ? var.gcp_project_id : "dummy"
   region  = "europe-west1"
 
   default_labels = {
@@ -118,7 +122,7 @@ provider "google" {
 
 provider "google" {
   alias   = "asia_southeast1"
-  project = var.gcp_project_id
+  project = var.cloud_provider == "gcp" || var.cloud_provider == "both" ? var.gcp_project_id : "dummy"
   region  = "asia-southeast1"
 
   default_labels = {
