@@ -148,6 +148,20 @@ jobs:
             -var="scenario=none"
           echo "Baseline applied successfully"
 
+      # Verify baseline is stable (no pending changes)
+      - name: Verify Baseline Stable
+        run: |
+          echo "Verifying baseline has no pending changes..."
+          terraform plan -var="scenario=none" -detailed-exitcode -no-color || EXIT_CODE=$?
+          if [ "$EXIT_CODE" = "2" ]; then
+            echo "::warning::Baseline has pending changes - this may pollute scenario plans"
+          elif [ "$EXIT_CODE" = "1" ]; then
+            echo "::error::Terraform plan failed"
+            exit 1
+          else
+            echo "Baseline is stable - no pending changes"
+          fi
+
       - name: Terraform Plan
         run: |
           echo "Planning scenario: ${{ matrix.scenario }}"

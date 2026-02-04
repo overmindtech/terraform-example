@@ -45,9 +45,16 @@ resource "aws_instance" "scale_test" {
     Index = count.index + 1
   })
 
-  # Lifecycle: We want these instances to be stopped after creation
-  # Note: Terraform doesn't have a native way to stop instances,
-  # so we use a null_resource with local-exec to stop them
+  # Lifecycle: Ignore AMI and user_data changes to prevent instance replacements
+  # AMI uses most_recent=true which changes whenever Amazon releases updates
+  # This prevents plan pollution with unnecessary instance replacements
+  lifecycle {
+    ignore_changes = [
+      ami,
+      user_data,
+      user_data_base64,
+    ]
+  }
 }
 
 # Stop EC2 instances after creation (cost optimization)
@@ -128,6 +135,15 @@ resource "aws_lambda_function" "scale_test" {
     Name  = "${local.name_prefix}-fn-${count.index + 1}"
     Index = count.index + 1
   })
+
+  # Ignore source_code_hash changes to prevent plan pollution
+  # The lambda_timeout scenario tests timeout changes, not code changes
+  lifecycle {
+    ignore_changes = [
+      source_code_hash,
+      filename,
+    ]
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.high_fanout_lambda_basic,
