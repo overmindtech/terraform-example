@@ -42,6 +42,7 @@ on:
           - 'combined_network'
           - 'combined_all'
           - 'combined_max'
+          - 'blocked_sg_delete'  # Will fail on apply (AWS DependencyViolation)
           # AWS KMS orphan detection
           - 'kms_orphan_simulation'
           # GCP scenarios (requires cloud_provider=gcp or both)

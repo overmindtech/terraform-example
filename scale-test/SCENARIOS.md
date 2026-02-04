@@ -30,6 +30,7 @@ terraform destroy -var="scale_multiplier=25"
 | `combined_max` | All + Compute | ~900+ items | ~1,500+ items |
 | `kms_orphan` | Security / Data Loss | Manual test | Manual test |
 | `kms_orphan_simulation` | Security / Data Loss | ~5 items | ~5 items |
+| `blocked_sg_delete` | Failure Test | ~4 items | ~4 items |
 
 ## High Fan-Out Scenarios
 
@@ -339,6 +340,65 @@ Overmind should flag that:
 - A new KMS key is being created
 - An existing key with similar purpose already exists
 - Resources encrypted with the original key won't automatically use the new key
+
+---
+
+## Failure Test Scenarios
+
+These scenarios create changes that will **fail on apply** due to cloud provider guardrails. They test how Overmind analyzes risks for changes that cannot actually be executed.
+
+### blocked_sg_delete
+
+Attempts to delete a security group that has ENIs attached. AWS will block this with a `DependencyViolation` error.
+
+| Attribute | Value |
+|-----------|-------|
+| Category | Failure Test |
+| Severity | N/A (will fail) |
+| Change | Deletes security group with active network interfaces |
+
+**Purpose:**
+
+Test how Overmind handles changes where:
+- The plan shows a dangerous deletion
+- The apply would fail due to AWS guardrails
+- The risk is "theoretical" since it can't actually happen
+
+**Usage:**
+
+```bash
+# 1. Apply baseline infrastructure first (creates the deletable SG and ENIs)
+terraform apply -var="scale_multiplier=1" -var="scenario=none"
+
+# 2. Plan the deletion scenario (DO NOT APPLY)
+terraform plan -var="scale_multiplier=1" -var="scenario=blocked_sg_delete"
+
+# 3. Apply will FAIL with DependencyViolation (expected)
+terraform apply -var="scale_multiplier=1" -var="scenario=blocked_sg_delete"
+# Error: DependencyViolation: resource sg-xxx has a dependent object
+```
+
+**What Happens:**
+
+| Phase | Behavior |
+|-------|----------|
+| Baseline (scenario=none) | Creates `aws_security_group.deletable` and attaches ENIs to it |
+| Plan (scenario=blocked_sg_delete) | Shows SG and ENI will be destroyed |
+| Apply | **FAILS** - AWS blocks deletion due to ENI dependencies |
+
+**Expected Analysis:**
+
+Overmind should:
+- Detect the security group deletion
+- Identify all resources dependent on the SG
+- Flag the potential connectivity impact
+- (Ideally) Note that this change would fail on apply due to dependencies
+
+**Questions to Answer:**
+
+- Should risks that "can't happen" be categorized differently?
+- Should severity be reduced for infeasible changes?
+- Can Overmind detect when a change will fail due to cloud guardrails?
 
 ---
 

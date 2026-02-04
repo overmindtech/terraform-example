@@ -200,6 +200,7 @@ variable "scenario" {
       "combined_max",
       # AWS manual test scenarios
       "kms_orphan_simulation",
+      "blocked_sg_delete",  # Deletes SG with attached ENIs - will fail on apply
       # GCP scenarios
       "shared_firewall_open",
       "central_pubsub_change",

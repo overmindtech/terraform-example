@@ -40,3 +40,8 @@ MEMORY-DEMO-QUICKSTART.md
 
 # Temporary dashboard build (move to private repo)
 _dashboard-temp/
+
+# Python virtual environments
+venv/
+.venv/
+__pycache__/
