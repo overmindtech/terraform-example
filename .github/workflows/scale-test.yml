@@ -134,6 +134,20 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false
 
+      # CRITICAL: Reset to baseline before planning scenario
+      # Without this, the plan diffs are relative to whatever state was last applied
+      - name: Apply Baseline (scenario=none)
+        run: |
+          echo "Resetting to baseline state (scenario=none)..."
+          terraform apply \
+            -auto-approve \
+            -no-color \
+            -input=false \
+            -lock-timeout=5m \
+            -parallelism=100 \
+            -var="scenario=none"
+          echo "Baseline applied successfully"
+
       - name: Terraform Plan
         run: |
           echo "Planning scenario: ${{ matrix.scenario }}"
