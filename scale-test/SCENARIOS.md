@@ -349,56 +349,56 @@ These scenarios create changes that will **fail on apply** due to cloud provider
 
 ### blocked_sg_delete
 
-Attempts to delete a security group that has ENIs attached. AWS will block this with a `DependencyViolation` error.
+Attempts to delete security groups that have `prevent_destroy` lifecycle rules. Terraform will fail on apply with "Instance cannot be destroyed".
 
 | Attribute | Value |
 |-----------|-------|
 | Category | Failure Test |
 | Severity | N/A (will fail) |
-| Change | Deletes security group with active network interfaces |
+| Change | Deletes security groups protected by prevent_destroy |
 
 **Purpose:**
 
 Test how Overmind handles changes where:
-- The plan shows a dangerous deletion
-- The apply would fail due to AWS guardrails
+- The plan shows a deletion
+- The apply would fail due to Terraform lifecycle rules
 - The risk is "theoretical" since it can't actually happen
 
 **Usage:**
 
 ```bash
-# 1. Apply baseline infrastructure first (creates the deletable SG and ENIs)
+# 1. Apply baseline infrastructure first (creates protected SGs)
 terraform apply -var="scale_multiplier=1" -var="scenario=none"
 
-# 2. Plan the deletion scenario (DO NOT APPLY)
+# 2. Plan the deletion scenario
 terraform plan -var="scale_multiplier=1" -var="scenario=blocked_sg_delete"
 
-# 3. Apply will FAIL with DependencyViolation (expected)
+# 3. Apply will FAIL with prevent_destroy error (expected)
 terraform apply -var="scale_multiplier=1" -var="scenario=blocked_sg_delete"
-# Error: DependencyViolation: resource sg-xxx has a dependent object
+# Error: Instance cannot be destroyed
+# Resource aws_security_group.protected_us_east_1[0] has lifecycle.prevent_destroy set
 ```
 
 **What Happens:**
 
 | Phase | Behavior |
 |-------|----------|
-| Baseline (scenario=none) | Creates `aws_security_group.deletable` and attaches ENIs to it |
-| Plan (scenario=blocked_sg_delete) | Shows SG and ENI will be destroyed |
-| Apply | **FAILS** - AWS blocks deletion due to ENI dependencies |
+| Baseline (scenario=none) | Creates `aws_security_group.protected_*` with `prevent_destroy = true` |
+| Plan (scenario=blocked_sg_delete) | Shows SGs will be destroyed (plan succeeds) |
+| Apply | **FAILS** - Terraform blocks deletion due to prevent_destroy |
 
 **Expected Analysis:**
 
 Overmind should:
 - Detect the security group deletion
-- Identify all resources dependent on the SG
-- Flag the potential connectivity impact
-- (Ideally) Note that this change would fail on apply due to dependencies
+- Flag the potential security impact
+- (Ideally) Recognize this change will fail and adjust risk severity
 
 **Questions to Answer:**
 
 - Should risks that "can't happen" be categorized differently?
 - Should severity be reduced for infeasible changes?
-- Can Overmind detect when a change will fail due to cloud guardrails?
+- Can Overmind detect when a change will fail due to lifecycle rules?
 
 ---
 

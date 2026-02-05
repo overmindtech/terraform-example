@@ -82,6 +82,12 @@ resource "aws_route_table" "public" {
   tags = merge(var.common_tags, {
     Name = "${local.name_prefix}-public-rt"
   })
+
+  # Ignore routes added by separate aws_route resources (VPC peering routes)
+  # Without this, Terraform tries to remove peering routes on every apply
+  lifecycle {
+    ignore_changes = [route]
+  }
 }
 
 resource "aws_route_table" "private" {
@@ -92,6 +98,11 @@ resource "aws_route_table" "private" {
   tags = merge(var.common_tags, {
     Name = "${local.name_prefix}-private-rt"
   })
+
+  # Ignore routes added by separate aws_route resources (VPC peering routes)
+  lifecycle {
+    ignore_changes = [route]
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -186,9 +197,9 @@ resource "aws_security_group" "high_fanout" {
   }
 
   tags = merge(var.common_tags, {
-    Name     = "${local.name_prefix}-shared-sg"
-    Purpose  = "high-fanout-testing"
-    Warning  = "Attached to ALL EC2 instances"
+    Name    = "${local.name_prefix}-shared-sg"
+    Purpose = "high-fanout-testing"
+    Warning = "Attached to ALL EC2 instances"
   })
 }
 

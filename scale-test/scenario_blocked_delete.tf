@@ -1,37 +1,37 @@
 # =============================================================================
 # Scenario: blocked_sg_delete
 # 
-# This scenario attempts to delete a security group that has ENIs attached.
-# AWS will block this with a DependencyViolation error.
+# This scenario attempts to delete a security group that has `prevent_destroy`
+# lifecycle rule. Terraform will fail on apply with:
+# "Error: Instance cannot be destroyed"
 #
 # Purpose: Test how Overmind handles changes that would fail on apply due to
-# cloud provider guardrails.
+# Terraform lifecycle rules (simulating cloud provider guardrails).
 #
 # Expected behavior:
 # - Terraform plan succeeds (shows SG will be deleted)
-# - Overmind analyzes the blast radius (ENIs using the SG)
-# - Terraform apply FAILS with DependencyViolation
+# - Overmind analyzes the blast radius
+# - Terraform apply FAILS with "prevent_destroy" error
 # =============================================================================
 
 locals {
   scenario_blocked_sg_delete = var.scenario == "blocked_sg_delete"
-  # Only create resources when NOT in the delete scenario
-  create_deletable_resources = local.enable_aws && !local.scenario_blocked_sg_delete
 }
 
 # -----------------------------------------------------------------------------
-# Dedicated Security Group for this scenario (us-east-1)
+# Protected Security Group (us-east-1)
 # 
-# Created in baseline (scenario=none), deleted in blocked_sg_delete scenario.
-# Has an ENI attached, so AWS will block the deletion.
+# This SG has prevent_destroy = true, so Terraform will refuse to delete it.
+# In the scenario, we set count = 0 to trigger a deletion attempt.
 # -----------------------------------------------------------------------------
 
-resource "aws_security_group" "deletable_us_east_1" {
-  count = local.create_deletable_resources ? 1 : 0
+resource "aws_security_group" "protected_us_east_1" {
+  # Always create in baseline, try to delete in scenario (will fail)
+  count = local.enable_aws && !local.scenario_blocked_sg_delete ? 1 : 0
 
   provider    = aws.us_east_1
-  name        = "scale-test-deletable-use1"
-  description = "Security group that will be deleted in blocked_sg_delete scenario"
+  name        = "scale-test-protected-use1"
+  description = "Protected SG - deletion will fail due to prevent_destroy"
   vpc_id      = module.aws_us_east_1[0].vpc_id
 
   egress {
@@ -42,49 +42,35 @@ resource "aws_security_group" "deletable_us_east_1" {
   }
 
   ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
+    description = "Allow HTTPS from internal networks"
   }
 
   tags = merge(local.common_tags, {
-    Name     = "scale-test-deletable-use1"
-    Purpose  = "Scenario: blocked_sg_delete"
-    Scenario = "deletable"
+    Name      = "scale-test-protected-use1"
+    Purpose   = "Scenario: blocked_sg_delete"
+    Protected = "true"
   })
 
+  # This causes apply to fail when trying to delete
   lifecycle {
-    create_before_destroy = true
+    prevent_destroy = true
   }
 }
 
-# ENI attached to the deletable SG - creates the dependency that blocks deletion
-resource "aws_network_interface" "deletable_us_east_1" {
-  count = local.create_deletable_resources ? 1 : 0
-
-  provider = aws.us_east_1
-
-  subnet_id       = module.aws_us_east_1[0].private_subnet_ids[0]
-  security_groups = [aws_security_group.deletable_us_east_1[0].id]
-
-  tags = merge(local.common_tags, {
-    Name     = "scale-test-deletable-eni-use1"
-    Purpose  = "Creates dependency for blocked_sg_delete scenario"
-    Scenario = "deletable"
-  })
-}
-
 # -----------------------------------------------------------------------------
-# Repeat for us-west-2
+# Protected Security Group (us-west-2)
 # -----------------------------------------------------------------------------
 
-resource "aws_security_group" "deletable_us_west_2" {
-  count = local.create_deletable_resources ? 1 : 0
+resource "aws_security_group" "protected_us_west_2" {
+  count = local.enable_aws && !local.scenario_blocked_sg_delete ? 1 : 0
 
   provider    = aws.us_west_2
-  name        = "scale-test-deletable-usw2"
-  description = "Security group that will be deleted in blocked_sg_delete scenario"
+  name        = "scale-test-protected-usw2"
+  description = "Protected SG - deletion will fail due to prevent_destroy"
   vpc_id      = module.aws_us_west_2[0].vpc_id
 
   egress {
@@ -95,48 +81,34 @@ resource "aws_security_group" "deletable_us_west_2" {
   }
 
   ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
+    description = "Allow HTTPS from internal networks"
   }
 
   tags = merge(local.common_tags, {
-    Name     = "scale-test-deletable-usw2"
-    Purpose  = "Scenario: blocked_sg_delete"
-    Scenario = "deletable"
+    Name      = "scale-test-protected-usw2"
+    Purpose   = "Scenario: blocked_sg_delete"
+    Protected = "true"
   })
 
   lifecycle {
-    create_before_destroy = true
+    prevent_destroy = true
   }
 }
 
-resource "aws_network_interface" "deletable_us_west_2" {
-  count = local.create_deletable_resources ? 1 : 0
-
-  provider = aws.us_west_2
-
-  subnet_id       = module.aws_us_west_2[0].private_subnet_ids[0]
-  security_groups = [aws_security_group.deletable_us_west_2[0].id]
-
-  tags = merge(local.common_tags, {
-    Name     = "scale-test-deletable-eni-usw2"
-    Purpose  = "Creates dependency for blocked_sg_delete scenario"
-    Scenario = "deletable"
-  })
-}
-
 # -----------------------------------------------------------------------------
-# Repeat for eu-west-1
+# Protected Security Group (eu-west-1)
 # -----------------------------------------------------------------------------
 
-resource "aws_security_group" "deletable_eu_west_1" {
-  count = local.create_deletable_resources ? 1 : 0
+resource "aws_security_group" "protected_eu_west_1" {
+  count = local.enable_aws && !local.scenario_blocked_sg_delete ? 1 : 0
 
   provider    = aws.eu_west_1
-  name        = "scale-test-deletable-euw1"
-  description = "Security group that will be deleted in blocked_sg_delete scenario"
+  name        = "scale-test-protected-euw1"
+  description = "Protected SG - deletion will fail due to prevent_destroy"
   vpc_id      = module.aws_eu_west_1[0].vpc_id
 
   egress {
@@ -147,48 +119,34 @@ resource "aws_security_group" "deletable_eu_west_1" {
   }
 
   ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
+    description = "Allow HTTPS from internal networks"
   }
 
   tags = merge(local.common_tags, {
-    Name     = "scale-test-deletable-euw1"
-    Purpose  = "Scenario: blocked_sg_delete"
-    Scenario = "deletable"
+    Name      = "scale-test-protected-euw1"
+    Purpose   = "Scenario: blocked_sg_delete"
+    Protected = "true"
   })
 
   lifecycle {
-    create_before_destroy = true
+    prevent_destroy = true
   }
 }
 
-resource "aws_network_interface" "deletable_eu_west_1" {
-  count = local.create_deletable_resources ? 1 : 0
-
-  provider = aws.eu_west_1
-
-  subnet_id       = module.aws_eu_west_1[0].private_subnet_ids[0]
-  security_groups = [aws_security_group.deletable_eu_west_1[0].id]
-
-  tags = merge(local.common_tags, {
-    Name     = "scale-test-deletable-eni-euw1"
-    Purpose  = "Creates dependency for blocked_sg_delete scenario"
-    Scenario = "deletable"
-  })
-}
-
 # -----------------------------------------------------------------------------
-# Repeat for ap-southeast-1
+# Protected Security Group (ap-southeast-1)
 # -----------------------------------------------------------------------------
 
-resource "aws_security_group" "deletable_ap_southeast_1" {
-  count = local.create_deletable_resources ? 1 : 0
+resource "aws_security_group" "protected_ap_southeast_1" {
+  count = local.enable_aws && !local.scenario_blocked_sg_delete ? 1 : 0
 
   provider    = aws.ap_southeast_1
-  name        = "scale-test-deletable-apse1"
-  description = "Security group that will be deleted in blocked_sg_delete scenario"
+  name        = "scale-test-protected-apse1"
+  description = "Protected SG - deletion will fail due to prevent_destroy"
   vpc_id      = module.aws_ap_southeast_1[0].vpc_id
 
   egress {
@@ -199,58 +157,34 @@ resource "aws_security_group" "deletable_ap_southeast_1" {
   }
 
   ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
+    description = "Allow HTTPS from internal networks"
   }
 
   tags = merge(local.common_tags, {
-    Name     = "scale-test-deletable-apse1"
-    Purpose  = "Scenario: blocked_sg_delete"
-    Scenario = "deletable"
+    Name      = "scale-test-protected-apse1"
+    Purpose   = "Scenario: blocked_sg_delete"
+    Protected = "true"
   })
 
   lifecycle {
-    create_before_destroy = true
+    prevent_destroy = true
   }
 }
 
-resource "aws_network_interface" "deletable_ap_southeast_1" {
-  count = local.create_deletable_resources ? 1 : 0
-
-  provider = aws.ap_southeast_1
-
-  subnet_id       = module.aws_ap_southeast_1[0].private_subnet_ids[0]
-  security_groups = [aws_security_group.deletable_ap_southeast_1[0].id]
-
-  tags = merge(local.common_tags, {
-    Name     = "scale-test-deletable-eni-apse1"
-    Purpose  = "Creates dependency for blocked_sg_delete scenario"
-    Scenario = "deletable"
-  })
-}
-
 # -----------------------------------------------------------------------------
-# Outputs for debugging
+# Outputs
 # -----------------------------------------------------------------------------
 
-output "deletable_sg_ids" {
-  description = "IDs of the deletable security groups (empty in blocked_sg_delete scenario)"
+output "protected_sg_ids" {
+  description = "IDs of the protected security groups"
   value = {
-    us_east_1      = try(aws_security_group.deletable_us_east_1[0].id, null)
-    us_west_2      = try(aws_security_group.deletable_us_west_2[0].id, null)
-    eu_west_1      = try(aws_security_group.deletable_eu_west_1[0].id, null)
-    ap_southeast_1 = try(aws_security_group.deletable_ap_southeast_1[0].id, null)
-  }
-}
-
-output "deletable_eni_ids" {
-  description = "IDs of ENIs attached to deletable SGs"
-  value = {
-    us_east_1      = try(aws_network_interface.deletable_us_east_1[0].id, null)
-    us_west_2      = try(aws_network_interface.deletable_us_west_2[0].id, null)
-    eu_west_1      = try(aws_network_interface.deletable_eu_west_1[0].id, null)
-    ap_southeast_1 = try(aws_network_interface.deletable_ap_southeast_1[0].id, null)
+    us_east_1      = try(aws_security_group.protected_us_east_1[0].id, null)
+    us_west_2      = try(aws_security_group.protected_us_west_2[0].id, null)
+    eu_west_1      = try(aws_security_group.protected_eu_west_1[0].id, null)
+    ap_southeast_1 = try(aws_security_group.protected_ap_southeast_1[0].id, null)
   }
 }
