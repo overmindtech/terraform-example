@@ -67,6 +67,11 @@ module "shared_security_group" {
 # Customer API access configuration
 locals {
   api_customer_cidrs = {
+    newco_50 = {
+      cidr = "203.0.113.150/32"
+      name = "NewCo 50"
+    }
+
     newco_49 = {
       cidr = "203.0.113.149/32"
       name = "NewCo 49"
@@ -334,7 +339,7 @@ locals {
     }
   }
 
-  api_internal_cidr = "10.0.0.0/8"
+  api_internal_cidr = "10.0.0.0/16" # SECURITY HARDENING: Narrowed to VPC CIDR per audit findings
   api_domain        = "signals-demo-test.demo"
   api_alert_email   = "alerts@example.com"
 }
