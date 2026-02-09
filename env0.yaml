@@ -14,7 +14,7 @@ deploy:
           inputs:
             action: wait-for-simulation
             api_key: ${OVM_API_KEY}
-            post_comment: "false"
+            post_comment: "true"
         - name: Print Env Vars
           run: |
             env
