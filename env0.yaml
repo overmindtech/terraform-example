@@ -5,12 +5,12 @@ deploy:
     terraformPlan:
       after:
         - name: Submit Plan to Overmind
-          use: https://github.com/overmindtech/env0-plugin
+          use: https://github.com/overmindtech/env0-plugin@eng-2454-implement-failsafe-in-env0-plugin
           inputs:
             action: submit-plan
             api_key: ${OVM_API_KEY}
         - name: Wait for Analysis
-          use: https://github.com/overmindtech/env0-plugin
+          use: https://github.com/overmindtech/env0-plugin@eng-2454-implement-failsafe-in-env0-plugin
           inputs:
             action: wait-for-simulation
             api_key: ${OVM_API_KEY}
@@ -36,14 +36,14 @@ deploy:
     terraformApply:
       before:
         - name: Mark Change Started
-          use: https://github.com/overmindtech/env0-plugin
+          use: https://github.com/overmindtech/env0-plugin@eng-2454-implement-failsafe-in-env0-plugin
           inputs:
             action: start-change
             api_key: ${OVM_API_KEY}
       
       after:
         - name: Mark Change Finished
-          use: https://github.com/overmindtech/env0-plugin
+          use: https://github.com/overmindtech/env0-plugin@eng-2454-implement-failsafe-in-env0-plugin
           inputs:
             action: end-change
             api_key: ${OVM_API_KEY}
