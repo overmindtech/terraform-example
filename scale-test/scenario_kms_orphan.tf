@@ -56,6 +56,11 @@ resource "aws_kms_alias" "central" {
 }
 
 # KMS key policy allowing cross-region access
+# SCENARIO-AWARE: When kms_orphan_simulation is active, service permissions are
+# restricted (S3 and EC2 service access removed). This creates a plan diff on
+# the existing key policy, which has a relationship to the KMS key, which in
+# turn is referenced by encrypted S3 buckets and EBS volumes. This gives
+# Overmind a rich discovery chain: policy change -> KMS key -> encrypted resources.
 resource "aws_kms_key_policy" "central" {
   count    = local.enable_aws ? 1 : 0
   provider = aws.us_east_1
@@ -64,48 +69,55 @@ resource "aws_kms_key_policy" "central" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "EnableRootAccess"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+    Statement = concat(
+      [
+        {
+          Sid    = "EnableRootAccess"
+          Effect = "Allow"
+          Principal = {
+            AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+          }
+          Action   = "kms:*"
+          Resource = "*"
         }
-        Action   = "kms:*"
-        Resource = "*"
-      },
-      {
-        Sid    = "AllowS3Encryption"
-        Effect = "Allow"
-        Principal = {
-          Service = "s3.amazonaws.com"
+      ],
+      # Baseline: Allow S3 and EC2 service access to the key
+      # When kms_orphan_simulation is active, these are REMOVED to simulate
+      # the risk of breaking encryption access for dependent resources
+      var.scenario != "kms_orphan_simulation" ? [
+        {
+          Sid    = "AllowS3Encryption"
+          Effect = "Allow"
+          Principal = {
+            Service = "s3.amazonaws.com"
+          }
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey"
+          ]
+          Resource = "*"
+        },
+        {
+          Sid    = "AllowEC2Encryption"
+          Effect = "Allow"
+          Principal = {
+            Service = "ec2.amazonaws.com"
+          }
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey",
+            "kms:CreateGrant"
+          ]
+          Resource = "*"
         }
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "AllowEC2Encryption"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey",
-          "kms:CreateGrant"
-        ]
-        Resource = "*"
-      }
-    ]
+      ] : []
+    )
   })
 }
 
@@ -127,6 +139,12 @@ resource "aws_s3_bucket" "kms_encrypted" {
   })
 }
 
+# SCENARIO-AWARE: When kms_orphan_simulation is active, the encryption config
+# switches to the duplicate key. This creates a plan diff on an EXISTING resource
+# (the encryption config) that has a direct relationship to the S3 bucket,
+# giving Overmind discoverable edges for blast radius calculation.
+# This simulates the real danger: new data encrypted with the new key while
+# existing data remains encrypted with the original (now-orphaned) key.
 resource "aws_s3_bucket_server_side_encryption_configuration" "kms_encrypted" {
   count    = local.enable_aws ? 1 : 0
   provider = aws.us_east_1
@@ -135,8 +153,12 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "kms_encrypted" {
 
   rule {
     apply_server_side_encryption_by_default {
-      kms_master_key_id = aws_kms_key.central[0].arn
-      sse_algorithm     = "aws:kms"
+      kms_master_key_id = (
+        var.scenario == "kms_orphan_simulation"
+        ? aws_kms_key.duplicate[0].arn
+        : aws_kms_key.central[0].arn
+      )
+      sse_algorithm = "aws:kms"
     }
     bucket_key_enabled = true
   }
@@ -178,8 +200,16 @@ resource "aws_ebs_volume" "kms_encrypted" {
 
 # -----------------------------------------------------------------------------
 # Scenario: kms_orphan_simulation
-# Creates a SECOND KMS key to simulate what Terraform does after state rm
-# Use this to test Overmind's duplicate key detection without actual state rm
+# Simulates KMS key orphan risks WITHOUT requiring manual state rm.
+#
+# When active, this scenario makes THREE changes that create discoverable edges:
+# 1. Creates a duplicate KMS key (aws_kms_key.duplicate) - simulates post-state-rm
+# 2. Switches S3 encryption to the duplicate key - creates diff on existing resource
+# 3. Restricts the original key policy (removes S3/EC2 access) - breaks encryption
+#
+# This gives Overmind a rich discovery chain:
+#   - KMS key policy change -> KMS key -> encrypted S3 bucket + EBS volume
+#   - S3 encryption config change -> S3 bucket -> bucket contents
 # -----------------------------------------------------------------------------
 
 resource "aws_kms_key" "duplicate" {

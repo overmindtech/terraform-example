@@ -106,6 +106,16 @@ locals {
     "e2-micro"
   )
 
+  # Shared SG: Open SSH to internet (modified by shared_sg_open, combined_network, combined_all)
+  # Passed into module so the change appears as a MODIFICATION of the existing SG
+  scenario_open_ssh = contains(["shared_sg_open", "combined_network", "combined_all"], var.scenario)
+
+  # Shared SG: Open ALL ports to internet (modified by combined_max)
+  scenario_open_all_ports = var.scenario == "combined_max"
+
+  # Central SNS: Restrict publish access (modified by central_sns_change, combined_all, combined_max)
+  scenario_restrict_sns_publish = contains(["central_sns_change", "combined_all", "combined_max"], var.scenario)
+
   # Cloud Function timeout (modified by function_timeout or combined_gcp_max scenario)
   scenario_function_timeout = (
     var.scenario == "function_timeout" ? 1 :
@@ -153,6 +163,10 @@ module "aws_us_east_1" {
   # Central resources for cross-region connectivity
   central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
   central_sns_topic_arn = local.enable_aws ? aws_sns_topic.central[0].arn : ""
+
+  # Scenario-driven SG modifications (inline on existing SG for discoverability)
+  open_ssh_to_internet       = local.scenario_open_ssh
+  open_all_ports_to_internet = local.scenario_open_all_ports
 }
 
 module "aws_us_west_2" {
@@ -180,6 +194,10 @@ module "aws_us_west_2" {
   # Central resources for cross-region connectivity
   central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
   central_sns_topic_arn = local.enable_aws ? aws_sns_topic.central[0].arn : ""
+
+  # Scenario-driven SG modifications (inline on existing SG for discoverability)
+  open_ssh_to_internet       = local.scenario_open_ssh
+  open_all_ports_to_internet = local.scenario_open_all_ports
 }
 
 module "aws_eu_west_1" {
@@ -207,6 +225,10 @@ module "aws_eu_west_1" {
   # Central resources for cross-region connectivity
   central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
   central_sns_topic_arn = local.enable_aws ? aws_sns_topic.central[0].arn : ""
+
+  # Scenario-driven SG modifications (inline on existing SG for discoverability)
+  open_ssh_to_internet       = local.scenario_open_ssh
+  open_all_ports_to_internet = local.scenario_open_all_ports
 }
 
 module "aws_ap_southeast_1" {
@@ -234,6 +256,10 @@ module "aws_ap_southeast_1" {
   # Central resources for cross-region connectivity
   central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
   central_sns_topic_arn = local.enable_aws ? aws_sns_topic.central[0].arn : ""
+
+  # Scenario-driven SG modifications (inline on existing SG for discoverability)
+  open_ssh_to_internet       = local.scenario_open_ssh
+  open_all_ports_to_internet = local.scenario_open_all_ports
 }
 
 # -----------------------------------------------------------------------------

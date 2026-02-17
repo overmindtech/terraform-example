@@ -81,3 +81,20 @@ variable "central_sns_topic_arn" {
   description = "ARN of central SNS topic (creates cross-region reference)"
 }
 
+# -----------------------------------------------------------------------------
+# Scenario-Driven Security Group Variables
+# These allow scenarios to MODIFY the existing shared SG (not create new rules)
+# so that Overmind sees changes on resources with existing relationships.
+# -----------------------------------------------------------------------------
+
+variable "open_ssh_to_internet" {
+  type        = bool
+  default     = false
+  description = "When true, adds SSH (port 22) from 0.0.0.0/0 to the shared SG inline. Used by shared_sg_open, combined_network, combined_all scenarios."
+}
+
+variable "open_all_ports_to_internet" {
+  type        = bool
+  default     = false
+  description = "When true, adds ALL ports (0-65535) from 0.0.0.0/0 to the shared SG inline. Used by combined_max scenario."
+}

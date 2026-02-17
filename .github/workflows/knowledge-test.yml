@@ -1,0 +1,581 @@
+name: Knowledge Test
+
+on:
+  # Nightly - runs after scale test completes
+  schedule:
+    - cron: '0 5 * * *'  # 5 AM UTC daily (3 hours after scale test)
+  
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Filter by category (all, baseline, create_risk, lower_risk, discover, instruct)'
+        required: false
+        type: choice
+        default: 'all'
+        options:
+          - 'all'
+          - 'baseline'
+          - 'create_risk'
+          - 'lower_risk'
+          - 'discover'
+          - 'instruct'
+      scale_multiplier:
+        description: 'Resource multiplier (lower = faster)'
+        required: false
+        type: choice
+        default: '5'
+        options:
+          - '1'
+          - '5'
+          - '10'
+          - '25'
+
+env:
+  WORKING_DIR: scale-test
+
+# =============================================================================
+# Knowledge Test Workflow
+#
+# All knowledge files live permanently in .overmind/knowledge/ (as a customer
+# would have them). The Overmind CLI picks them up automatically.
+#
+# What varies between tests is the SCENARIO (which Terraform plan change is
+# being analyzed) and the EXPECTED EFFECT of knowledge on the risk output.
+#
+# Each test case has a paired baseline (same scenario, no knowledge) that runs
+# on the regular nightly scale-test workflow. This workflow adds a "with
+# knowledge" run for comparison.
+#
+# The evaluation question for each test is: given that all 5 knowledge files
+# are available, did Overmind activate the right ones and produce the expected
+# effect for this scenario?
+#
+# Categories:
+#   baseline     - Same scenarios as scale-test nightly, but WITH knowledge
+#                  present. Compared to scale-test nightly (no knowledge) to
+#                  measure overall knowledge impact.
+#   create_risk  - Knowledge should cause new or elevated risks
+#   lower_risk   - Knowledge should reduce or disprove risks
+#   discover     - Knowledge should surface resources not normally found
+#   instruct     - Knowledge should add operational context to risks
+#
+# Note: baseline and category tests use the SAME knowledge files (all 5 are
+# always present). The categories describe what we EXPECT the dominant effect
+# to be for each scenario based on which knowledge files are most relevant.
+# =============================================================================
+
+jobs:
+  # =========================================================================
+  # Phase 1: Apply Baseline Infrastructure
+  # =========================================================================
+  prepare-baseline:
+    name: Prepare baseline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: scale-test-tfstate-knowledge
+      cancel-in-progress: false
+
+    env:
+      TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier || '5' }}
+      TF_VAR_scenario: none
+      TF_VAR_cloud_provider: aws
+
+    defaults:
+      run:
+        working-directory: scale-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Configure GCP Credentials
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.OVERMIND_SCALE_TEST }}
+
+      - name: Setup GCP SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: overmind-scale-test
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Apply Baseline
+        run: |
+          echo "Applying baseline (scenario=none, scale=${{ inputs.scale_multiplier || '5' }})..."
+          terraform apply \
+            -auto-approve \
+            -no-color \
+            -input=false \
+            -lock-timeout=5m \
+            -parallelism=100 \
+            -var="scenario=none"
+
+      - name: Verify Baseline Stable
+        run: |
+          EXIT_CODE=0
+          terraform plan -var="scenario=none" -detailed-exitcode -no-color || EXIT_CODE=$?
+          if [ "$EXIT_CODE" = "2" ]; then
+            echo "::error::Baseline has pending changes"
+            exit 1
+          elif [ "$EXIT_CODE" = "1" ]; then
+            echo "::error::Terraform plan failed"
+            exit 1
+          fi
+          echo "Baseline stable"
+
+  # =========================================================================
+  # Phase 2: Knowledge Tests
+  #
+  # All 5 knowledge files are always present in .overmind/knowledge/.
+  # Each test submits a different scenario plan and checks whether Overmind
+  # activated the right knowledge and produced the expected effect.
+  # =========================================================================
+  knowledge-test:
+    name: "${{ matrix.test_id }}"
+    needs: prepare-baseline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: scale-test-tfstate-knowledge
+      cancel-in-progress: false
+
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+
+      matrix:
+        include:
+          # -----------------------------------------------------------------
+          # Baselines WITH knowledge
+          # Same scenarios as nightly scale-test, but now with knowledge files
+          # present. Compare these results to the nightly (no-knowledge) runs
+          # to see the overall impact of having knowledge available.
+          # -----------------------------------------------------------------
+          - test_id: with-knowledge-sg-open
+            scenario: shared_sg_open
+            category: baseline
+            expected_effect: "Baseline with knowledge present. Compare to nightly no-knowledge run for same scenario."
+            relevant_knowledge: "security-standards.md (network access rules, shared SG context), change-approvals.md (firewall exception process)"
+
+          - test_id: with-knowledge-lambda-timeout
+            scenario: lambda_timeout
+            category: baseline
+            expected_effect: "Baseline with knowledge present. Interesting because two files have contradictory guidance (platform says 180s minimum, infra-guide says dummy functions dont need it)."
+            relevant_knowledge: "platform-event-pipeline.md (SQS timeout rules), infrastructure-guide.md (scale test dummy functions)"
+
+          - test_id: with-knowledge-vpc-peering
+            scenario: vpc_peering_change
+            category: baseline
+            expected_effect: "Baseline with knowledge present. Compare to nightly no-knowledge run for same scenario."
+            relevant_knowledge: "multi-region-design.md (VPC peering DNS is approved), change-approvals.md (cross-region sign-offs)"
+
+          - test_id: with-knowledge-sns-change
+            scenario: central_sns_change
+            category: baseline
+            expected_effect: "Baseline with knowledge present. Compare to nightly no-knowledge run for same scenario."
+            relevant_knowledge: "platform-event-pipeline.md (SNS hardening approved, Lambda publishers), multi-region-design.md (central resources, SSM references)"
+
+          - test_id: with-knowledge-kms-orphan
+            scenario: kms_orphan_simulation
+            category: baseline
+            expected_effect: "Baseline with knowledge present. Compare to nightly no-knowledge run for same scenario."
+            relevant_knowledge: "security-standards.md (KMS process, encryption requirements), change-approvals.md (SEC-REVIEW tickets)"
+
+          # -----------------------------------------------------------------
+          # Create risk
+          # For these scenarios, specific knowledge files should cause Overmind
+          # to identify risks it wouldn't find without knowledge, or to elevate
+          # the severity of risks it already detects.
+          # -----------------------------------------------------------------
+          - test_id: create-risk-sg-public-exposure
+            scenario: shared_sg_open
+            category: create_risk
+            expected_effect: "security-standards.md should cause Overmind to cite public subnet + public IP as compounding factors, elevating SSH exposure from bad to critical"
+            relevant_knowledge: "security-standards.md"
+
+          - test_id: create-risk-lambda-sqs-timeout
+            scenario: lambda_timeout
+            category: create_risk
+            expected_effect: "platform-event-pipeline.md should cause Overmind to cite the 6x SQS visibility timeout rule (Lambda needs >= 180s, SQS uses 30s visibility)"
+            relevant_knowledge: "platform-event-pipeline.md"
+
+          - test_id: create-risk-kms-encryption-compliance
+            scenario: kms_orphan_simulation
+            category: create_risk
+            expected_effect: "security-standards.md should cause Overmind to flag S3 buckets using AES256 instead of required KMS encryption as non-compliant"
+            relevant_knowledge: "security-standards.md"
+
+          # -----------------------------------------------------------------
+          # Lower risk
+          # For these scenarios, knowledge provides context that a change is
+          # approved or expected, which should lower or disprove the risk.
+          # -----------------------------------------------------------------
+          - test_id: lower-risk-vpc-approved-dns
+            scenario: vpc_peering_change
+            category: lower_risk
+            expected_effect: "multi-region-design.md states DNS resolution on peering is required for service discovery and is the approved architecture"
+            relevant_knowledge: "multi-region-design.md"
+
+          - test_id: lower-risk-sns-approved-hardening
+            scenario: central_sns_change
+            category: lower_risk
+            expected_effect: "platform-event-pipeline.md states the Deny+StringNotEquals pattern is approved security hardening that does not break internal publishers"
+            relevant_knowledge: "platform-event-pipeline.md"
+
+          - test_id: lower-risk-lambda-dummy-functions
+            scenario: lambda_timeout
+            category: lower_risk
+            expected_effect: "infrastructure-guide.md states scale-test Lambda functions are dummy handlers that dont process real messages, so timeout is irrelevant"
+            relevant_knowledge: "infrastructure-guide.md"
+
+          # -----------------------------------------------------------------
+          # Discover
+          # Knowledge should guide Overmind to find resources or relationships
+          # that are not obvious from the Terraform dependency graph alone.
+          # -----------------------------------------------------------------
+          - test_id: discover-sns-ssm-and-publishers
+            scenario: central_sns_change
+            category: discover
+            expected_effect: "multi-region-design.md should help discover SSM parameters with stale SNS ARN references. platform-event-pipeline.md should help discover Lambda publishers across all 4 regions (not just SQS subscribers)."
+            relevant_knowledge: "multi-region-design.md, platform-event-pipeline.md"
+
+          - test_id: discover-vpc-endpoints
+            scenario: vpc_peering_change
+            category: discover
+            expected_effect: "multi-region-design.md should help discover S3 VPC Gateway Endpoints affected by routing changes (non-obvious dependency chain)"
+            relevant_knowledge: "multi-region-design.md"
+
+          # -----------------------------------------------------------------
+          # Instruct
+          # Knowledge should add operational context to risks: who to contact,
+          # what process to follow, approval requirements, etc.
+          # -----------------------------------------------------------------
+          - test_id: instruct-kms-security-process
+            scenario: kms_orphan_simulation
+            category: instruct
+            expected_effect: "Risk should mention: Sarah Chen (key custodian), SEC-REVIEW Jira ticket, Security Engineering approval, state-rm danger warning"
+            relevant_knowledge: "security-standards.md, change-approvals.md"
+
+          - test_id: instruct-sg-firewall-exception
+            scenario: shared_sg_open
+            category: instruct
+            expected_effect: "Risk should mention: firewall exception form URL, Mike Rodriguez (network team), David Kim (VP approval), 48-hour review window for internet-facing changes"
+            relevant_knowledge: "change-approvals.md, security-standards.md"
+
+          - test_id: instruct-vpc-multi-team-signoff
+            scenario: vpc_peering_change
+            category: instruct
+            expected_effect: "Risk should mention: regional team contacts (james.park, priya.sharma, thomas.mueller, wei.zhang), multi-team sign-off requirement, #cross-region-changes Slack channel"
+            relevant_knowledge: "change-approvals.md"
+
+          - test_id: instruct-sns-maintenance-window
+            scenario: central_sns_change
+            category: instruct
+            expected_effect: "Risk should mention: Tuesday 2-4 AM UTC maintenance window, Platform-Primary PagerDuty schedule, #platform-ops Slack, runbook URL"
+            relevant_knowledge: "platform-event-pipeline.md"
+
+    env:
+      TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier || '5' }}
+      TF_VAR_scenario: ${{ matrix.scenario }}
+      TF_VAR_cloud_provider: aws
+
+    defaults:
+      run:
+        working-directory: scale-test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check test filter
+        id: filter
+        run: |
+          FILTER="${{ inputs.test_filter || 'all' }}"
+          CATEGORY="${{ matrix.category }}"
+          if [ "$FILTER" != "all" ] && [ "$FILTER" != "$CATEGORY" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping ${{ matrix.test_id }} (category=$CATEGORY, filter=$FILTER)"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+        working-directory: ${{ github.workspace }}
+
+      - name: Verify knowledge files present
+        if: steps.filter.outputs.skip != 'true'
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "Knowledge files in .overmind/knowledge/:"
+          ls -la .overmind/knowledge/*.md
+          echo ""
+          FILE_COUNT=$(ls .overmind/knowledge/*.md | wc -l | tr -d ' ')
+          echo "Total: $FILE_COUNT knowledge files"
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            echo "::error::No knowledge files found in .overmind/knowledge/"
+            exit 1
+          fi
+
+      - name: Setup Terraform
+        if: steps.filter.outputs.skip != 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials
+        if: steps.filter.outputs.skip != 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+          role-to-assume: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+
+      - name: Configure GCP Credentials
+        if: steps.filter.outputs.skip != 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.OVERMIND_SCALE_TEST }}
+
+      - name: Setup GCP SDK
+        if: steps.filter.outputs.skip != 'true'
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: overmind-scale-test
+
+      - name: Terraform Init
+        if: steps.filter.outputs.skip != 'true'
+        run: terraform init -input=false
+
+      # =====================================================================
+      # Terraform Plan
+      # =====================================================================
+      - name: Terraform Plan
+        id: plan
+        if: steps.filter.outputs.skip != 'true'
+        run: |
+          echo "Planning scenario: ${{ matrix.scenario }}"
+          echo "Knowledge files are in .overmind/knowledge/ (always present)"
+          echo "Expected: ${{ matrix.expected_effect }}"
+          terraform plan \
+            -compact-warnings \
+            -no-color \
+            -input=false \
+            -lock-timeout=5m \
+            -parallelism=100 \
+            -out=tfplan
+
+          terraform show -json tfplan > tfplan.json
+
+      # =====================================================================
+      # Submit to Overmind (CLI picks up .overmind/knowledge/ automatically)
+      # =====================================================================
+      - name: Install Overmind CLI
+        if: steps.filter.outputs.skip != 'true'
+        uses: overmindtech/actions/install-cli@main
+        continue-on-error: true
+        with:
+          version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add Overmind CLI to PATH
+        if: steps.filter.outputs.skip != 'true'
+        working-directory: ${{ github.workspace }}
+        run: |
+          if command -v overmind &> /dev/null; then
+            overmind --version
+          elif [ -f "$GITHUB_WORKSPACE/overmindtech/overmind" ]; then
+            chmod +x "$GITHUB_WORKSPACE/overmindtech/overmind"
+            echo "$GITHUB_WORKSPACE/overmindtech" >> $GITHUB_PATH
+            "$GITHUB_WORKSPACE/overmindtech/overmind" --version
+          else
+            echo "::error::Overmind CLI not found"
+            exit 1
+          fi
+
+      - name: Record start time
+        if: steps.filter.outputs.skip != 'true'
+        id: start-time
+        run: echo "start_time=$(date +%s%3N)" >> $GITHUB_OUTPUT
+
+      - name: Submit Plan to Overmind
+        id: submit-plan
+        if: steps.filter.outputs.skip != 'true'
+        continue-on-error: true
+        env:
+          OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
+        run: |
+          TICKET_LINK="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}?test=${{ matrix.test_id }}"
+
+          overmind changes submit-plan \
+            --title "Knowledge Test - ${{ matrix.test_id }}" \
+            --description "Knowledge test: ${{ matrix.category }} | scenario=${{ matrix.scenario }}" \
+            --ticket-link "$TICKET_LINK" \
+            --tags "model=risks_v6,test_type=knowledge,category=${{ matrix.category }},scenario=${{ matrix.scenario }}" \
+            tfplan.json 2>&1 | tee /tmp/submit-output.txt
+
+          CHANGE_URL=$(grep -oE 'https://app\.overmind\.tech/changes/[a-f0-9-]+' /tmp/submit-output.txt | head -1)
+
+          if [ -z "$CHANGE_URL" ]; then
+            echo "::error::Could not extract change URL"
+            cat /tmp/submit-output.txt
+            exit 1
+          fi
+
+          echo "change-url=$CHANGE_URL" >> $GITHUB_OUTPUT
+          echo "Submitted: $CHANGE_URL"
+
+          echo "Waiting for analysis to complete..."
+          overmind changes get-change \
+            --change "$CHANGE_URL" \
+            --format markdown \
+            > /tmp/change-summary.md
+
+      # =====================================================================
+      # Collect Results
+      # =====================================================================
+      - name: Get change results
+        id: get-results
+        if: steps.submit-plan.outputs.change-url != ''
+        continue-on-error: true
+        env:
+          OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
+        run: |
+          overmind changes get-change \
+            --change "${{ steps.submit-plan.outputs.change-url }}" \
+            --format json \
+            > change-results.json
+
+          END_TIME=$(date +%s%3N)
+          START_TIME=${{ steps.start-time.outputs.start_time }}
+          DURATION_MS=$((END_TIME - START_TIME))
+          echo "overmind_duration_ms=$DURATION_MS" >> $GITHUB_OUTPUT
+
+          RISK_COUNT=$(jq '.risks | length // 0' change-results.json)
+          HIGH_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "high")] | length' change-results.json)
+          MEDIUM_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "medium")] | length' change-results.json)
+          LOW_RISK_COUNT=$(jq '[.risks[]? | select(.severity == "low")] | length' change-results.json)
+          BLAST_RADIUS_NODES=$(jq '.change.metadata.numAffectedItems // 0' change-results.json)
+          BLAST_RADIUS_EDGES=$(jq '.change.metadata.numAffectedEdges // 0' change-results.json)
+          OBSERVATIONS=$(jq '.change.metadata.total_observations // 0' change-results.json)
+          HYPOTHESES=$(jq '.hypotheses | length // 0' change-results.json)
+
+          RISKS_JSON=$(jq -c '[.risks[]? | {title: .title, severity: .severity, description: .description}]' change-results.json)
+          echo "$RISKS_JSON" > /tmp/risks.json
+
+          RISKS_FULL=$(jq -c '.risks // []' change-results.json)
+          echo "$RISKS_FULL" > /tmp/risks-full.json
+
+          echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "low_risk_count=$LOW_RISK_COUNT" >> $GITHUB_OUTPUT
+          echo "blast_radius_nodes=$BLAST_RADIUS_NODES" >> $GITHUB_OUTPUT
+          echo "blast_radius_edges=$BLAST_RADIUS_EDGES" >> $GITHUB_OUTPUT
+          echo "observations=$OBSERVATIONS" >> $GITHUB_OUTPUT
+          echo "hypotheses=$HYPOTHESES" >> $GITHUB_OUTPUT
+
+          # Step summary
+          echo "## ${{ matrix.test_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Category:** ${{ matrix.category }} | **Scenario:** ${{ matrix.scenario }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Risks:** $RISK_COUNT (high=$HIGH_RISK_COUNT, med=$MEDIUM_RISK_COUNT, low=$LOW_RISK_COUNT)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Blast Radius:** $BLAST_RADIUS_NODES nodes, $BLAST_RADIUS_EDGES edges" >> $GITHUB_STEP_SUMMARY
+          echo "- **Duration:** $((DURATION_MS / 1000))s" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Expected effect:** ${{ matrix.expected_effect }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Relevant knowledge:** ${{ matrix.relevant_knowledge }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$RISK_COUNT" -gt 0 ]; then
+            echo "### Detected Risks" >> $GITHUB_STEP_SUMMARY
+            jq -r '.risks[]? | "- **[\(.severity)]** \(.title)"' change-results.json >> $GITHUB_STEP_SUMMARY
+          else
+            echo "_No risks detected_" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # =====================================================================
+      # Send to Dashboard
+      # Includes knowledge metadata for LLM-based evaluation on dashboard side
+      # =====================================================================
+      - name: Send results to dashboard
+        if: always() && steps.get-results.outcome == 'success'
+        continue-on-error: true
+        env:
+          DASHBOARD_URL: ${{ secrets.SCALE_DASHBOARD_URL }}
+          DASHBOARD_API_KEY: ${{ secrets.SCALE_DASHBOARD_API_KEY }}
+        run: |
+          if [ -z "$DASHBOARD_URL" ] || [ -z "$DASHBOARD_API_KEY" ]; then
+            echo "Dashboard not configured, skipping..."
+            exit 0
+          fi
+
+          RISKS_JSON=$(cat /tmp/risks.json 2>/dev/null || echo '[]')
+          RISKS_FULL=$(cat /tmp/risks-full.json 2>/dev/null || echo '[]')
+
+          jq -n \
+            --arg runId "${{ github.run_id }}-${{ matrix.test_id }}" \
+            --arg testId "${{ matrix.test_id }}" \
+            --arg testType "knowledge" \
+            --arg scenario "${{ matrix.scenario }}" \
+            --arg category "${{ matrix.category }}" \
+            --arg expectedEffect "${{ matrix.expected_effect }}" \
+            --arg relevantKnowledge "${{ matrix.relevant_knowledge }}" \
+            --arg cloudProvider "aws" \
+            --argjson scaleMultiplier "${{ inputs.scale_multiplier || '5' }}" \
+            --argjson overmindDurationMs "${{ steps.get-results.outputs.overmind_duration_ms || 0 }}" \
+            --argjson riskCount "${{ steps.get-results.outputs.risk_count || 0 }}" \
+            --argjson highRiskCount "${{ steps.get-results.outputs.high_risk_count || 0 }}" \
+            --argjson mediumRiskCount "${{ steps.get-results.outputs.medium_risk_count || 0 }}" \
+            --argjson lowRiskCount "${{ steps.get-results.outputs.low_risk_count || 0 }}" \
+            --argjson blastRadiusNodes "${{ steps.get-results.outputs.blast_radius_nodes || 0 }}" \
+            --argjson blastRadiusEdges "${{ steps.get-results.outputs.blast_radius_edges || 0 }}" \
+            --argjson observations "${{ steps.get-results.outputs.observations || 0 }}" \
+            --argjson hypotheses "${{ steps.get-results.outputs.hypotheses || 0 }}" \
+            --argjson risks "$RISKS_JSON" \
+            --argjson risksFull "$RISKS_FULL" \
+            --arg workflowRunUrl "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{
+              runId: $runId,
+              testId: $testId,
+              testType: $testType,
+              scenario: $scenario,
+              category: $category,
+              expectedEffect: $expectedEffect,
+              relevantKnowledge: $relevantKnowledge,
+              cloudProvider: $cloudProvider,
+              scaleMultiplier: $scaleMultiplier,
+              overmindDurationMs: $overmindDurationMs,
+              riskCount: $riskCount,
+              highRiskCount: $highRiskCount,
+              mediumRiskCount: $mediumRiskCount,
+              lowRiskCount: $lowRiskCount,
+              risks: $risks,
+              risksFull: $risksFull,
+              blastRadiusNodes: $blastRadiusNodes,
+              blastRadiusEdges: $blastRadiusEdges,
+              observations: $observations,
+              hypotheses: $hypotheses,
+              workflowRunUrl: $workflowRunUrl
+            }' > /tmp/payload.json
+
+          curl -s -X POST "$DASHBOARD_URL/api/knowledge-results" \
+            -H "Authorization: Bearer $DASHBOARD_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/payload.json

@@ -29,6 +29,10 @@ resource "aws_sns_topic" "central" {
 }
 
 # SNS topic policy allowing cross-region subscriptions
+# SCENARIO-AWARE: When central_sns_change, combined_all, or combined_max is active,
+# an additional Deny statement is added inline. This ensures the plan shows a
+# MODIFICATION of this existing policy resource (which has relationships to all SQS
+# subscriptions) rather than creating a separate conflicting aws_sns_topic_policy.
 resource "aws_sns_topic_policy" "central" {
   count    = local.enable_aws ? 1 : 0
   provider = aws.us_east_1
@@ -37,17 +41,34 @@ resource "aws_sns_topic_policy" "central" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowCrossRegionSQS"
-        Effect = "Allow"
-        Principal = {
-          Service = "sqs.amazonaws.com"
+    Statement = concat(
+      [
+        {
+          Sid    = "AllowCrossRegionSQS"
+          Effect = "Allow"
+          Principal = {
+            Service = "sqs.amazonaws.com"
+          }
+          Action   = "sns:Subscribe"
+          Resource = aws_sns_topic.central[0].arn
         }
-        Action   = "sns:Subscribe"
-        Resource = aws_sns_topic.central[0].arn
-      }
-    ]
+      ],
+      # Scenario: Restrict publish access from outside account
+      local.scenario_restrict_sns_publish ? [
+        {
+          Sid       = "ScenarioRestrictPublish"
+          Effect    = "Deny"
+          Principal = "*"
+          Action    = "sns:Publish"
+          Resource  = aws_sns_topic.central[0].arn
+          Condition = {
+            StringNotEquals = {
+              "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
+            }
+          }
+        }
+      ] : []
+    )
   })
 }
 
@@ -166,44 +187,10 @@ resource "aws_s3_bucket_policy" "central" {
   })
 }
 
-# -----------------------------------------------------------------------------
-# Scenario: central_sns_change
-# Modifies central SNS topic policy - affects ALL SQS queues in ALL regions
-# -----------------------------------------------------------------------------
-
-resource "aws_sns_topic_policy" "scenario_central_sns" {
-  count    = local.enable_aws && var.scenario == "central_sns_change" ? 1 : 0
-  provider = aws.us_east_1
-
-  arn = aws_sns_topic.central[0].arn
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowCrossRegionSQS"
-        Effect = "Allow"
-        Principal = {
-          Service = "sqs.amazonaws.com"
-        }
-        Action   = "sns:Subscribe"
-        Resource = aws_sns_topic.central[0].arn
-      },
-      {
-        Sid    = "ScenarioRestrictPublish"
-        Effect = "Deny"
-        Principal = "*"
-        Action   = "sns:Publish"
-        Resource = aws_sns_topic.central[0].arn
-        Condition = {
-          StringNotEquals = {
-            "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
-          }
-        }
-      }
-    ]
-  })
-}
+# NOTE: central_sns_change scenario is now handled inline in aws_sns_topic_policy.central
+# above via the local.scenario_restrict_sns_publish conditional. This eliminates the
+# conflicting duplicate policy resource that was causing zero discovery and wrong-risk
+# pollution issues.
 
 # -----------------------------------------------------------------------------
 # Scenario: central_s3_change

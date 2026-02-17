@@ -196,6 +196,34 @@ resource "aws_security_group" "high_fanout" {
     description = "Allow all traffic from VPC (baseline)"
   }
 
+  # SCENARIO: Open SSH to internet (shared_sg_open, combined_network, combined_all)
+  # Uses dynamic block so the rule is INLINE on the existing SG resource.
+  # This ensures the plan shows a MODIFICATION of the existing SG (not creation
+  # of a new aws_security_group_rule), giving Overmind discoverable edges to
+  # the EC2 instances attached to this SG.
+  dynamic "ingress" {
+    for_each = var.open_ssh_to_internet ? [1] : []
+    content {
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "SCENARIO: SSH open to internet on SHARED SG"
+    }
+  }
+
+  # SCENARIO: Open ALL ports to internet (combined_max)
+  dynamic "ingress" {
+    for_each = var.open_all_ports_to_internet ? [1] : []
+    content {
+      from_port   = 0
+      to_port     = 65535
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "SCENARIO: ALL PORTS open to internet on SHARED SG"
+    }
+  }
+
   tags = merge(var.common_tags, {
     Name    = "${local.name_prefix}-shared-sg"
     Purpose = "high-fanout-testing"

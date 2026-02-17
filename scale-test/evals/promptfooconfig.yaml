@@ -32,37 +32,35 @@ prompts:
 tests:
   # ===========================================================================
   # shared_sg_open: SSH open to 0.0.0.0/0
-  # NOTE: Currently producing 0 risks (scenario isolation issue - combined_network works)
+  # Now modifies the existing shared SG inline (not separate SG rule resources)
+  # so Overmind can discover EC2 instances attached to the SG.
   # ===========================================================================
   - description: "shared_sg_open: Should detect critical SSH exposure risk"
     vars:
       expected: "Should detect high/critical risk for SSH (port 22) open to 0.0.0.0/0"
     assert:
-      # Currently this scenario produces 0 risks (but combined_network produces the expected SSH risk)
+      # The scenario now modifies the existing SG - should detect at least one risk
       - type: javascript
         value: |
           const count = parseInt(context.vars.risk_count);
           console.log('shared_sg_open risk count:', count);
           if (count === 0) {
-            console.log('WARNING: shared_sg_open produced 0 risks - scenario isolation issue');
+            console.log('FAIL: shared_sg_open produced 0 risks after inline SG fix');
           }
-          return true;  // Pass for now - scenario not working in isolation
-        metric: scenario_check
-      # IF risks are detected, check if they're relevant
+          return count > 0;
+        metric: has_risk
+      # Detected risks should mention SSH/security group/exposure
       - type: javascript
         value: |
           const risksJson = context.vars.risks_json;
-          if (!risksJson || risksJson === '[]') {
-            console.log('shared_sg_open: No risks detected (expected - scenario isolation issue)');
-            return true;
-          }
+          if (!risksJson || risksJson === '[]') return false;
           const risks = JSON.parse(risksJson);
           const found = risks.some(r => 
-            /ssh|port.?22|security.?group|0\.0\.0\.0/i.test((r.title || '') + ' ' + (r.description || ''))
+            /ssh|port.?22|security.?group|0\.0\.0\.0|ingress|internet|expose/i.test((r.title || '') + ' ' + (r.description || ''))
           );
           console.log('shared_sg_open: Found SSH-related risk:', found);
-          return found || risks.length === 0;
-        metric: relevant_if_present
+          return found;
+        metric: mentions_ssh
 
   # ===========================================================================
   # lambda_timeout: Timeout reduced to 1 second
@@ -144,41 +142,42 @@ tests:
 
   # ===========================================================================
   # central_sns_change: SNS topic policy modified
-  # NOTE: Currently producing WRONG risk (peering route instead of SNS) - pollution issue
+  # Now modifies the existing single aws_sns_topic_policy.central resource inline
+  # (no conflicting duplicate policy). Baseline verification also hardened.
   # ===========================================================================
   - description: "central_sns_change: Should detect SNS policy risk"
     vars:
       expected: "Should detect risk for central SNS topic policy change"
     assert:
-      # This scenario is polluted - produces peering route risk instead of SNS risk
+      # The scenario now modifies the existing policy resource - should detect risks
       - type: javascript
         value: |
           const count = parseInt(context.vars.risk_count);
           console.log('central_sns_change risk count:', count);
-          // Note: Currently produces 1 risk but it's about peering routes, not SNS
-          return true;  // Pass for now - scenario is polluted
-        metric: scenario_check
-      # Check what risk was actually detected (for logging)
+          if (count === 0) {
+            console.log('FAIL: central_sns_change produced 0 risks after inline policy fix');
+          }
+          return count > 0;
+        metric: has_risk
+      # Detected risks should be about SNS/messaging, NOT peering (pollution check)
       - type: javascript
         value: |
           const risksJson = context.vars.risks_json;
-          if (!risksJson || risksJson === '[]') {
-            console.log('central_sns_change: No risks detected');
-            return true;
-          }
+          if (!risksJson || risksJson === '[]') return false;
           const risks = JSON.parse(risksJson);
           const foundSNS = risks.some(r => 
-            /sns|topic|policy|messaging|notification/i.test((r.title || '') + ' ' + (r.description || ''))
+            /sns|topic|policy|messaging|notification|publish|deny|sqs|subscribe/i.test((r.title || '') + ' ' + (r.description || ''))
           );
           const foundPeering = risks.some(r => 
             /peering|route|vpc|asymmetric/i.test((r.title || '') + ' ' + (r.description || ''))
           );
           console.log('central_sns_change: Found SNS-related:', foundSNS, 'Found peering-related:', foundPeering);
           if (foundPeering && !foundSNS) {
-            console.log('WARNING: Detected peering risk instead of SNS risk - scenario pollution');
+            console.log('FAIL: Still detecting peering risk instead of SNS risk');
+            return false;
           }
-          return true;  // Pass for now
-        metric: pollution_check
+          return foundSNS;
+        metric: mentions_sns
 
   # ===========================================================================
   # combined_network: Multiple high-severity changes
@@ -210,37 +209,31 @@ tests:
 
   # ===========================================================================
   # combined_all: All AWS high-fanout scenarios combined
-  # NOTE: Currently producing 0 risks (scenario issue)
+  # Now uses inline SG modification + inline SNS policy (no resource conflicts)
   # ===========================================================================
   - description: "combined_all: Should detect multiple high-severity risks"
     vars:
-      expected: "Should detect risks for combined AWS changes"
+      expected: "Should detect risks for combined AWS changes (SSH open + SNS restrict + VPC peering)"
     assert:
-      # Currently this scenario produces 0 risks
+      # Combined scenarios should always detect risks
       - type: javascript
         value: |
           const count = parseInt(context.vars.risk_count);
           console.log('combined_all risk count:', count);
-          if (count === 0) {
-            console.log('WARNING: combined_all produced 0 risks - scenario may not be working');
-          }
-          return true;  // Pass for now
-        metric: scenario_check
-      # IF risks are detected, check if they're relevant
+          return count > 0;
+        metric: has_risk
+      # Should find security-related risks (SSH exposure, SNS, or network)
       - type: javascript
         value: |
           const risksJson = context.vars.risks_json;
-          if (!risksJson || risksJson === '[]') {
-            console.log('combined_all: No risks detected');
-            return true;
-          }
+          if (!risksJson || risksJson === '[]') return false;
           const risks = JSON.parse(risksJson);
           const found = risks.some(r => 
-            /security|ssh|0\.0\.0\.0|ingress|expose/i.test((r.title || '') + ' ' + (r.description || ''))
+            /security|ssh|0\.0\.0\.0|ingress|expose|sns|topic|peering|network/i.test((r.title || '') + ' ' + (r.description || ''))
           );
-          console.log('combined_all: Found security-related risk:', found);
-          return found || risks.length === 0;
-        metric: relevant_if_present
+          console.log('combined_all: Found relevant risk:', found);
+          return found;
+        metric: relevant_risk
 
   # ===========================================================================
   # combined_max: Maximum blast radius scenario
@@ -270,38 +263,36 @@ tests:
         metric: quality_score
 
   # ===========================================================================
-  # kms_orphan_simulation: KMS key duplication scenario
-  # NOTE: Currently not producing expected risks - may need scenario adjustment
+  # kms_orphan_simulation: KMS key duplication + encryption migration scenario
+  # Now modifies existing resources (KMS key policy + S3 encryption config)
+  # to create discoverable edges for Overmind's blast radius calculation.
   # ===========================================================================
   - description: "kms_orphan_simulation: Should detect KMS/encryption risk"
     vars:
-      expected: "Should detect risk for duplicate KMS key creation and potential data loss"
+      expected: "Should detect risk for KMS key policy restriction, encryption key migration, and potential data loss"
     assert:
-      # Currently this scenario produces 0 risks
+      # The scenario now modifies key policy + encryption config - should detect risks
       - type: javascript
         value: |
           const count = parseInt(context.vars.risk_count);
           console.log('kms_orphan_simulation risk count:', count);
           if (count === 0) {
-            console.log('WARNING: kms_orphan_simulation produced 0 risks - may be expected for this scenario');
+            console.log('FAIL: kms_orphan_simulation produced 0 risks after policy/encryption fix');
           }
-          return true;  // Pass for now
-        metric: scenario_check
-      # IF risks are detected, check if they're relevant
+          return count > 0;
+        metric: has_risk
+      # Detected risks should mention KMS/encryption/key/data loss
       - type: javascript
         value: |
           const risksJson = context.vars.risks_json;
-          if (!risksJson || risksJson === '[]') {
-            console.log('kms_orphan_simulation: No risks detected');
-            return true;  // Pass - KMS scenarios may not always trigger risks
-          }
+          if (!risksJson || risksJson === '[]') return false;
           const risks = JSON.parse(risksJson);
           const found = risks.some(r => 
-            /kms|encrypt|key|orphan|duplicate|data.?loss/i.test((r.title || '') + ' ' + (r.description || ''))
+            /kms|encrypt|key|orphan|duplicate|data.?loss|s3|bucket|policy|permission|access/i.test((r.title || '') + ' ' + (r.description || ''))
           );
-          console.log('kms_orphan_simulation: Found KMS-related risk:', found);
-          return found || risks.length === 0;
-        metric: relevant_if_present
+          console.log('kms_orphan_simulation: Found KMS/encryption-related risk:', found);
+          return found;
+        metric: mentions_kms
 
   # ===========================================================================
   # blocked_sg_delete: Deletion that will fail on apply

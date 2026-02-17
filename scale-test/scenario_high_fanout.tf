@@ -3,62 +3,20 @@
 # Test scenarios that modify SHARED resources affecting many downstream items
 # These create large blast radii for performance testing
 # =============================================================================
-
-# -----------------------------------------------------------------------------
-# Scenario: shared_sg_open
-# Opens SSH on the SHARED security group that ALL EC2 instances use
-# Expected Blast Radius: All EC2 instances + their ENIs, EBS volumes, etc.
-# At 100x: ~200 EC2 × 5 related resources = 1000+ items
-# -----------------------------------------------------------------------------
-
-resource "aws_security_group_rule" "shared_sg_open_us_east_1" {
-  count = local.enable_aws && var.scenario == "shared_sg_open" ? 1 : 0
-
-  provider          = aws.us_east_1
-  security_group_id = module.aws_us_east_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "HIGH FAN-OUT SCENARIO: SSH open to internet on SHARED SG"
-}
-
-resource "aws_security_group_rule" "shared_sg_open_us_west_2" {
-  count = local.enable_aws && var.scenario == "shared_sg_open" ? 1 : 0
-
-  provider          = aws.us_west_2
-  security_group_id = module.aws_us_west_2[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "HIGH FAN-OUT SCENARIO: SSH open to internet on SHARED SG"
-}
-
-resource "aws_security_group_rule" "shared_sg_open_eu_west_1" {
-  count = local.enable_aws && var.scenario == "shared_sg_open" ? 1 : 0
-
-  provider          = aws.eu_west_1
-  security_group_id = module.aws_eu_west_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "HIGH FAN-OUT SCENARIO: SSH open to internet on SHARED SG"
-}
-
-resource "aws_security_group_rule" "shared_sg_open_ap_southeast_1" {
-  count = local.enable_aws && var.scenario == "shared_sg_open" ? 1 : 0
-
-  provider          = aws.ap_southeast_1
-  security_group_id = module.aws_ap_southeast_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "HIGH FAN-OUT SCENARIO: SSH open to internet on SHARED SG"
-}
+#
+# IMPORTANT: The shared_sg_open scenario is now implemented via the module's
+# aws_security_group.high_fanout resource using dynamic ingress blocks.
+# This ensures the plan shows a MODIFICATION of the existing SG (which has
+# relationships to all EC2 instances) rather than creation of separate
+# aws_security_group_rule resources that Overmind may not traverse from.
+#
+# The scenario is controlled by:
+#   main.tf: local.scenario_open_ssh -> module variable open_ssh_to_internet
+#   modules/aws/network.tf: dynamic "ingress" block on aws_security_group.high_fanout
+#
+# Scenarios using this mechanism:
+#   - shared_sg_open:     Opens SSH (port 22) from 0.0.0.0/0
+#   - combined_network:   Opens SSH (port 22) from 0.0.0.0/0 + VPC peering DNS
+#   - combined_all:       Opens SSH (port 22) from 0.0.0.0/0 + VPC peering + SNS
+#   - combined_max:       Opens ALL ports (0-65535) from 0.0.0.0/0 + everything
+# =============================================================================

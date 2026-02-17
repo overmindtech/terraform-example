@@ -149,59 +149,9 @@ resource "aws_vpc_peering_connection_options" "combined_dns_eu_west_to_ap_southe
   }
 }
 
-# --- Shared Security Group SSH Open (from shared_sg_open) ---
-
-resource "aws_security_group_rule" "combined_sg_open_us_east_1" {
-  count = local.scenario_combined_network ? 1 : 0
-
-  provider          = aws.us_east_1
-  security_group_id = module.aws_us_east_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "COMBINED SCENARIO: SSH open on shared SG + VPC peering DNS"
-}
-
-resource "aws_security_group_rule" "combined_sg_open_us_west_2" {
-  count = local.scenario_combined_network ? 1 : 0
-
-  provider          = aws.us_west_2
-  security_group_id = module.aws_us_west_2[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "COMBINED SCENARIO: SSH open on shared SG + VPC peering DNS"
-}
-
-resource "aws_security_group_rule" "combined_sg_open_eu_west_1" {
-  count = local.scenario_combined_network ? 1 : 0
-
-  provider          = aws.eu_west_1
-  security_group_id = module.aws_eu_west_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "COMBINED SCENARIO: SSH open on shared SG + VPC peering DNS"
-}
-
-resource "aws_security_group_rule" "combined_sg_open_ap_southeast_1" {
-  count = local.scenario_combined_network ? 1 : 0
-
-  provider          = aws.ap_southeast_1
-  security_group_id = module.aws_ap_southeast_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "COMBINED SCENARIO: SSH open on shared SG + VPC peering DNS"
-}
+# NOTE: Shared SG SSH open is now handled inline in the module's
+# aws_security_group.high_fanout via local.scenario_open_ssh.
+# See scenario_high_fanout.tf for details.
 
 # -----------------------------------------------------------------------------
 # Scenario: combined_all
@@ -346,96 +296,11 @@ resource "aws_vpc_peering_connection_options" "all_dns_eu_west_to_ap_southeast_a
   }
 }
 
-# --- Shared Security Group SSH Open ---
+# NOTE: Shared SG SSH open is now handled inline in the module's
+# aws_security_group.high_fanout via local.scenario_open_ssh.
 
-resource "aws_security_group_rule" "all_sg_open_us_east_1" {
-  count = local.scenario_combined_all ? 1 : 0
-
-  provider          = aws.us_east_1
-  security_group_id = module.aws_us_east_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "COMBINED ALL: SSH + VPC peering + SNS"
-}
-
-resource "aws_security_group_rule" "all_sg_open_us_west_2" {
-  count = local.scenario_combined_all ? 1 : 0
-
-  provider          = aws.us_west_2
-  security_group_id = module.aws_us_west_2[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "COMBINED ALL: SSH + VPC peering + SNS"
-}
-
-resource "aws_security_group_rule" "all_sg_open_eu_west_1" {
-  count = local.scenario_combined_all ? 1 : 0
-
-  provider          = aws.eu_west_1
-  security_group_id = module.aws_eu_west_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "COMBINED ALL: SSH + VPC peering + SNS"
-}
-
-resource "aws_security_group_rule" "all_sg_open_ap_southeast_1" {
-  count = local.scenario_combined_all ? 1 : 0
-
-  provider          = aws.ap_southeast_1
-  security_group_id = module.aws_ap_southeast_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "COMBINED ALL: SSH + VPC peering + SNS"
-}
-
-# --- Central SNS Policy Change ---
-
-resource "aws_sns_topic_policy" "combined_all_central" {
-  count = local.scenario_combined_all ? 1 : 0
-
-  provider = aws.us_east_1
-  arn      = aws_sns_topic.central[0].arn
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Id      = "CombinedAllScenarioPolicy"
-    Statement = [
-      {
-        Sid    = "AllowCrossRegionSQS"
-        Effect = "Allow"
-        Principal = {
-          Service = "sqs.amazonaws.com"
-        }
-        Action   = "sns:Subscribe"
-        Resource = aws_sns_topic.central[0].arn
-      },
-      {
-        Sid       = "CombinedAllRestrictPublish"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = "sns:Publish"
-        Resource  = aws_sns_topic.central[0].arn
-        Condition = {
-          StringNotEquals = {
-            "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
-          }
-        }
-      }
-    ]
-  })
-}
+# NOTE: Central SNS policy change is now handled inline in
+# aws_sns_topic_policy.central via local.scenario_restrict_sns_publish.
 
 # =============================================================================
 # Scenario: combined_max
@@ -581,93 +446,8 @@ resource "aws_vpc_peering_connection_options" "max_dns_eu_west_to_ap_southeast_a
   }
 }
 
-# --- Shared Security Group - Open ALL PORTS (Maximum Impact) ---
+# NOTE: Shared SG ALL PORTS open is now handled inline in the module's
+# aws_security_group.high_fanout via local.scenario_open_all_ports.
 
-resource "aws_security_group_rule" "max_sg_all_ports_us_east_1" {
-  count = local.scenario_combined_max ? 1 : 0
-
-  provider          = aws.us_east_1
-  security_group_id = module.aws_us_east_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 0
-  to_port           = 65535
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "MAX SCENARIO: ALL PORTS open to internet"
-}
-
-resource "aws_security_group_rule" "max_sg_all_ports_us_west_2" {
-  count = local.scenario_combined_max ? 1 : 0
-
-  provider          = aws.us_west_2
-  security_group_id = module.aws_us_west_2[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 0
-  to_port           = 65535
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "MAX SCENARIO: ALL PORTS open to internet"
-}
-
-resource "aws_security_group_rule" "max_sg_all_ports_eu_west_1" {
-  count = local.scenario_combined_max ? 1 : 0
-
-  provider          = aws.eu_west_1
-  security_group_id = module.aws_eu_west_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 0
-  to_port           = 65535
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "MAX SCENARIO: ALL PORTS open to internet"
-}
-
-resource "aws_security_group_rule" "max_sg_all_ports_ap_southeast_1" {
-  count = local.scenario_combined_max ? 1 : 0
-
-  provider          = aws.ap_southeast_1
-  security_group_id = module.aws_ap_southeast_1[0].high_fanout_sg_id
-  type              = "ingress"
-  from_port         = 0
-  to_port           = 65535
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "MAX SCENARIO: ALL PORTS open to internet"
-}
-
-# --- Central SNS Policy Change ---
-
-resource "aws_sns_topic_policy" "max_central" {
-  count = local.scenario_combined_max ? 1 : 0
-
-  provider = aws.us_east_1
-  arn      = aws_sns_topic.central[0].arn
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Id      = "CombinedMaxScenarioPolicy"
-    Statement = [
-      {
-        Sid    = "AllowCrossRegionSQS"
-        Effect = "Allow"
-        Principal = {
-          Service = "sqs.amazonaws.com"
-        }
-        Action   = "sns:Subscribe"
-        Resource = aws_sns_topic.central[0].arn
-      },
-      {
-        Sid       = "MaxRestrictPublish"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = "sns:Publish"
-        Resource  = aws_sns_topic.central[0].arn
-        Condition = {
-          StringNotEquals = {
-            "aws:PrincipalAccount" = data.aws_caller_identity.current.account_id
-          }
-        }
-      }
-    ]
-  })
-}
+# NOTE: Central SNS policy change is now handled inline in
+# aws_sns_topic_policy.central via local.scenario_restrict_sns_publish.

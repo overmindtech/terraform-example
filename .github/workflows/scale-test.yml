@@ -149,12 +149,16 @@ jobs:
           echo "Baseline applied successfully"
 
       # Verify baseline is stable (no pending changes)
+      # CRITICAL: If baseline has pending changes, scenario plans will be polluted
+      # with unrelated diffs, causing wrong-risk detection and zero-discovery issues.
       - name: Verify Baseline Stable
         run: |
           echo "Verifying baseline has no pending changes..."
+          EXIT_CODE=0
           terraform plan -var="scenario=none" -detailed-exitcode -no-color || EXIT_CODE=$?
           if [ "$EXIT_CODE" = "2" ]; then
-            echo "::warning::Baseline has pending changes - this may pollute scenario plans"
+            echo "::error::Baseline has pending changes - scenario plans would be polluted. Re-apply baseline."
+            exit 1
           elif [ "$EXIT_CODE" = "1" ]; then
             echo "::error::Terraform plan failed"
             exit 1
