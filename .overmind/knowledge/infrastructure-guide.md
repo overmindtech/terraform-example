@@ -1,5 +1,5 @@
 ---
-name: Infrastructure Quick Reference
+name: infrastructure-quick-reference
 description: Practical notes about our infrastructure setup, common patterns, gotchas, and things that aren't obvious from reading the Terraform code. Updated by various team members as they learn things the hard way.
 ---
 

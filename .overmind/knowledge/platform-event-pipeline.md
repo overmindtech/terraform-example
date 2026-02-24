@@ -1,5 +1,5 @@
 ---
-name: Event Processing Pipeline
+name: event-processing-pipeline
 description: How our event processing pipeline works, including the central SNS fanout, regional SQS consumers, Lambda processing, and operational procedures. Owned by the Platform Engineering team.
 ---
 

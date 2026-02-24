@@ -1,5 +1,5 @@
 ---
-name: Multi-Region Architecture
+name: multi-region-architecture
 description: How our multi-region infrastructure is designed, including the VPC peering mesh, service discovery, cross-region dependencies, and design decisions. Written for engineers who need context on why things are set up this way.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: Engineering Change Process
+name: engineering-change-process
 description: How infrastructure changes get reviewed and approved across the engineering org. Covers approval workflows, team contacts, review timelines, and escalation paths for different types of changes.
 ---
 

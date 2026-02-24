@@ -1,5 +1,5 @@
 ---
-name: Security & Compliance Requirements
+name: security-compliance-requirements
 description: Security team's compliance requirements and policies for our AWS infrastructure. Covers encryption, network access controls, key management, and data protection standards that all infrastructure changes must comply with.
 ---
 
