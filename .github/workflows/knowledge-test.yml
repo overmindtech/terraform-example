@@ -482,6 +482,9 @@ jobs:
           RISKS_FULL=$(jq -c '.risks // []' change-results.json)
           echo "$RISKS_FULL" > /tmp/risks-full.json
 
+          HYPOTHESES_FULL=$(jq -c '.hypotheses // []' change-results.json)
+          echo "$HYPOTHESES_FULL" > /tmp/hypotheses-full.json
+
           echo "risk_count=$RISK_COUNT" >> $GITHUB_OUTPUT
           echo "high_risk_count=$HIGH_RISK_COUNT" >> $GITHUB_OUTPUT
           echo "medium_risk_count=$MEDIUM_RISK_COUNT" >> $GITHUB_OUTPUT
@@ -528,6 +531,7 @@ jobs:
 
           RISKS_JSON=$(cat /tmp/risks.json 2>/dev/null || echo '[]')
           RISKS_FULL=$(cat /tmp/risks-full.json 2>/dev/null || echo '[]')
+          HYPOTHESES_FULL=$(cat /tmp/hypotheses-full.json 2>/dev/null || echo '[]')
 
           jq -n \
             --arg runId "${{ github.run_id }}-${{ matrix.test_id }}" \
@@ -550,6 +554,7 @@ jobs:
             --argjson hypotheses "${{ steps.get-results.outputs.hypotheses || 0 }}" \
             --argjson risks "$RISKS_JSON" \
             --argjson risksFull "$RISKS_FULL" \
+            --argjson hypothesesFull "$HYPOTHESES_FULL" \
             --arg workflowRunUrl "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             '{
               runId: $runId,
@@ -568,6 +573,7 @@ jobs:
               lowRiskCount: $lowRiskCount,
               risks: $risks,
               risksFull: $risksFull,
+              hypothesesFull: $hypothesesFull,
               blastRadiusNodes: $blastRadiusNodes,
               blastRadiusEdges: $blastRadiusEdges,
               observations: $observations,
