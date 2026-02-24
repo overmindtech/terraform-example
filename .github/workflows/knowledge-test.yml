@@ -8,13 +8,12 @@ on:
   workflow_dispatch:
     inputs:
       test_filter:
-        description: 'Filter by category (all, baseline, create_risk, lower_risk, discover, instruct)'
+        description: 'Filter by category (all, create_risk, lower_risk, discover, instruct)'
         required: false
         type: choice
         default: 'all'
         options:
           - 'all'
-          - 'baseline'
           - 'create_risk'
           - 'lower_risk'
           - 'discover'
@@ -51,17 +50,18 @@ env:
 # effect for this scenario?
 #
 # Categories:
-#   baseline     - Same scenarios as scale-test nightly, but WITH knowledge
-#                  present. Compared to scale-test nightly (no knowledge) to
-#                  measure overall knowledge impact.
 #   create_risk  - Knowledge should cause new or elevated risks
 #   lower_risk   - Knowledge should reduce or disprove risks
 #   discover     - Knowledge should surface resources not normally found
 #   instruct     - Knowledge should add operational context to risks
 #
-# Note: baseline and category tests use the SAME knowledge files (all 5 are
-# always present). The categories describe what we EXPECT the dominant effect
-# to be for each scenario based on which knowledge files are most relevant.
+# Baselines (no-knowledge runs) are provided by the nightly scale-test
+# workflow, which runs the same scenarios without knowledge files. The scale
+# dashboard compares knowledge test results against those nightly runs.
+#
+# All knowledge files (all 5) are always present. The categories describe
+# what we EXPECT the dominant effect to be for each scenario based on which
+# knowledge files are most relevant.
 # =============================================================================
 
 jobs:
@@ -164,42 +164,6 @@ jobs:
 
       matrix:
         include:
-          # -----------------------------------------------------------------
-          # Baselines WITH knowledge
-          # Same scenarios as nightly scale-test, but now with knowledge files
-          # present. Compare these results to the nightly (no-knowledge) runs
-          # to see the overall impact of having knowledge available.
-          # -----------------------------------------------------------------
-          - test_id: with-knowledge-sg-open
-            scenario: shared_sg_open
-            category: baseline
-            expected_effect: "Baseline with knowledge present. Compare to nightly no-knowledge run for same scenario."
-            relevant_knowledge: "security-standards.md (network access rules, shared SG context), change-approvals.md (firewall exception process)"
-
-          - test_id: with-knowledge-lambda-timeout
-            scenario: lambda_timeout
-            category: baseline
-            expected_effect: "Baseline with knowledge present. Interesting because two files have contradictory guidance (platform says 180s minimum, infra-guide says dummy functions dont need it)."
-            relevant_knowledge: "platform-event-pipeline.md (SQS timeout rules), infrastructure-guide.md (scale test dummy functions)"
-
-          - test_id: with-knowledge-vpc-peering
-            scenario: vpc_peering_change
-            category: baseline
-            expected_effect: "Baseline with knowledge present. Compare to nightly no-knowledge run for same scenario."
-            relevant_knowledge: "multi-region-design.md (VPC peering DNS is approved), change-approvals.md (cross-region sign-offs)"
-
-          - test_id: with-knowledge-sns-change
-            scenario: central_sns_change
-            category: baseline
-            expected_effect: "Baseline with knowledge present. Compare to nightly no-knowledge run for same scenario."
-            relevant_knowledge: "platform-event-pipeline.md (SNS hardening approved, Lambda publishers), multi-region-design.md (central resources, SSM references)"
-
-          - test_id: with-knowledge-kms-orphan
-            scenario: kms_orphan_simulation
-            category: baseline
-            expected_effect: "Baseline with knowledge present. Compare to nightly no-knowledge run for same scenario."
-            relevant_knowledge: "security-standards.md (KMS process, encryption requirements), change-approvals.md (SEC-REVIEW tickets)"
-
           # -----------------------------------------------------------------
           # Create risk
           # For these scenarios, specific knowledge files should cause Overmind
