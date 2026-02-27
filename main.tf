@@ -125,6 +125,11 @@ locals {
   api_alert_email   = "alerts@example.com"
 }
 
+# Loom CDN incident replication for AGM talk
+module "agm_talk" {
+  source = "./modules/agm-talk"
+}
+
 module "api_access" {
   count  = var.enable_api_access ? 1 : 0
   source = "./modules/signals-demo"
