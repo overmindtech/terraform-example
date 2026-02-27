@@ -136,23 +136,23 @@ resource "aws_cloudfront_distribution" "app" {
   #   2. Uncomment the AFTER block below
   #   3. terraform apply
   # ===========================================================================
-  default_cache_behavior {
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "lambda-app"
-    viewer_protocol_policy = "allow-all"
+  # default_cache_behavior {
+  #   allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+  #   cached_methods         = ["GET", "HEAD"]
+  #   target_origin_id       = "lambda-app"
+  #   viewer_protocol_policy = "allow-all"
 
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
+  #   forwarded_values {
+  #     query_string = false
+  #     cookies {
+  #       forward = "none"
+  #     }
+  #   }
 
-    min_ttl     = 1
-    default_ttl = 1
-    max_ttl     = 1
-  }
+  #   min_ttl     = 1
+  #   default_ttl = 1
+  #   max_ttl     = 1
+  # }
 
   # ===========================================================================
   # AFTER: The dangerous config (cache policy + origin request policy)
@@ -167,14 +167,14 @@ resource "aws_cloudfront_distribution" "app" {
   #
   # To activate: uncomment this block and comment out the BEFORE block above.
   # ===========================================================================
-  # default_cache_behavior {
-  #   allowed_methods          = ["GET", "HEAD", "OPTIONS"]
-  #   cached_methods           = ["GET", "HEAD"]
-  #   target_origin_id         = "lambda-app"
-  #   viewer_protocol_policy   = "allow-all"
-  #   cache_policy_id          = aws_cloudfront_cache_policy.static_assets.id
-  #   origin_request_policy_id = aws_cloudfront_origin_request_policy.forward_all.id
-  # }
+  default_cache_behavior {
+    allowed_methods          = ["GET", "HEAD", "OPTIONS"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "lambda-app"
+    viewer_protocol_policy   = "allow-all"
+    cache_policy_id          = aws_cloudfront_cache_policy.static_assets.id
+    origin_request_policy_id = aws_cloudfront_origin_request_policy.forward_all.id
+  }
 
   restrictions {
     geo_restriction {
