@@ -19,15 +19,16 @@ on:
           - 'discover'
           - 'instruct'
       scale_multiplier:
-        description: 'Resource multiplier (lower = faster)'
+        description: 'Resource multiplier (must match scale-test state, default 25)'
         required: false
         type: choice
-        default: '5'
+        default: '25'
         options:
           - '1'
           - '5'
           - '10'
           - '25'
+          - '50'
 
 env:
   WORKING_DIR: scale-test
@@ -44,6 +45,12 @@ env:
 # Each test case has a paired baseline (same scenario, no knowledge) that runs
 # on the regular nightly scale-test workflow. This workflow adds a "with
 # knowledge" run for comparison.
+#
+# IMPORTANT: This workflow shares Terraform state with the nightly scale-test
+# workflow (scale-test/backend.tf). The scale-test runs at 2 AM UTC and applies
+# baseline at scale_multiplier=25. This workflow runs at 5 AM UTC and plans
+# against that existing state -- it does NOT apply. The prepare-baseline job
+# only verifies the state is clean; it never modifies infrastructure.
 #
 # The evaluation question for each test is: given that all 5 knowledge files
 # are available, did Overmind activate the right ones and produce the expected
@@ -66,10 +73,12 @@ env:
 
 jobs:
   # =========================================================================
-  # Phase 1: Apply Baseline Infrastructure
+  # Phase 1: Verify Baseline Infrastructure
+  # The nightly scale-test (2 AM) applies baseline at 25x. This job verifies
+  # the state is clean before running knowledge tests. No apply is needed.
   # =========================================================================
   prepare-baseline:
-    name: Prepare baseline
+    name: Verify baseline
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -79,7 +88,7 @@ jobs:
       cancel-in-progress: false
 
     env:
-      TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier || '5' }}
+      TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier || '25' }}
       TF_VAR_scenario: none
       TF_VAR_cloud_provider: aws
 
@@ -116,29 +125,20 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false
 
-      - name: Apply Baseline
-        run: |
-          echo "Applying baseline (scenario=none, scale=${{ inputs.scale_multiplier || '5' }})..."
-          terraform apply \
-            -auto-approve \
-            -no-color \
-            -input=false \
-            -lock-timeout=5m \
-            -parallelism=100 \
-            -var="scenario=none"
-
       - name: Verify Baseline Stable
         run: |
+          echo "Verifying scale-test baseline is stable (scale=${{ inputs.scale_multiplier || '25' }})..."
+          echo "The nightly scale-test should have already applied baseline at this multiplier."
           EXIT_CODE=0
           terraform plan -var="scenario=none" -detailed-exitcode -no-color || EXIT_CODE=$?
           if [ "$EXIT_CODE" = "2" ]; then
-            echo "::error::Baseline has pending changes"
+            echo "::error::Baseline has pending changes - scale-test may not have run or used a different multiplier"
             exit 1
           elif [ "$EXIT_CODE" = "1" ]; then
             echo "::error::Terraform plan failed"
             exit 1
           fi
-          echo "Baseline stable"
+          echo "Baseline stable - no changes detected"
 
   # =========================================================================
   # Phase 2: Knowledge Tests
@@ -258,7 +258,7 @@ jobs:
             relevant_knowledge: "platform-event-pipeline.md"
 
     env:
-      TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier || '5' }}
+      TF_VAR_scale_multiplier: ${{ inputs.scale_multiplier || '25' }}
       TF_VAR_scenario: ${{ matrix.scenario }}
       TF_VAR_cloud_provider: aws
 
@@ -506,7 +506,7 @@ jobs:
             --arg expectedEffect "${{ matrix.expected_effect }}" \
             --arg relevantKnowledge "${{ matrix.relevant_knowledge }}" \
             --arg cloudProvider "aws" \
-            --argjson scaleMultiplier "${{ inputs.scale_multiplier || '5' }}" \
+            --argjson scaleMultiplier "${{ inputs.scale_multiplier || '25' }}" \
             --argjson overmindDurationMs "${{ steps.get-results.outputs.overmind_duration_ms || 0 }}" \
             --argjson riskCount "${{ steps.get-results.outputs.risk_count || 0 }}" \
             --argjson highRiskCount "${{ steps.get-results.outputs.high_risk_count || 0 }}" \
