@@ -21,7 +21,7 @@ locals {
 
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
-  version = "~> 3.0"
+  version = "~> 6.0"
 
   #   aliases = ["${local.subdomain}.${local.domain_name}"]
 
@@ -170,7 +170,7 @@ data "aws_cloudfront_log_delivery_canonical_user_id" "cloudfront" {}
 
 module "s3_one" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   bucket_prefix = "s3-one-${random_pet.this.id}"
   force_destroy = true
@@ -433,7 +433,7 @@ resource "aws_cloudfront_origin_request_policy" "headers_based_policy" {
 
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
-  version = "5.12.1"
+  version = "7.4.0"
 
   cluster_name = "example-${var.example_env}"
 
