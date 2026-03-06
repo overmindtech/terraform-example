@@ -13,17 +13,17 @@ runs:
   steps:
     - name: Cache Terraform Providers
       id: cache-terraform
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: .terraform
         key: ${{ runner.os }}-${{ inputs.environment }}-${{ hashFiles('**/.terraform.lock.hcl') }}
 
-    - uses: hashicorp/setup-terraform@v3
+    - uses: hashicorp/setup-terraform@v4
       with:
         terraform_wrapper: false
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         audience: sts.amazonaws.com # set default value to work around https://github.com/aws-actions/configure-aws-credentials/issues/271#issuecomment-1401481855
         aws-region: eu-west-2
