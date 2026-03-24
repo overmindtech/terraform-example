@@ -14,7 +14,7 @@ module "vpc" {
   # version 6 is breaking change across multiple AWS module so we pin to < 6.0 see https://github.com/terraform-aws-modules/terraform-aws-ecs/issues/291
   # another pin was added to terraform.tf for the S3 module
   # we expect this to be fixed over the coming weeks, as of 23/6/2025
-  version = "< 6.0"
+  version = "< 6.7"
 
   name = "workloads-${var.example_env}"
   cidr = "10.0.0.0/16"
