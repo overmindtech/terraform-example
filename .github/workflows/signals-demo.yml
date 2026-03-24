@@ -33,7 +33,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_PAT }}
           ref: main
@@ -71,7 +71,7 @@ jobs:
 
       - name: Upload artifact (modified main.tf)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signals-demo-main-tf
           if-no-files-found: error
@@ -93,13 +93,13 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_PAT }}
           ref: main
 
       - name: Download modified main.tf
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: signals-demo-main-tf
           path: ./artifacts
@@ -147,7 +147,7 @@ jobs:
 
       - name: Upload plan artifacts (optional)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signals-demo-tfplan
           if-no-files-found: ignore
@@ -170,13 +170,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_PAT }}
           ref: main
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: Configure Git
         run: |
@@ -184,7 +184,7 @@ jobs:
           git config user.email "platform-automation@company.com"
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: signals-demo-main-tf
           path: ./artifacts
@@ -222,13 +222,13 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_PAT }}
           ref: main
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: Configure Git
         run: |
@@ -236,7 +236,7 @@ jobs:
           git config user.email "platform-automation@company.com"
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: signals-demo-main-tf
           path: ./artifacts
