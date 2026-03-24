@@ -1,8 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.ts";
 
 @layer base {
   :root {
@@ -152,7 +151,10 @@
   }
 
   .card-interactive {
-    @apply card-elevated cursor-pointer;
+    @apply bg-card rounded-xl border border-border cursor-pointer;
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-md);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
 
   .card-interactive:hover {

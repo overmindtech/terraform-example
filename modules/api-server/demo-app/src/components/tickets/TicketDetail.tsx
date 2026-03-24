@@ -1,4 +1,4 @@
-import { Clock, User, Tag, Folder, Link as LinkIcon, MessageSquare, Bot, History, ExternalLink, Server, FileCode, BookOpen, Github, Copy } from "lucide-react";
+import { Clock, User, Tag, Folder, Link as LinkIcon, MessageSquare, Bot, History, ExternalLink, Server, FileCode, BookOpen, GitBranch, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -121,7 +121,7 @@ export function TicketDetail({ ticketId }: TicketDetailProps) {
             
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-3">
-                <Github className="h-4 w-4 text-muted-foreground" />
+                <GitBranch className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Repository</p>
                   <p className="text-sm text-foreground">overmindtech/terraform-example</p>
