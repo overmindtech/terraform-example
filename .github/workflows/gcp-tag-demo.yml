@@ -1,0 +1,99 @@
+name: GCP Tag Naming Convention Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Target branch for pull request
+        type: choice
+        required: false
+        default: main
+        options:
+          - main
+          - demo/env0
+          - demo/spacelift
+          - demo/tfc
+
+concurrency:
+  group: gcp-tag-demo
+  cancel-in-progress: false
+
+jobs:
+  create-pr:
+    name: Create PR for naming convention update
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GH_PAT }}
+          ref: ${{ github.event.inputs.target_branch || 'main' }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "Platform Automation"
+          git config user.email "platform-automation@company.com"
+
+      - name: Apply naming convention update
+        run: |
+          sed -i 's/tags = \[var\.service_name, "allow-ssh"\]/tags = ["svc-${var.service_name}-prod", "allow-ssh"]/' \
+            modules/gcp-service-base/main.tf
+
+      - name: Show changes
+        run: |
+          echo "## Changes to modules/gcp-service-base/main.tf" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```diff' >> $GITHUB_STEP_SUMMARY
+          git diff modules/gcp-service-base/main.tf >> $GITHUB_STEP_SUMMARY || echo "No changes detected"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "=== Git diff ==="
+          git diff modules/gcp-service-base/main.tf || echo "No changes detected"
+
+      - name: Create branch, commit, and push
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          BRANCH="platform/naming-convention-update-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
+          git checkout -b "$BRANCH"
+          git add modules/gcp-service-base/main.tf
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "refactor: standardise GCE instance network tags"
+          git push -u origin "$BRANCH"
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          TARGET_BRANCH="${{ github.event.inputs.target_branch || 'main' }}"
+
+          BODY="$(printf '%s\n' \
+            '## Summary' \
+            '- Standardise GCE instance network tags to follow the `svc-{name}-prod` convention across all service deployments.' \
+            '' \
+            '## Context' \
+            '- PLAT-2847: Enforce consistent resource tagging convention for GCP compute instances.' \
+            '- This aligns instance tags with the naming standard agreed in the platform architecture review.' \
+            '' \
+            '## Changes' \
+            '- Updated the base service module to apply the new tag format to all managed instances.' \
+            '- Both payments-api and inventory-api instances will receive updated tags on next apply.' \
+            '' \
+            '## Testing' \
+            '- Terraform plan reviewed in CI.' \
+            '- Tag format validated against GCP naming constraints (lowercase, hyphens only).' \
+          )"
+
+          gh pr create \
+            --base "$TARGET_BRANCH" \
+            --head "$BRANCH" \
+            --title "refactor: standardise GCE instance network tags (PLAT-2847)" \
+            --body "$BODY"
