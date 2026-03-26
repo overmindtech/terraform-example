@@ -250,6 +250,14 @@ module "agm_talk" {
   source = "./modules/agm-talk"
 }
 
+# Simple GCS bucket to validate GCP provider connectivity in CI
+resource "google_storage_bucket" "test" {
+  name                        = "${var.gcp_project_id}-tf-test"
+  location                    = var.gcp_region
+  force_destroy               = true
+  uniform_bucket_level_access = true
+}
+
 module "api_access" {
   count  = var.enable_api_access ? 1 : 0
   source = "./modules/signals-demo"
