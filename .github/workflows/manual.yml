@@ -20,6 +20,8 @@ jobs:
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
           terraform_workspace: terraform-example
+          gcp_workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          gcp_service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Terraform Plan
         id: plan

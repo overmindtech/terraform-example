@@ -7,6 +7,7 @@
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
 		"ghcr.io/devcontainers/features/aws-cli:1": {},
+		"ghcr.io/devcontainers/features/gcloud:1": {},
 		"ghcr.io/devcontainers/features/terraform:1": {}
 	},
 	// Configure tool-specific properties.
@@ -14,7 +15,8 @@
 		"vscode": {
 			"extensions": [
 				"github.vscode-github-actions",
-				"hashicorp.terraform"
+				"hashicorp.terraform",
+				"googlecloudplatform.gcp-vscode"
 			]
 		}
 	}
@@ -24,5 +26,6 @@
 	// },
 	// "mounts": [
 	// 	"source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind",
+	// 	"source=${localEnv:HOME}${localEnv:USERPROFILE}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind"
 	// ]
 }

@@ -7,6 +7,12 @@ inputs:
   terraform_workspace:
     description: "The Terraform workspace to use (optional)"
     required: false
+  gcp_workload_identity_provider:
+    description: "GCP Workload Identity Provider resource name for OIDC auth"
+    required: true
+  gcp_service_account:
+    description: "GCP service account email to impersonate via WIF"
+    required: true
 
 runs:
   using: "composite"
@@ -28,6 +34,12 @@ runs:
         audience: sts.amazonaws.com # set default value to work around https://github.com/aws-actions/configure-aws-credentials/issues/271#issuecomment-1401481855
         aws-region: eu-west-2
         role-to-assume: ${{ inputs.terraform_deploy_role }}
+
+    - name: Configure GCP Credentials
+      uses: google-github-actions/auth@v3
+      with:
+        workload_identity_provider: ${{ inputs.gcp_workload_identity_provider }}
+        service_account: ${{ inputs.gcp_service_account }}
 
     - name: Terraform Init
       id: init
