@@ -68,3 +68,42 @@ output "signals_monitoring_target_group_arn" {
   description = "Target group ARN used to health-check the API instance from the monitoring VPC (signals demo)"
   value       = var.enable_api_access ? module.api_access[0].monitoring_target_group_arn : null
 }
+
+# ------------------------------------------------------------------------------
+# GCP Platform Demo (wrapper module pattern)
+# ------------------------------------------------------------------------------
+
+output "gcp_platform_network" {
+  description = "Self-link of the GCP platform VPC network"
+  value       = google_compute_network.platform.self_link
+}
+
+output "gcp_payments_instance_name" {
+  description = "Name of the payments API GCE instance"
+  value       = module.payments_service.instance_name
+}
+
+output "gcp_payments_instance_ip" {
+  description = "Internal IP of the payments API instance"
+  value       = module.payments_service.instance_internal_ip
+}
+
+output "gcp_payments_firewall" {
+  description = "Name of the payments ingress firewall rule"
+  value       = module.payments_service.firewall_rule_name
+}
+
+output "gcp_inventory_instance_name" {
+  description = "Name of the inventory API GCE instance"
+  value       = module.inventory_service.instance_name
+}
+
+output "gcp_inventory_instance_ip" {
+  description = "Internal IP of the inventory API instance"
+  value       = module.inventory_service.instance_internal_ip
+}
+
+output "gcp_inventory_firewall" {
+  description = "Name of the inventory ingress firewall rule"
+  value       = module.inventory_service.firewall_rule_name
+}

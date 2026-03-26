@@ -250,12 +250,73 @@ module "agm_talk" {
   source = "./modules/agm-talk"
 }
 
-# Simple GCS bucket to validate GCP provider connectivity in CI
-resource "google_storage_bucket" "test" {
-  name                        = "${var.gcp_project_id}-tf-test"
-  location                    = var.gcp_region
-  force_destroy               = true
-  uniform_bucket_level_access = true
+# =============================================================================
+# GCP Platform Infrastructure
+# Shared VPC and alerting owned by the platform team. Service teams deploy
+# into this network via their own wrapper modules below.
+# =============================================================================
+
+resource "google_compute_network" "platform" {
+  name                    = "platform-services"
+  auto_create_subnetworks = false
+  project                 = var.gcp_project_id
+}
+
+resource "google_compute_subnetwork" "platform" {
+  name          = "platform-europe-west2"
+  ip_cidr_range = "10.10.0.0/24"
+  region        = var.gcp_region
+  network       = google_compute_network.platform.id
+  project       = var.gcp_project_id
+}
+
+resource "google_compute_firewall" "platform_ssh" {
+  name        = "platform-allow-ssh-iap"
+  network     = google_compute_network.platform.id
+  project     = var.gcp_project_id
+  description = "Allow SSH via Identity-Aware Proxy for instance management"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = ["35.235.240.0/20"]
+  target_tags   = ["allow-ssh"]
+}
+
+resource "google_pubsub_topic" "platform_alerts" {
+  name    = "platform-alerts"
+  project = var.gcp_project_id
+
+  labels = {
+    environment = "production"
+    managed-by  = "terraform"
+  }
+}
+
+# =============================================================================
+# Service Deployments (each team owns their wrapper module)
+# =============================================================================
+
+module "payments_service" {
+  source = "./modules/gcp-service-payments"
+
+  network     = google_compute_network.platform.id
+  subnet      = google_compute_subnetwork.platform.id
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  alert_topic = google_pubsub_topic.platform_alerts.id
+}
+
+module "inventory_service" {
+  source = "./modules/gcp-service-inventory"
+
+  network     = google_compute_network.platform.id
+  subnet      = google_compute_subnetwork.platform.id
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  alert_topic = google_pubsub_topic.platform_alerts.id
 }
 
 module "api_access" {
