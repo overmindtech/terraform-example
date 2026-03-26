@@ -2,6 +2,17 @@
 #   value = aws_iam_role.deploy_role.arn
 # }
 
+# GCP Workload Identity Federation outputs (needed for CI platform configuration)
+output "gcp_workload_identity_provider" {
+  description = "Full resource name of the GitHub Actions WIF provider (for google-github-actions/auth)"
+  value       = google_iam_workload_identity_pool_provider.github.name
+}
+
+output "gcp_service_account_email" {
+  description = "Email of the GCP deploy service account"
+  value       = google_service_account.deploy.email
+}
+
 # API Server outputs
 output "api_server_url" {
   description = "URL to access the API server"

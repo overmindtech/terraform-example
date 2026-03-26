@@ -5,6 +5,11 @@ provider "aws" {
   region = "eu-west-2"
 }
 
+provider "google" {
+  project = var.gcp_project_id
+  region  = var.gcp_region
+}
+
 # Disable this temporarily during bootstrapping and use `terraform init
 # -migrate-state` to migrate the local state into S3 after all resources have
 # been deployed
@@ -16,6 +21,10 @@ terraform {
       # another pin was added to modules/scenarios/main.tf for the VPC module
       # we expect this to be fixed over the coming weeks, as of 23/6/2025
       version = "< 6.38"
+    }
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 6.0"
     }
     archive = {
       source  = "hashicorp/archive"
@@ -286,4 +295,147 @@ resource "aws_iam_openid_connect_provider" "env0" {
   url             = "https://login.app.env0.com/"
   client_id_list  = ["hoMiq9PdkRh9LUvVpH4wIErWg50VSG1b"]
   thumbprint_list = [data.tls_certificate.env0.certificates[0].sha1_fingerprint]
+}
+
+# =============================================================================
+# GCP Workload Identity Federation
+# Mirrors the AWS OIDC provider + deploy role pattern above.
+# See https://cloud.google.com/iam/docs/workload-identity-federation
+# =============================================================================
+
+resource "google_iam_workload_identity_pool" "deploy" {
+  workload_identity_pool_id = "${var.example_env}-deploy"
+  display_name              = "Deploy Pool (${var.example_env})"
+  description               = "Workload Identity Pool for CI/CD platforms to deploy infrastructure"
+}
+
+# GitHub Actions OIDC provider
+resource "google_iam_workload_identity_pool_provider" "github" {
+  workload_identity_pool_id          = google_iam_workload_identity_pool.deploy.workload_identity_pool_id
+  workload_identity_pool_provider_id = "github-actions"
+  display_name                       = "GitHub Actions"
+
+  attribute_mapping = {
+    "google.subject"       = "assertion.sub"
+    "attribute.actor"      = "assertion.actor"
+    "attribute.repository" = "assertion.repository"
+  }
+
+  attribute_condition = "assertion.repository == 'overmindtech/terraform-example'"
+
+  oidc {
+    issuer_uri = "https://token.actions.githubusercontent.com"
+  }
+}
+
+# Terraform Cloud OIDC provider
+resource "google_iam_workload_identity_pool_provider" "tfc" {
+  count = var.example_env == "terraform-example" ? 1 : 0
+
+  workload_identity_pool_id          = google_iam_workload_identity_pool.deploy.workload_identity_pool_id
+  workload_identity_pool_provider_id = "terraform-cloud"
+  display_name                       = "Terraform Cloud"
+
+  attribute_mapping = {
+    "google.subject"                   = "assertion.sub"
+    "attribute.terraform_workspace"    = "assertion.terraform_workspace_name"
+    "attribute.terraform_organization" = "assertion.terraform_organization_name"
+  }
+
+  attribute_condition = "assertion.terraform_organization_name == 'Overmind'"
+
+  oidc {
+    issuer_uri        = "https://app.terraform.io"
+    allowed_audiences = ["gcp.workload.identity"]
+  }
+}
+
+# env0 OIDC provider
+resource "google_iam_workload_identity_pool_provider" "env0" {
+  count = var.example_env == "terraform-example" ? 1 : 0
+
+  workload_identity_pool_id          = google_iam_workload_identity_pool.deploy.workload_identity_pool_id
+  workload_identity_pool_provider_id = "env0"
+  display_name                       = "env0"
+
+  attribute_mapping = {
+    "google.subject" = "assertion.sub"
+  }
+
+  oidc {
+    issuer_uri        = "https://login.app.env0.com/"
+    allowed_audiences = ["https://prod.env0.com"]
+  }
+}
+
+# Spacelift OIDC provider
+resource "google_iam_workload_identity_pool_provider" "spacelift" {
+  count = var.example_env == "terraform-example" ? 1 : 0
+
+  workload_identity_pool_id          = google_iam_workload_identity_pool.deploy.workload_identity_pool_id
+  workload_identity_pool_provider_id = "spacelift"
+  display_name                       = "Spacelift"
+
+  attribute_mapping = {
+    "google.subject"        = "assertion.sub"
+    "attribute.space"       = "assertion.spaceId"
+    "attribute.stack"       = "assertion.callerId"
+    "attribute.caller_type" = "assertion.callerType"
+  }
+
+  oidc {
+    issuer_uri = "https://overmindtech.app.spacelift.io"
+  }
+}
+
+# Deploy service account (GCP equivalent of aws_iam_role.deploy_role)
+resource "google_service_account" "deploy" {
+  account_id   = "${var.example_env}-deploy"
+  display_name = "Terraform Deploy (${var.example_env})"
+  description  = "Service account used by CI/CD platforms to deploy infrastructure via Workload Identity Federation"
+}
+
+resource "google_project_iam_member" "deploy_editor" {
+  project = var.gcp_project_id
+  role    = "roles/editor"
+  member  = "serviceAccount:${google_service_account.deploy.email}"
+}
+
+# Allow the Workload Identity Pool to impersonate the deploy service account
+resource "google_service_account_iam_member" "github_wif" {
+  service_account_id = google_service_account.deploy.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.deploy.name}/attribute.repository/overmindtech/terraform-example"
+}
+
+resource "google_service_account_iam_member" "tfc_wif" {
+  count = var.example_env == "terraform-example" ? 1 : 0
+
+  service_account_id = google_service_account.deploy.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.deploy.name}/attribute.terraform_organization/Overmind"
+}
+
+resource "google_service_account_iam_member" "env0_wif" {
+  count = var.example_env == "terraform-example" ? 1 : 0
+
+  service_account_id = google_service_account.deploy.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.deploy.name}/*"
+  condition {
+    title      = "env0-provider-only"
+    expression = "request.auth.claims.iss == 'https://login.app.env0.com/'"
+  }
+}
+
+resource "google_service_account_iam_member" "spacelift_wif" {
+  count = var.example_env == "terraform-example" ? 1 : 0
+
+  service_account_id = google_service_account.deploy.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.deploy.name}/*"
+  condition {
+    title      = "spacelift-provider-only"
+    expression = "request.auth.claims.iss == 'https://overmindtech.app.spacelift.io'"
+  }
 }

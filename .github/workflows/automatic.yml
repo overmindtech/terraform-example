@@ -32,6 +32,8 @@ jobs:
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
           terraform_workspace: terraform-example
+          gcp_workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          gcp_service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Download terraform plan
         uses: actions/download-artifact@v8
@@ -70,6 +72,8 @@ jobs:
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
           terraform_workspace: terraform-example
+          gcp_workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          gcp_service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Terraform Validate
         if: github.event.action != 'closed'
@@ -153,6 +157,8 @@ jobs:
         with:
           terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
           terraform_workspace: terraform-example
+          gcp_workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          gcp_service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Terraform Plan for Cost Analysis
         id: plan-cost

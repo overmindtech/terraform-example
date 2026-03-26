@@ -101,6 +101,18 @@ variable "message_size_breach_retention_days" {
   }
 }
 
+# GCP configuration
+variable "gcp_project_id" {
+  description = "GCP project ID for the demo environment"
+  type        = string
+}
+
+variable "gcp_region" {
+  description = "Default GCP region for resources"
+  type        = string
+  default     = "europe-west2"
+}
+
 # API access module settings
 variable "enable_api_access" {
   description = "Enable the customer API access module"
