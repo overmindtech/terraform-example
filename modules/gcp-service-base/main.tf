@@ -20,7 +20,7 @@ resource "google_compute_instance" "service" {
     subnetwork = var.subnet
   }
 
-  tags = [var.service_name, "allow-ssh"]
+  tags = ["svc-${var.service_name}-prod", "allow-ssh"]
 
   metadata_startup_script = <<-EOF
     #!/bin/bash
