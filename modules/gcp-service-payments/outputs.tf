@@ -10,7 +10,7 @@ output "instance_internal_ip" {
 
 output "firewall_rule_name" {
   description = "Name of the payments ingress firewall rule"
-  value       = module.base.firewall_rule_name
+  value       = google_compute_firewall.service_ingress.name
 }
 
 output "health_check_name" {

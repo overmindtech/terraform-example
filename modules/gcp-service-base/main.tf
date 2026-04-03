@@ -55,40 +55,6 @@ resource "google_compute_instance" "service" {
   }
 }
 
-# Service ingress — allows application and health-check traffic from internal ranges.
-# target_tags binds this rule to instances carrying the service_name tag.
-resource "google_compute_firewall" "service_ingress" {
-  name        = "${var.service_name}-ingress"
-  network     = var.network
-  project     = var.project_id
-  description = "Allow ${var.service_name} traffic on service and health-check ports"
-
-  allow {
-    protocol = "tcp"
-    ports    = [tostring(var.service_port), "9090"]
-  }
-
-  source_ranges = var.allowed_source_ranges
-  target_tags   = [var.service_name]
-}
-
-# Dedicated rule for Google Cloud health-check probes (source ranges are fixed
-# Google-owned prefixes). Also targets by service_name tag.
-resource "google_compute_firewall" "health_check" {
-  name        = "${var.service_name}-health-check"
-  network     = var.network
-  project     = var.project_id
-  description = "Allow Google Cloud health-check probes to ${var.service_name}"
-
-  allow {
-    protocol = "tcp"
-    ports    = ["9090"]
-  }
-
-  source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
-  target_tags   = [var.service_name]
-}
-
 resource "google_compute_health_check" "service" {
   name    = "${var.service_name}-health"
   project = var.project_id
