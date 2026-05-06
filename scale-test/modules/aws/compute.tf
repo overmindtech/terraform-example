@@ -21,7 +21,7 @@ resource "aws_instance" "scale_test" {
   # Use shared security groups (creates relationship density)
   # HIGH FAN-OUT: All instances attach to the shared high_fanout SG
   vpc_security_group_ids = [
-    aws_security_group.high_fanout.id,  # Shared SG for high fan-out testing
+    aws_security_group.high_fanout.id, # Shared SG for high fan-out testing
     aws_security_group.shared[count.index % length(aws_security_group.shared)].id
   ]
 

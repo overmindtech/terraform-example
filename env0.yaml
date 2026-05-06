@@ -1,7 +1,21 @@
 version: 2
+shell: bash
 
 deploy:
   steps:
+    setupVariables:
+      after:
+        - name: Configure GCP OIDC credentials
+          run: |
+            CRED_FILE="${ENV0_TEMPLATE_PATH:-$ENV0_ROOT_DIR}/env0_credential_configuration.json"
+            if [ -f "$CRED_FILE" ]; then
+              echo "GOOGLE_APPLICATION_CREDENTIALS=$CRED_FILE" >> "$ENV0_ENV"
+              echo "GOOGLE_APPLICATION_CREDENTIALS set to $CRED_FILE"
+            else
+              echo "WARNING: GCP OIDC credential file not found at $CRED_FILE." 1>&2
+              echo "Attach a 'GCP OIDC' deployment credential in env0 to enable GCP authentication." 1>&2
+            fi
+
     terraformPlan:
       after:
         - name: Submit Plan to Overmind

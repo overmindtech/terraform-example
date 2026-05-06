@@ -13,6 +13,28 @@ output "gcp_service_account_email" {
   value       = google_service_account.deploy.email
 }
 
+# Paste the value of this output when creating a "GCP OIDC" deployment
+# credential in env0 (Organization Settings -> Credentials -> New -> GCP OIDC).
+# It mirrors the JSON that GCP's "Configure your application" wizard would
+# produce, but built from the Terraform-managed pool/provider/SA above so it
+# stays in sync.
+output "env0_gcp_oidc_credential_json" {
+  description = "JSON to paste into the env0 'GCP OIDC' deployment credential."
+  value = var.example_env == "terraform-example" ? jsonencode({
+    type                              = "external_account"
+    audience                          = "//iam.googleapis.com/${google_iam_workload_identity_pool_provider.env0[0].name}"
+    subject_token_type                = "urn:ietf:params:oauth:token-type:jwt"
+    token_url                         = "https://sts.googleapis.com/v1/token"
+    service_account_impersonation_url = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${google_service_account.deploy.email}:generateAccessToken"
+    credential_source = {
+      file = "env0-oidc-token.txt"
+      format = {
+        type = "text"
+      }
+    }
+  }) : null
+}
+
 # API Server outputs
 output "api_server_url" {
   description = "URL to access the API server"

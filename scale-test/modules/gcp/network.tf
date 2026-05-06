@@ -38,8 +38,8 @@ resource "google_compute_subnetwork" "private" {
   region        = var.region
   ip_cidr_range = "${local.subnet_prefix}.${100 + count.index * 10}.0/24"
 
-  description                = "Private subnet ${count.index + 1}"
-  private_ip_google_access   = true
+  description              = "Private subnet ${count.index + 1}"
+  private_ip_google_access = true
 }
 
 # -----------------------------------------------------------------------------

@@ -47,8 +47,8 @@ resource "aws_iam_role" "lambda" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
     }]
   })
@@ -106,10 +106,10 @@ resource "aws_cloudfront_origin_request_policy" "forward_all" {
 # CloudFront distribution
 # -----------------------------------------------------------------------------
 resource "aws_cloudfront_distribution" "app" {
-  enabled              = true
-  comment              = "${var.prefix} — Loom session leak replication"
-  is_ipv6_enabled      = true
-  wait_for_deployment  = true
+  enabled             = true
+  comment             = "${var.prefix} — Loom session leak replication"
+  is_ipv6_enabled     = true
+  wait_for_deployment = true
 
   origin {
     domain_name = replace(replace(aws_lambda_function_url.app.function_url, "https://", ""), "/", "")

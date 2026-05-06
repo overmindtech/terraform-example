@@ -108,15 +108,15 @@ output "secret_ids" {
 
 output "resource_summary" {
   value = {
-    region            = var.region
-    vpc               = google_compute_network.main.name
-    gce_instances     = length(google_compute_instance.scale_test)
-    cloud_functions   = length(google_cloudfunctions2_function.scale_test)
-    pubsub_topics     = length(google_pubsub_topic.scale_test)
-    pubsub_subs       = length(google_pubsub_subscription.scale_test)
-    gcs_buckets       = length(google_storage_bucket.scale_test)
-    secrets           = length(google_secret_manager_secret.scale_test)
-    firewall_rules    = length(google_compute_firewall.per_instance) + 3 # +3 for high_fanout, ssh, egress
+    region          = var.region
+    vpc             = google_compute_network.main.name
+    gce_instances   = length(google_compute_instance.scale_test)
+    cloud_functions = length(google_cloudfunctions2_function.scale_test)
+    pubsub_topics   = length(google_pubsub_topic.scale_test)
+    pubsub_subs     = length(google_pubsub_subscription.scale_test)
+    gcs_buckets     = length(google_storage_bucket.scale_test)
+    secrets         = length(google_secret_manager_secret.scale_test)
+    firewall_rules  = length(google_compute_firewall.per_instance) + 3 # +3 for high_fanout, ssh, egress
   }
   description = "Summary of resources created in this region"
 }

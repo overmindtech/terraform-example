@@ -155,10 +155,10 @@ module "aws_us_east_1" {
 
   enable_ec2        = var.enable_ec2_instances
   enable_lambda     = var.enable_lambda_functions
-  ec2_instance_type = local.scenario_instance_type  # Scenario-aware
+  ec2_instance_type = local.scenario_instance_type # Scenario-aware
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
-  lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
+  lambda_timeout    = local.scenario_lambda_timeout # Scenario-aware
 
   # Central resources for cross-region connectivity
   central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
@@ -186,10 +186,10 @@ module "aws_us_west_2" {
 
   enable_ec2        = var.enable_ec2_instances
   enable_lambda     = var.enable_lambda_functions
-  ec2_instance_type = local.scenario_instance_type  # Scenario-aware
+  ec2_instance_type = local.scenario_instance_type # Scenario-aware
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
-  lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
+  lambda_timeout    = local.scenario_lambda_timeout # Scenario-aware
 
   # Central resources for cross-region connectivity
   central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
@@ -217,10 +217,10 @@ module "aws_eu_west_1" {
 
   enable_ec2        = var.enable_ec2_instances
   enable_lambda     = var.enable_lambda_functions
-  ec2_instance_type = local.scenario_instance_type  # Scenario-aware
+  ec2_instance_type = local.scenario_instance_type # Scenario-aware
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
-  lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
+  lambda_timeout    = local.scenario_lambda_timeout # Scenario-aware
 
   # Central resources for cross-region connectivity
   central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
@@ -248,10 +248,10 @@ module "aws_ap_southeast_1" {
 
   enable_ec2        = var.enable_ec2_instances
   enable_lambda     = var.enable_lambda_functions
-  ec2_instance_type = local.scenario_instance_type  # Scenario-aware
+  ec2_instance_type = local.scenario_instance_type # Scenario-aware
   ebs_volume_size   = var.ebs_volume_size
   lambda_memory     = var.lambda_memory_size
-  lambda_timeout    = local.scenario_lambda_timeout  # Scenario-aware
+  lambda_timeout    = local.scenario_lambda_timeout # Scenario-aware
 
   # Central resources for cross-region connectivity
   central_bucket_name   = local.enable_aws ? aws_s3_bucket.central[0].id : ""
@@ -283,8 +283,8 @@ module "gcp_us_central1" {
   unique_suffix    = local.unique_suffix
   common_labels    = local.common_tags
 
-  enable_gce       = var.enable_ec2_instances  # Reuse EC2 toggle for GCE
-  enable_functions = var.enable_lambda_functions  # Reuse Lambda toggle for Cloud Functions
+  enable_gce       = var.enable_ec2_instances    # Reuse EC2 toggle for GCE
+  enable_functions = var.enable_lambda_functions # Reuse Lambda toggle for Cloud Functions
   machine_type     = local.scenario_gce_machine_type
   function_timeout = local.scenario_function_timeout
 

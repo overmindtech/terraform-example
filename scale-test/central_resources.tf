@@ -92,7 +92,7 @@ resource "aws_sns_topic_subscription" "central_to_us_east_1" {
 # us-west-2 SQS -> Central SNS
 resource "aws_sns_topic_subscription" "central_to_us_west_2" {
   count    = local.enable_aws ? length(module.aws_us_west_2[0].sqs_queue_arns) : 0
-  provider = aws.us_east_1  # Subscription created in SNS region
+  provider = aws.us_east_1 # Subscription created in SNS region
 
   topic_arn = aws_sns_topic.central[0].arn
   protocol  = "sqs"
@@ -227,11 +227,11 @@ resource "aws_s3_bucket_policy" "scenario_central_s3" {
         ]
       },
       {
-        Sid    = "ScenarioDenyDelete"
-        Effect = "Deny"
+        Sid       = "ScenarioDenyDelete"
+        Effect    = "Deny"
         Principal = "*"
-        Action   = "s3:DeleteObject"
-        Resource = "${aws_s3_bucket.central[0].arn}/*"
+        Action    = "s3:DeleteObject"
+        Resource  = "${aws_s3_bucket.central[0].arn}/*"
       }
     ]
   })

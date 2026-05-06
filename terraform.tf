@@ -303,6 +303,12 @@ resource "aws_iam_openid_connect_provider" "env0" {
 # See https://cloud.google.com/iam/docs/workload-identity-federation
 # =============================================================================
 
+# Needed to construct the env0 GCP OIDC credential JSON (audience URL uses the
+# project *number*, not the project id).
+data "google_project" "current" {
+  project_id = var.gcp_project_id
+}
+
 resource "google_iam_workload_identity_pool" "deploy" {
   workload_identity_pool_id = "${var.example_env}-deploy"
   display_name              = "Deploy Pool (${var.example_env})"
@@ -421,11 +427,7 @@ resource "google_service_account_iam_member" "env0_wif" {
 
   service_account_id = google_service_account.deploy.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.deploy.name}/*"
-  condition {
-    title      = "env0-provider-only"
-    expression = "request.auth.claims.iss == 'https://login.app.env0.com/'"
-  }
+  member             = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.deploy.name}/subject/auth0|691b8530eba074a8989d8726"
 }
 
 resource "google_service_account_iam_member" "spacelift_wif" {

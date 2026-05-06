@@ -20,13 +20,13 @@ locals {
 
   # Regional resource counts (distribute across regions)
   regional_count = {
-    gce_instances    = ceil(var.resource_counts.ec2_instances / 4)
-    functions        = ceil(var.resource_counts.lambda_functions / 4)
-    pubsub_topics    = ceil(var.resource_counts.sns_topics / 4)
-    pubsub_subs      = ceil(var.resource_counts.sqs_queues / 4)
-    gcs_buckets      = ceil(var.resource_counts.s3_buckets / 4)
-    secrets          = ceil(var.resource_counts.ssm_parameters / 4)
-    firewall_rules   = ceil(var.resource_counts.security_groups / 4)
+    gce_instances  = ceil(var.resource_counts.ec2_instances / 4)
+    functions      = ceil(var.resource_counts.lambda_functions / 4)
+    pubsub_topics  = ceil(var.resource_counts.sns_topics / 4)
+    pubsub_subs    = ceil(var.resource_counts.sqs_queues / 4)
+    gcs_buckets    = ceil(var.resource_counts.s3_buckets / 4)
+    secrets        = ceil(var.resource_counts.ssm_parameters / 4)
+    firewall_rules = ceil(var.resource_counts.security_groups / 4)
   }
 
   # Common labels with region - GCP requires lowercase label keys
