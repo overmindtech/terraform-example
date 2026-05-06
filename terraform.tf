@@ -8,6 +8,10 @@ provider "aws" {
 provider "google" {
   project = var.gcp_project_id
   region  = var.gcp_region
+  # In env0, this file is dropped by the GCP OIDC deployment credential and
+  # contains an external_account WIF config. Locally it doesn't exist, so we
+  # fall through to Application Default Credentials (gcloud auth).
+  credentials = fileexists("${path.root}/env0_credential_configuration.json") ? file("${path.root}/env0_credential_configuration.json") : null
 }
 
 # Disable this temporarily during bootstrapping and use `terraform init
