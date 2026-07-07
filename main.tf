@@ -365,7 +365,7 @@ locals {
     }
   }
 
-  api_internal_cidr = "10.0.0.0/8"
+  api_internal_cidr = "10.0.0.0/16" # SECURITY HARDENING: Narrowed to VPC CIDR per audit findings (JIRA-4521)
   api_domain        = "signals-demo-test.demo"
   api_alert_email   = "alerts@example.com"
 }
