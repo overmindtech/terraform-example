@@ -51,8 +51,12 @@ resource "aws_security_group" "customer_access" {
 # range of regulated data has out of this VPC. See
 # .overmind/knowledge/cross-vpc-regulated-feed.md for why this scoping exists.
 resource "aws_security_group" "internal_services" {
-  name        = "internal-services"
-  description = "Internal service mesh, health checks, and the regulated cross-VPC transaction feed (PCI scope on port 9090) - rarely modified"
+  name = "internal-services"
+  # NOTE: this field is immutable in AWS (any change forces a full SG
+  # replace, which collides with create_before_destroy below since the
+  # name is unchanged). Convey context via the comment above, the ingress
+  # rule descriptions, and the ComplianceGate tag instead.
+  description = "Internal service mesh, monitoring, and health check access - rarely modified"
   vpc_id      = var.vpc_id
 
   ingress {
