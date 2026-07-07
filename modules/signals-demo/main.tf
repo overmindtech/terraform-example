@@ -281,6 +281,78 @@ resource "aws_cloudwatch_metric_alarm" "api_health" {
 }
 
 #------------------------------------------------------------------------------
+# RENAMES - the fraud-detection reframe renamed several resources that were
+# previously named as generic "monitoring" infrastructure. These moved blocks
+# tell Terraform this is an in-place rename, not a destroy+recreate, for any
+# state that still has the pre-reframe names.
+#------------------------------------------------------------------------------
+
+moved {
+  from = aws_vpc.monitoring
+  to   = aws_vpc.fraud_detection
+}
+
+moved {
+  from = aws_subnet.monitoring_a
+  to   = aws_subnet.fraud_detection_a
+}
+
+moved {
+  from = aws_subnet.monitoring_b
+  to   = aws_subnet.fraud_detection_b
+}
+
+moved {
+  from = aws_route_table.monitoring
+  to   = aws_route_table.fraud_detection
+}
+
+moved {
+  from = aws_route_table_association.monitoring_a
+  to   = aws_route_table_association.fraud_detection_a
+}
+
+moved {
+  from = aws_route_table_association.monitoring_b
+  to   = aws_route_table_association.fraud_detection_b
+}
+
+moved {
+  from = aws_vpc_peering_connection.monitoring_to_baseline
+  to   = aws_vpc_peering_connection.fraud_detection_to_core
+}
+
+moved {
+  from = aws_route.monitoring_to_baseline
+  to   = aws_route.fraud_detection_to_core
+}
+
+moved {
+  from = aws_route.baseline_to_monitoring
+  to   = aws_route.core_to_fraud_detection
+}
+
+moved {
+  from = aws_lb.monitoring_internal
+  to   = aws_lb.fraud_ingest
+}
+
+moved {
+  from = aws_lb_target_group.api_health
+  to   = aws_lb_target_group.txn_feed
+}
+
+moved {
+  from = aws_lb_listener.monitoring_internal_9090
+  to   = aws_lb_listener.fraud_ingest_9090
+}
+
+moved {
+  from = aws_lb_target_group_attachment.api_server_ip
+  to   = aws_lb_target_group_attachment.core_api_feed
+}
+
+#------------------------------------------------------------------------------
 # FRAUD-DETECTION VPC (peered) - regulated environment owned by the Risk team
 # This is the "needle in the haystack" - a live, cross-VPC dependency that is
 # NOT wired up via any Terraform reference (no depends_on, no interpolated
