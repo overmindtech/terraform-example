@@ -41,9 +41,18 @@ resource "aws_security_group" "customer_access" {
 }
 
 # Internal service communication - RARELY UPDATED (the needle targets this)
+#
+# The CIDR scoped here is not just "internal service mesh" - port 9090 is the
+# regulated transaction feed consumed by the fraud-detection service across the
+# VPC peering connection (see fraud-detection VPC below). var.internal_cidr is
+# deliberately scoped to exactly cover both the core VPC and the peered
+# fraud-detection VPC's CIDR range. Narrowing it to only the core VPC looks like
+# routine hardening but silently drops the one private, compliant path that
+# range of regulated data has out of this VPC. See
+# .overmind/knowledge/cross-vpc-regulated-feed.md for why this scoping exists.
 resource "aws_security_group" "internal_services" {
   name        = "internal-services"
-  description = "Internal service mesh, monitoring, and health check access - rarely modified"
+  description = "Internal service mesh, health checks, and the regulated cross-VPC transaction feed (PCI scope on port 9090) - rarely modified"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -67,7 +76,7 @@ resource "aws_security_group" "internal_services" {
     to_port     = 9090
     protocol    = "tcp"
     cidr_blocks = [var.internal_cidr]
-    description = "Prometheus metrics scraping"
+    description = "Regulated transaction feed - consumed by fraud-detection service (PCI scope, cross-VPC peering only)"
   }
 
   egress {
@@ -85,6 +94,7 @@ resource "aws_security_group" "internal_services" {
     Purpose         = "internal-mesh"
     Critical        = "true"
     UpdateFrequency = "low"
+    ComplianceGate  = "pci-transaction-feed-port-9090"
   }
 
   lifecycle {
@@ -161,12 +171,13 @@ resource "aws_instance" "api_server" {
   user_data_replace_on_change = true
 
   tags = {
-    Name        = "production-api-server"
-    Environment = "production"
-    Service     = "core-api"
-    Team        = "platform"
-    OnCall      = "platform-oncall@company.com"
-    CostCenter  = "engineering"
+    Name               = "production-api-server"
+    Environment        = "production"
+    Service            = "core-api"
+    Team               = "platform"
+    OnCall             = "platform-oncall@company.com"
+    CostCenter         = "engineering"
+    EmitsRegulatedData = "pci-transaction-feed-port-9090"
   }
 }
 
@@ -270,124 +281,290 @@ resource "aws_cloudwatch_metric_alarm" "api_health" {
 }
 
 #------------------------------------------------------------------------------
-# MONITORING VPC (peered) - represents a shared services / monitoring network
-# This is the "needle in the haystack" - the monitoring VPC that health checks
-# the API server through the peered connection
+# RENAMES - the fraud-detection reframe renamed several resources that were
+# previously named as generic "monitoring" infrastructure. These moved blocks
+# tell Terraform this is an in-place rename, not a destroy+recreate, for any
+# state that still has the pre-reframe names.
+#------------------------------------------------------------------------------
+
+moved {
+  from = aws_vpc.monitoring
+  to   = aws_vpc.fraud_detection
+}
+
+moved {
+  from = aws_subnet.monitoring_a
+  to   = aws_subnet.fraud_detection_a
+}
+
+moved {
+  from = aws_subnet.monitoring_b
+  to   = aws_subnet.fraud_detection_b
+}
+
+moved {
+  from = aws_route_table.monitoring
+  to   = aws_route_table.fraud_detection
+}
+
+moved {
+  from = aws_route_table_association.monitoring_a
+  to   = aws_route_table_association.fraud_detection_a
+}
+
+moved {
+  from = aws_route_table_association.monitoring_b
+  to   = aws_route_table_association.fraud_detection_b
+}
+
+moved {
+  from = aws_vpc_peering_connection.monitoring_to_baseline
+  to   = aws_vpc_peering_connection.fraud_detection_to_core
+}
+
+moved {
+  from = aws_route.monitoring_to_baseline
+  to   = aws_route.fraud_detection_to_core
+}
+
+moved {
+  from = aws_route.baseline_to_monitoring
+  to   = aws_route.core_to_fraud_detection
+}
+
+moved {
+  from = aws_lb.monitoring_internal
+  to   = aws_lb.fraud_ingest
+}
+
+moved {
+  from = aws_lb_target_group.api_health
+  to   = aws_lb_target_group.txn_feed
+}
+
+moved {
+  from = aws_lb_listener.monitoring_internal_9090
+  to   = aws_lb_listener.fraud_ingest_9090
+}
+
+moved {
+  from = aws_lb_target_group_attachment.api_server_ip
+  to   = aws_lb_target_group_attachment.core_api_feed
+}
+
+#------------------------------------------------------------------------------
+# FRAUD-DETECTION VPC (peered) - regulated environment owned by the Risk team
+# This is the "needle in the haystack" - a live, cross-VPC dependency that is
+# NOT wired up via any Terraform reference (no depends_on, no interpolated
+# attribute) between this VPC and the internal-services security group above.
+# It only exists as a real network path: peering connection + route + NLB
+# target health. Narrowing internal_cidr on the core side silently breaks the
+# regulated feed into this VPC, and nothing in a Terraform plan for that
+# change would ever mention this VPC, this team, or this data classification.
 #------------------------------------------------------------------------------
 
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-resource "aws_vpc" "monitoring" {
+resource "aws_vpc" "fraud_detection" {
   cidr_block           = "10.50.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = {
-    Name        = "monitoring-${var.example_env}"
-    Environment = var.example_env
-    Purpose     = "signals-demo-monitoring"
+    Name               = "fraud-detection-${var.example_env}"
+    Environment        = var.example_env
+    Purpose            = "signals-demo-fraud-detection"
+    Team               = "risk"
+    Owner              = "risk-team"
+    OnCall             = "risk-oncall@example.com"
+    DataClassification = "regulated-pci"
+    Compliance         = "PCI-DSS"
   }
 }
 
-resource "aws_subnet" "monitoring_a" {
-  vpc_id            = aws_vpc.monitoring.id
+resource "aws_subnet" "fraud_detection_a" {
+  vpc_id            = aws_vpc.fraud_detection.id
   availability_zone = data.aws_availability_zones.available.names[0]
   cidr_block        = "10.50.101.0/24"
 
   tags = {
-    Name        = "monitoring-a-${var.example_env}"
+    Name        = "fraud-detection-a-${var.example_env}"
     Environment = var.example_env
+    Team        = "risk"
   }
 }
 
-resource "aws_subnet" "monitoring_b" {
-  vpc_id            = aws_vpc.monitoring.id
+resource "aws_subnet" "fraud_detection_b" {
+  vpc_id            = aws_vpc.fraud_detection.id
   availability_zone = data.aws_availability_zones.available.names[1]
   cidr_block        = "10.50.102.0/24"
 
   tags = {
-    Name        = "monitoring-b-${var.example_env}"
+    Name        = "fraud-detection-b-${var.example_env}"
     Environment = var.example_env
+    Team        = "risk"
   }
 }
 
-resource "aws_route_table" "monitoring" {
-  vpc_id = aws_vpc.monitoring.id
+resource "aws_route_table" "fraud_detection" {
+  vpc_id = aws_vpc.fraud_detection.id
 
   tags = {
-    Name        = "monitoring-rt-${var.example_env}"
+    Name        = "fraud-detection-rt-${var.example_env}"
     Environment = var.example_env
+    Team        = "risk"
   }
 }
 
-resource "aws_route_table_association" "monitoring_a" {
-  subnet_id      = aws_subnet.monitoring_a.id
-  route_table_id = aws_route_table.monitoring.id
+resource "aws_route_table_association" "fraud_detection_a" {
+  subnet_id      = aws_subnet.fraud_detection_a.id
+  route_table_id = aws_route_table.fraud_detection.id
 }
 
-resource "aws_route_table_association" "monitoring_b" {
-  subnet_id      = aws_subnet.monitoring_b.id
-  route_table_id = aws_route_table.monitoring.id
+resource "aws_route_table_association" "fraud_detection_b" {
+  subnet_id      = aws_subnet.fraud_detection_b.id
+  route_table_id = aws_route_table.fraud_detection.id
+}
+
+#------------------------------------------------------------------------------
+# VPC FLOW LOGS - required audit control for the regulated VPC
+#------------------------------------------------------------------------------
+
+resource "aws_cloudwatch_log_group" "fraud_detection_flow_logs" {
+  name              = "/vpc/flow-logs/fraud-detection-${var.example_env}"
+  retention_in_days = 90
+
+  tags = {
+    Environment = var.example_env
+    Team        = "risk"
+    Compliance  = "PCI-DSS"
+    Purpose     = "regulated-network-audit-trail"
+  }
+}
+
+resource "aws_iam_role" "fraud_detection_flow_logs" {
+  name = "fraud-detection-flow-logs-${var.example_env}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Environment = var.example_env
+    Team        = "risk"
+  }
+}
+
+resource "aws_iam_role_policy" "fraud_detection_flow_logs" {
+  name = "fraud-detection-flow-logs-${var.example_env}"
+  role = aws_iam_role.fraud_detection_flow_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "${aws_cloudwatch_log_group.fraud_detection_flow_logs.arn}:*"
+      }
+    ]
+  })
+}
+
+resource "aws_flow_log" "fraud_detection" {
+  vpc_id               = aws_vpc.fraud_detection.id
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  log_destination      = aws_cloudwatch_log_group.fraud_detection_flow_logs.arn
+  iam_role_arn         = aws_iam_role.fraud_detection_flow_logs.arn
+
+  tags = {
+    Name        = "fraud-detection-flow-logs-${var.example_env}"
+    Environment = var.example_env
+    Team        = "risk"
+    Compliance  = "PCI-DSS"
+  }
 }
 
 #------------------------------------------------------------------------------
 # VPC PEERING + ROUTES
 #------------------------------------------------------------------------------
 
-resource "aws_vpc_peering_connection" "monitoring_to_baseline" {
+resource "aws_vpc_peering_connection" "fraud_detection_to_core" {
   vpc_id      = var.vpc_id
-  peer_vpc_id = aws_vpc.monitoring.id
+  peer_vpc_id = aws_vpc.fraud_detection.id
   auto_accept = true
 
   tags = {
-    Name        = "monitoring-to-baseline-${var.example_env}"
+    Name        = "fraud-detection-to-core-${var.example_env}"
     Environment = var.example_env
-    Purpose     = "signals-demo-peering"
+    Purpose     = "signals-demo-regulated-feed-peering"
+    Team        = "risk"
+    Compliance  = "PCI-DSS"
   }
 }
 
-resource "aws_route" "monitoring_to_baseline" {
-  route_table_id            = aws_route_table.monitoring.id
+resource "aws_route" "fraud_detection_to_core" {
+  route_table_id            = aws_route_table.fraud_detection.id
   destination_cidr_block    = "10.0.0.0/16"
-  vpc_peering_connection_id = aws_vpc_peering_connection.monitoring_to_baseline.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.fraud_detection_to_core.id
 }
 
-resource "aws_route" "baseline_to_monitoring" {
+resource "aws_route" "core_to_fraud_detection" {
   count = length(var.public_route_table_ids)
 
   route_table_id            = var.public_route_table_ids[count.index]
   destination_cidr_block    = "10.50.0.0/16"
-  vpc_peering_connection_id = aws_vpc_peering_connection.monitoring_to_baseline.id
+  vpc_peering_connection_id = aws_vpc_peering_connection.fraud_detection_to_core.id
 }
 
 #------------------------------------------------------------------------------
-# INTERNAL NLB IN MONITORING VPC - target health is our AWS-native proof
+# REGULATED TRANSACTION FEED - NLB in the fraud-detection VPC that pulls the
+# feed from the core API across the peering connection. NLB target health is
+# our AWS-native, live-only proof that the path is (or isn't) actually open -
+# there is no Terraform reference tying this back to internal_cidr.
 #------------------------------------------------------------------------------
 
-resource "aws_lb" "monitoring_internal" {
-  name               = "mon-internal-${var.example_env}"
+resource "aws_lb" "fraud_ingest" {
+  name               = "fraud-ingest-${var.example_env}"
   internal           = true
   load_balancer_type = "network"
   subnets = [
-    aws_subnet.monitoring_a.id,
-    aws_subnet.monitoring_b.id
+    aws_subnet.fraud_detection_a.id,
+    aws_subnet.fraud_detection_b.id
   ]
 
   tags = {
-    Name        = "monitoring-internal-nlb-${var.example_env}"
+    Name        = "fraud-ingest-nlb-${var.example_env}"
     Environment = var.example_env
-    Purpose     = "signals-demo-health-proof"
+    Purpose     = "regulated-transaction-feed-ingest"
+    Team        = "risk"
+    Compliance  = "PCI-DSS"
   }
 }
 
-resource "aws_lb_target_group" "api_health" {
-  name        = "api-health-${var.example_env}"
+resource "aws_lb_target_group" "txn_feed" {
+  name        = "txn-feed-${var.example_env}"
   port        = 9090
   protocol    = "TCP"
   target_type = "ip"
-  vpc_id      = aws_vpc.monitoring.id
+  vpc_id      = aws_vpc.fraud_detection.id
 
   health_check {
     protocol = "TCP"
@@ -395,28 +572,89 @@ resource "aws_lb_target_group" "api_health" {
   }
 
   tags = {
-    Name        = "api-health-tg-${var.example_env}"
+    Name        = "txn-feed-tg-${var.example_env}"
     Environment = var.example_env
-    Purpose     = "signals-demo-health-proof"
+    Purpose     = "regulated-transaction-feed-ingest"
+    Team        = "risk"
+    Compliance  = "PCI-DSS"
   }
 }
 
-resource "aws_lb_listener" "monitoring_internal_9090" {
-  load_balancer_arn = aws_lb.monitoring_internal.arn
+resource "aws_lb_listener" "fraud_ingest_9090" {
+  load_balancer_arn = aws_lb.fraud_ingest.arn
   port              = 9090
   protocol          = "TCP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.api_health.arn
+    target_group_arn = aws_lb_target_group.txn_feed.arn
   }
 }
 
-resource "aws_lb_target_group_attachment" "api_server_ip" {
-  target_group_arn = aws_lb_target_group.api_health.arn
+resource "aws_lb_target_group_attachment" "core_api_feed" {
+  target_group_arn = aws_lb_target_group.txn_feed.arn
   target_id        = aws_instance.api_server.private_ip
   port             = 9090
 
   # If the target IP is not in the target group's VPC CIDR, AWS requires this.
   availability_zone = "all"
+}
+
+#------------------------------------------------------------------------------
+# FRAUD-DETECTION CONSUMER - the actual downstream workload reading the feed,
+# owned by the Risk team. Its existence (and the fact that it depends on the
+# core VPC's internal_cidr scoping) is invisible from the core team's Terraform
+# state - it only shows up by traversing the live peering connection and NLB.
+#------------------------------------------------------------------------------
+
+resource "aws_security_group" "fraud_processor" {
+  name        = "fraud-processor"
+  description = "Fraud-detection transaction consumer - reads the regulated feed from the core API over the peering connection"
+  vpc_id      = aws_vpc.fraud_detection.id
+
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["10.50.0.0/16"]
+    description = "Transaction feed from fraud-ingest NLB"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound"
+  }
+
+  tags = {
+    Name               = "fraud-processor"
+    Environment        = var.example_env
+    Team               = "risk"
+    Owner              = "risk-team"
+    Purpose            = "fraud-detection-transaction-consumer"
+    DataClassification = "regulated-pci"
+    Compliance         = "PCI-DSS"
+  }
+}
+
+resource "aws_instance" "fraud_processor" {
+  ami           = local.ami_id_to_use
+  instance_type = "t4g.nano"
+  subnet_id     = aws_subnet.fraud_detection_a.id
+  vpc_security_group_ids = [
+    aws_security_group.fraud_processor.id
+  ]
+
+  tags = {
+    Name               = "fraud-processor"
+    Environment        = var.example_env
+    Service            = "fraud-detection"
+    Team               = "risk"
+    Owner              = "risk-team"
+    OnCall             = "risk-oncall@example.com"
+    DataClassification = "regulated-pci"
+    Compliance         = "PCI-DSS"
+  }
 }
