@@ -29,7 +29,7 @@ variable "customer_cidrs" {
 }
 
 variable "internal_cidr" {
-  description = "Internal network CIDR for service mesh, monitoring, and health checks. This rarely changes. THE NEEDLE MODIFIES THIS."
+  description = "Internal network CIDR for service mesh, health checks, and the regulated cross-VPC transaction feed (port 9090, PCI scope) consumed by the fraud-detection VPC over VPC peering. Deliberately scoped to cover both the core VPC and the peered fraud-detection VPC's range - not accidental. This rarely changes. THE NEEDLE MODIFIES THIS."
   type        = string
   default     = "10.0.0.0/8"
 }

@@ -48,28 +48,35 @@ output "route53_nameservers" {
   value       = aws_route53_zone.api.name_servers
 }
 
-# Monitoring VPC outputs (the "needle in the haystack")
-output "monitoring_vpc_id" {
-  description = "ID of the peered monitoring/shared-services VPC"
-  value       = aws_vpc.monitoring.id
+# Fraud-detection VPC outputs (the "needle in the haystack") - regulated
+# environment owned by the Risk team, reachable only via live peering/NLB
+# traversal, not via any Terraform reference to internal_cidr.
+output "fraud_detection_vpc_id" {
+  description = "ID of the peered, regulated fraud-detection VPC (owned by the Risk team)"
+  value       = aws_vpc.fraud_detection.id
 }
 
 output "vpc_peering_connection_id" {
-  description = "VPC peering connection ID between baseline and monitoring VPC"
-  value       = aws_vpc_peering_connection.monitoring_to_baseline.id
+  description = "VPC peering connection ID between the core VPC and the fraud-detection VPC"
+  value       = aws_vpc_peering_connection.fraud_detection_to_core.id
 }
 
-output "monitoring_nlb_arn" {
-  description = "ARN of the internal NLB in the monitoring VPC"
-  value       = aws_lb.monitoring_internal.arn
+output "fraud_ingest_nlb_arn" {
+  description = "ARN of the internal NLB in the fraud-detection VPC that ingests the regulated transaction feed"
+  value       = aws_lb.fraud_ingest.arn
 }
 
-output "monitoring_nlb_dns_name" {
-  description = "DNS name of the internal NLB in the monitoring VPC"
-  value       = aws_lb.monitoring_internal.dns_name
+output "fraud_ingest_nlb_dns_name" {
+  description = "DNS name of the internal NLB in the fraud-detection VPC"
+  value       = aws_lb.fraud_ingest.dns_name
 }
 
-output "monitoring_target_group_arn" {
-  description = "Target group ARN used to health-check the API instance from the monitoring VPC"
-  value       = aws_lb_target_group.api_health.arn
+output "txn_feed_target_group_arn" {
+  description = "Target group ARN used to pull the regulated transaction feed from the core API into the fraud-detection VPC"
+  value       = aws_lb_target_group.txn_feed.arn
+}
+
+output "fraud_processor_instance_id" {
+  description = "EC2 instance ID of the fraud-detection consumer that reads the regulated transaction feed"
+  value       = aws_instance.fraud_processor.id
 }

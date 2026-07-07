@@ -63,32 +63,37 @@ output "shared_sg_manual_instance_command" {
 }
 
 # ------------------------------------------------------------------------------
-# Signals demo (monitoring VPC + NLB health proof)
+# Signals demo (fraud-detection VPC + regulated transaction feed NLB)
 # ------------------------------------------------------------------------------
 
-output "signals_monitoring_vpc_id" {
-  description = "ID of the peered monitoring/shared-services VPC (signals demo)"
-  value       = var.enable_api_access ? module.api_access[0].monitoring_vpc_id : null
+output "signals_fraud_detection_vpc_id" {
+  description = "ID of the peered, regulated fraud-detection VPC (signals demo)"
+  value       = var.enable_api_access ? module.api_access[0].fraud_detection_vpc_id : null
 }
 
 output "signals_vpc_peering_connection_id" {
-  description = "VPC peering connection ID between baseline and monitoring VPC (signals demo)"
+  description = "VPC peering connection ID between the core VPC and the fraud-detection VPC (signals demo)"
   value       = var.enable_api_access ? module.api_access[0].vpc_peering_connection_id : null
 }
 
-output "signals_monitoring_nlb_arn" {
-  description = "ARN of the internal NLB in the monitoring VPC (signals demo)"
-  value       = var.enable_api_access ? module.api_access[0].monitoring_nlb_arn : null
+output "signals_fraud_ingest_nlb_arn" {
+  description = "ARN of the internal NLB in the fraud-detection VPC (signals demo)"
+  value       = var.enable_api_access ? module.api_access[0].fraud_ingest_nlb_arn : null
 }
 
-output "signals_monitoring_nlb_dns_name" {
-  description = "DNS name of the internal NLB in the monitoring VPC (signals demo)"
-  value       = var.enable_api_access ? module.api_access[0].monitoring_nlb_dns_name : null
+output "signals_fraud_ingest_nlb_dns_name" {
+  description = "DNS name of the internal NLB in the fraud-detection VPC (signals demo)"
+  value       = var.enable_api_access ? module.api_access[0].fraud_ingest_nlb_dns_name : null
 }
 
-output "signals_monitoring_target_group_arn" {
-  description = "Target group ARN used to health-check the API instance from the monitoring VPC (signals demo)"
-  value       = var.enable_api_access ? module.api_access[0].monitoring_target_group_arn : null
+output "signals_txn_feed_target_group_arn" {
+  description = "Target group ARN used to pull the regulated transaction feed into the fraud-detection VPC (signals demo)"
+  value       = var.enable_api_access ? module.api_access[0].txn_feed_target_group_arn : null
+}
+
+output "signals_fraud_processor_instance_id" {
+  description = "EC2 instance ID of the fraud-detection consumer that reads the regulated transaction feed (signals demo)"
+  value       = var.enable_api_access ? module.api_access[0].fraud_processor_instance_id : null
 }
 
 # ------------------------------------------------------------------------------
