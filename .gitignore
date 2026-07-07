@@ -31,6 +31,9 @@ MEMORY-DEMO-QUICKSTART.md
 
 .idea/scale-test/modules/.DS_Store
 
+# macOS
+.DS_Store
+
 # PromptFoo eval outputs (not the configs)
 **/eval-results.json
 **/.promptfoo/

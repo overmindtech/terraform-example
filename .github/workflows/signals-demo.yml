@@ -1,225 +1,41 @@
-name: Update Customer IP Ranges
+name: Signals Demo - Create Needle PRs
 
 on:
-  schedule:
-    # Run every day at 2am UTC
-    - cron: '0 2 * * *'
-  workflow_dispatch:
-    inputs:
-      include_needle:
-        description: Include needle scenario (tighten internal CIDR + open PR)
-        type: boolean
-        required: false
-        default: false
-      target_branch:
-        description: Target branch for pull request (only used when include_needle is true)
-        type: choice
-        required: false
-        default: main
-        options:
-          - main
-          - demo/env0
-          - demo/spacelift
-          - demo/tfc
+  workflow_dispatch: {}
 
 concurrency:
   group: signals-demo
   cancel-in-progress: false
 
 jobs:
-  modify:
-    name: Modify main.tf (routine or needle)
+  cleanup-old-branches:
+    name: Delete stale demo branches
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GH_PAT }}
-          ref: main
-
-      - name: Configure Git
-        run: |
-          # Use a neutral automation identity that matches what you'd typically see in real repos.
-          git config user.name "Platform Automation"
-          git config user.email "platform-automation@company.com"
-
-      - name: Modify customer IP ranges
-        run: |
-          # Routine allowlist maintenance:
-          # - Never narrow or shift customer CIDRs (avoid breaking existing clients).
-          # - Broaden exactly one customer CIDR per run (small, innocuous change), rotating.
-          # - Once all customers are at a cap, add a new customer (routine onboarding churn).
-          python3 .github/scripts/routine-allowlist-update.py main.tf
-
-      - name: Needle scenario - tighten internal CIDR
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.include_needle == 'true' }}
-        run: |
-          python3 .github/scripts/update-internal-cidr.py main.tf "10.0.0.0/16" "SECURITY HARDENING: Narrowed to VPC CIDR per audit findings"
-
-      - name: Show changes
-        run: |
-          echo "## Changes to main.tf" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```diff' >> $GITHUB_STEP_SUMMARY
-          git diff main.tf >> $GITHUB_STEP_SUMMARY || echo "No changes detected"
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          # Also print to console
-          echo "=== Git diff ==="
-          git diff main.tf || echo "No changes detected"
-
-      - name: Upload artifact (modified main.tf)
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: signals-demo-main-tf
-          if-no-files-found: error
-          path: |
-            main.tf
-
-  plan-and-apply:
-    name: Terraform plan/apply (routine only)
-    runs-on: ubuntu-latest
-    needs: modify
-    if: >-
-      ${{
-        needs.modify.result == 'success' &&
-        (
-          github.event_name == 'schedule' ||
-          (github.event_name == 'workflow_dispatch' && github.event.inputs.include_needle != 'true')
-        )
-      }}
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GH_PAT }}
-          ref: main
-
-      - name: Download modified main.tf
-        uses: actions/download-artifact@v8
-        with:
-          name: signals-demo-main-tf
-          path: ./artifacts
-
-      - name: Restore modified main.tf
-        run: |
-          cp ./artifacts/main.tf ./main.tf
-
-      - name: Terraform Init
-        uses: ./.github/actions/terraform_init/
-        with:
-          terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
-          terraform_workspace: terraform-example
-          gcp_workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          gcp_service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-
-      - name: Convert plan to JSON
-        run: terraform show -json tfplan > tfplan.json
-
-      - uses: overmindtech/actions/install-cli@main
-        with:
-          version: latest
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: overmindtech/actions/submit-plan@main
-        id: submit-plan
-        with:
-          ovm-api-key: ${{ secrets.OVM_API_KEY }}
-          plan-json: tfplan.json
-          tags: 'model=risks_v6'
-
-      - uses: overmindtech/actions/start-change@main
-        with:
-          ovm-api-key: ${{ secrets.OVM_API_KEY }}
-
-      - name: Terraform Apply
-        id: terraform-apply
-        run: terraform apply -auto-approve tfplan
-
-      - uses: overmindtech/actions/end-change@main
-        if: steps.terraform-apply.outcome == 'success'
-        with:
-          ovm-api-key: ${{ secrets.OVM_API_KEY }}
-
-      - name: Upload plan artifacts (optional)
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: signals-demo-tfplan
-          if-no-files-found: ignore
-          path: |
-            tfplan
-            tfplan.json
-
-  commit-routine:
-    name: Commit routine changes directly to main
-    runs-on: ubuntu-latest
-    needs: plan-and-apply
-    if: >-
-      ${{
-        needs.plan-and-apply.result == 'success' &&
-        (
-          github.event_name == 'schedule' ||
-          (github.event_name == 'workflow_dispatch' && github.event.inputs.include_needle != 'true')
-        )
-      }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_PAT }}
-          ref: main
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-
-      - name: Configure Git
-        run: |
-          git config user.name "Platform Automation"
-          git config user.email "platform-automation@company.com"
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: signals-demo-main-tf
-          path: ./artifacts
-
-      - name: Restore modified main.tf
-        run: |
-          cp ./artifacts/main.tf ./main.tf
-
-      - name: Terraform fmt
-        run: terraform fmt -no-color main.tf
-
-      - name: Commit and push
+      - name: Delete stale demo branches
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          git add main.tf
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: update customer IP ranges"
-            git push origin main
-          fi
+          git fetch origin
+          git ls-remote --heads origin \
+            | awk '{print $2}' \
+            | sed 's#refs/heads/##' \
+            | grep -E '^(security/jira-4521-narrow-internal-cidr-|demo/cross-vpc-sg-narrowing-with-knowledge|signals-demo/needle-)' \
+            | while read -r branch; do
+                echo "Deleting stale branch: $branch"
+                git push origin --delete "$branch" || echo "Could not delete $branch (may already be gone)"
+              done
 
-  create-pr:
-    name: Create PR for security hardening change
+  create-prs:
+    name: Create needle PRs (no-knowledge + with-knowledge)
     runs-on: ubuntu-latest
-    needs: modify
-    if: >-
-      ${{
-        needs.modify.result == 'success' &&
-        github.event_name == 'workflow_dispatch' &&
-        github.event.inputs.include_needle == 'true'
-      }}
+    needs: cleanup-old-branches
     permissions:
       contents: write
       pull-requests: write
@@ -237,46 +53,43 @@ jobs:
           git config user.name "Platform Automation"
           git config user.email "platform-automation@company.com"
 
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: signals-demo-main-tf
-          path: ./artifacts
-
-      - name: Restore modified main.tf
+      - name: Needle scenario - narrow internal CIDR
         run: |
-          cp ./artifacts/main.tf ./main.tf
+          python3 .github/scripts/update-internal-cidr.py main.tf "10.0.0.0/16" "SECURITY HARDENING: Narrowed to VPC CIDR per audit findings (JIRA-4521)"
+          terraform fmt -no-color main.tf
 
-      - name: Terraform fmt
-        run: terraform fmt -no-color main.tf
+      - name: Show changes
+        run: |
+          echo "## Changes to main.tf" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```diff' >> $GITHUB_STEP_SUMMARY
+          git diff main.tf >> $GITHUB_STEP_SUMMARY || echo "No changes detected"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "=== Git diff ==="
+          git diff main.tf || echo "No changes detected"
 
-      - name: Create branch, commit, and push
+      - name: Create no-knowledge branch, commit, and push
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          # Use a realistic branch naming convention (team/topic + ticket).
           BRANCH="security/jira-4521-narrow-internal-cidr-$(date +%Y%m%d-%H%M%S)"
-          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          echo "BRANCH_NO_KNOWLEDGE=$BRANCH" >> "$GITHUB_ENV"
 
           git checkout -b "$BRANCH"
           git add main.tf
 
           if git diff --staged --quiet; then
             echo "No changes to commit"
-            exit 0
+            exit 1
           fi
 
           git commit -m "security: narrow internal ingress CIDR (JIRA-4521)"
           git push -u origin "$BRANCH"
 
-      - name: Open pull request
+      - name: Open pull request (no knowledge file)
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          # Use target_branch input if provided, otherwise default to main
-          TARGET_BRANCH="${{ github.event.inputs.target_branch || 'main' }}"
-          echo "Creating PR targeting branch: $TARGET_BRANCH"
-          
           BODY="$(printf '%s\n' \
             '## Summary' \
             '- Narrow internal ingress CIDR used for service/monitoring access.' \
@@ -292,7 +105,48 @@ jobs:
           )"
 
           gh pr create \
-            --base "$TARGET_BRANCH" \
-            --head "$BRANCH" \
+            --base main \
+            --head "$BRANCH_NO_KNOWLEDGE" \
             --title "security: narrow internal ingress CIDR (JIRA-4521)" \
+            --body "$BODY"
+
+      - name: Create with-knowledge branch, add knowledge file, commit, and push
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          BRANCH="demo/cross-vpc-sg-narrowing-with-knowledge-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH_WITH_KNOWLEDGE=$BRANCH" >> "$GITHUB_ENV"
+
+          git checkout -b "$BRANCH"
+
+          mkdir -p .overmind/knowledge
+          cp .github/scripts/knowledge-templates/cross-vpc-regulated-feed.md .overmind/knowledge/cross-vpc-regulated-feed.md
+          git add .overmind/knowledge/cross-vpc-regulated-feed.md
+
+          git commit -m "docs: add cross-VPC regulated feed knowledge for internal-services SG"
+          git push -u origin "$BRANCH"
+
+      - name: Open pull request (with knowledge file)
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          BODY="$(printf '%s\n' \
+            '## Summary' \
+            '- Narrow internal ingress CIDR used for service/monitoring access.' \
+            '- Adds `.overmind/knowledge/cross-vpc-regulated-feed.md` documenting the cross-VPC dependency this change affects.' \
+            '' \
+            '## Context' \
+            '- JIRA-4521: Reduce internal exposure based on audit feedback.' \
+            '' \
+            '## Testing' \
+            '- Terraform plan reviewed in CI.' \
+            '' \
+            '## Rollout / Risk' \
+            '- If any internal tooling relies on the broader range, it may lose access; monitor health checks and alarms after merge.' \
+          )"
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH_WITH_KNOWLEDGE" \
+            --title "security: narrow internal ingress CIDR (JIRA-4521) [with knowledge file]" \
             --body "$BODY"
