@@ -16,40 +16,42 @@ jobs:
         id: fmt
         run: terraform fmt -check -diff
 
-  policy-checks:
-    runs-on: ubuntu-latest
-    if: github.event.action != 'closed' && github.event.pull_request.base.ref == 'main'
-    needs: execute
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Terraform Init (for policies)
-        uses: ./.github/actions/terraform_init/
-        with:
-          terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
-          terraform_workspace: terraform-example
-          gcp_workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          gcp_service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-
-      - name: Download terraform plan
-        uses: actions/download-artifact@v8
-        with:
-          name: tfplan
-
-      - name: Convert plan to JSON
-        run: |
-          terraform show -json tfplan > tfplan.json
-
-      - uses: overmindtech/policy-signals-action@v1
-        with:
-          policies-path: './policies'
-          terraform-plan-json: './tfplan.json'
-          overmind-api-key: ${{ secrets.OVM_API_KEY }}
-          ticket-link: ${{ needs.execute.outputs.run-url }}
+  # Disabled: not currently in use, and it adds extra runtime to every PR.
+  # Uncomment to re-enable policy checks against the Terraform plan.
+  # policy-checks:
+  #   runs-on: ubuntu-latest
+  #   if: github.event.action != 'closed' && github.event.pull_request.base.ref == 'main'
+  #   needs: execute
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #     pull-requests: write
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #
+  #     - name: Terraform Init (for policies)
+  #       uses: ./.github/actions/terraform_init/
+  #       with:
+  #         terraform_deploy_role: ${{ vars.TERRAFORM_DEPLOY_ROLE }}
+  #         terraform_workspace: terraform-example
+  #         gcp_workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  #         gcp_service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+  #
+  #     - name: Download terraform plan
+  #       uses: actions/download-artifact@v8
+  #       with:
+  #         name: tfplan
+  #
+  #     - name: Convert plan to JSON
+  #       run: |
+  #         terraform show -json tfplan > tfplan.json
+  #
+  #     - uses: overmindtech/policy-signals-action@v1
+  #       with:
+  #         policies-path: './policies'
+  #         terraform-plan-json: './tfplan.json'
+  #         overmind-api-key: ${{ secrets.OVM_API_KEY }}
+  #         ticket-link: ${{ needs.execute.outputs.run-url }}
 
   execute:
     runs-on: ubuntu-latest
@@ -180,15 +182,17 @@ jobs:
           infracost-api-key: ${{ secrets.INFRACOST_API_KEY }}
           terraform-plan-json: ./tfplan-cost.json
 
-  auto-approval:
-    runs-on: ubuntu-latest
-    if: github.event.action != 'closed' && github.event.pull_request.base.ref == 'main'
-    needs: execute
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: overmindtech/approval-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          block-on-high-risks: true
-          max-medium-risks: 3
+  # Disabled: not currently in use, and it adds extra runtime to every PR.
+  # Uncomment to re-enable auto-approval based on Overmind risk signals.
+  # auto-approval:
+  #   runs-on: ubuntu-latest
+  #   if: github.event.action != 'closed' && github.event.pull_request.base.ref == 'main'
+  #   needs: execute
+  #   permissions:
+  #     pull-requests: write
+  #   steps:
+  #     - uses: overmindtech/approval-action@v1
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         block-on-high-risks: true
+  #         max-medium-risks: 3
