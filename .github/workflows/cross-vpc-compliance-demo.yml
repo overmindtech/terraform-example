@@ -110,6 +110,35 @@ jobs:
             --title "security: narrow internal ingress CIDR (JIRA-4521)" \
             --body "$BODY"
 
+      - name: Wait for PR #1's checks before opening PR #2
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # PR #1's "execute" job and PR #2's "execute" job both plan/apply
+          # against the same shared tfstate concurrency group. Opening PR #2
+          # immediately after PR #1 raced the two: PR #2's request could land
+          # while PR #1's execute job was still pending (not yet started),
+          # which GitHub Actions treats as a *replacement*, not a queue entry,
+          # cancelling PR #1's job outright. Waiting here for PR #1's checks
+          # to actually finish removes the race entirely, rather than relying
+          # on concurrency queueing behavior to save us.
+          BRANCH="$BRANCH_NO_KNOWLEDGE"
+          echo "Waiting for checks on $BRANCH to appear..."
+
+          # GitHub Actions typically takes 30-90s to register checks after a
+          # PR is created; querying before that returns "no checks reported"
+          # (exit 1), not a pending state, so retry until something shows up.
+          for i in $(seq 1 18); do
+            if [ -n "$(gh pr checks "$BRANCH" --json state -q '.[0].state' 2>/dev/null)" ]; then
+              echo "Checks have registered, watching until they finish..."
+              break
+            fi
+            echo "No checks reported yet (attempt $i/18), waiting 10s..."
+            sleep 10
+          done
+
+          gh pr checks "$BRANCH" --watch --interval 15 || true
+
       - name: Create with-knowledge branch, add knowledge file, commit, and push
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
