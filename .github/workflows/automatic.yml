@@ -63,6 +63,13 @@ jobs:
       actions: read # access artifacts
     concurrency:
       group: tfstate
+      # Default concurrency behavior only allows one *pending* run per group and
+      # cancels/replaces it if another arrives - fine for a single PR, but our
+      # demo Action opens two PRs back-to-back, and the second one was evicting
+      # the first's still-pending execute job before it ever started. queue: max
+      # lets pending runs queue up (in order) against the shared tfstate instead
+      # of being dropped.
+      queue: max
 
     steps:
       - uses: actions/checkout@v6
