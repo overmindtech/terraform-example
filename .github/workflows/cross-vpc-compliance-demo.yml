@@ -1,10 +1,10 @@
-name: Signals Demo - Create Needle PRs
+name: Cross-VPC Compliance Demo - Create Needle PRs
 
 on:
   workflow_dispatch: {}
 
 concurrency:
-  group: signals-demo
+  group: cross-vpc-compliance-demo
   cancel-in-progress: false
 
 jobs:
