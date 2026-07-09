@@ -24,11 +24,9 @@ set -euo pipefail
 # creating a fresh pair of demo PRs so only this run's changes remain
 # afterwards. --keep N keeps the N most-recently-created matches instead.
 #
-# Requires: the overmind CLI, jq, curl
+# Requires: the overmind CLI, jq, curl, python3
 # Requires OVM_API_KEY with the "changes:write" scope (the same scope
-# already used by start-change/end-change/submit-plan). Not yet tested
-# end-to-end since no OVM_API_KEY is available in the environment this was
-# written in - run with --dry-run first.
+# already used by start-change/end-change/submit-plan).
 
 APP="https://app.overmind.tech"
 TITLE_PATTERN="narrow internal ingress"
@@ -59,7 +57,10 @@ MATCHES="$(jq -s --arg pattern "$TITLE_PATTERN" '
 
 MATCH_COUNT="$(jq 'length' <<<"$MATCHES")"
 echo "Found $MATCH_COUNT change(s) matching /$TITLE_PATTERN/i:"
-jq -r '.[] | "  - \(.metadata.createdAt)  \(.properties.title)  (uuid b64: \(.metadata.UUID // "?"))"' <<<"$MATCHES"
+# NB: .metadata.UUID here is the CLI's human-readable hyphenated UUID string
+# (list-changes renders it via the SDK's ToMap(), not raw proto JSON) - it is
+# NOT the base64 the raw DeleteChange call below needs. See uuid_to_base64().
+jq -r '.[] | "  - \(.metadata.createdAt)  \(.properties.title)  (uuid: \(.metadata.UUID // "?"))"' <<<"$MATCHES"
 
 TO_DELETE="$(jq -c --argjson keep "$KEEP" '.[$keep:]' <<<"$MATCHES")"
 DELETE_COUNT="$(jq 'length' <<<"$TO_DELETE")"
@@ -71,30 +72,62 @@ fi
 
 echo "Deleting $DELETE_COUNT change(s), keeping $KEEP most-recent match(es)..."
 
-# The CLI never prints the token it authenticates with internally, so this
-# is the one bit of auth we have to redo ourselves for the delete call.
-API_URL="$(curl -sf "$APP/api/public/instance-data" | jq -r '.api_url')"
-TOKEN="$(curl -sf -X POST "$API_URL/apikeys.ApiKeyService/ExchangeKeyForToken" \
-  -H "Content-Type: application/json" -H "Connect-Protocol-Version: 1" \
-  -d "{\"apiKey\": \"$OVM_API_KEY\"}" | jq -r '.accessToken')"
+if [[ "$DRY_RUN" != "true" ]]; then
+  # The CLI never prints the token it authenticates with internally, so this
+  # is the one bit of auth we have to redo ourselves for the delete call.
+  # Skipped entirely in --dry-run so a dry run never needs a delete-capable
+  # key, just something that can list.
+  API_URL="$(curl -sf "$APP/api/public/instance-data" | jq -r '.api_url')"
+  TOKEN="$(curl -sf -X POST "$API_URL/apikeys.ApiKeyService/ExchangeKeyForToken" \
+    -H "Content-Type: application/json" -H "Connect-Protocol-Version: 1" \
+    -d "{\"apiKey\": \"$OVM_API_KEY\"}" | jq -r '.accessToken')"
 
-if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
-  echo "Failed to exchange OVM_API_KEY for a token" >&2
-  exit 1
+  if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+    echo "Failed to exchange OVM_API_KEY for a token" >&2
+    exit 1
+  fi
 fi
 
-echo "$TO_DELETE" | jq -c '.[]' | while read -r change; do
-  UUID_B64="$(jq -r '.metadata.UUID' <<<"$change")"
+# DeleteChangeRequest.UUID is a proto `bytes` field, so the raw Connect+JSON
+# call needs it base64-encoded - convert the CLI's hyphenated string back to
+# the raw 16 bytes first.
+uuid_to_base64() {
+  python3 -c "import sys, uuid, base64; print(base64.b64encode(uuid.UUID(sys.argv[1]).bytes).decode())" "$1"
+}
+
+FAILURES=0
+RESPONSE_FILE="$(mktemp)"
+trap 'rm -f "$RESPONSE_FILE"' EXIT
+
+# Read from a process substitution rather than piping into the while loop:
+# piping meant a failure in the loop body raced against jq still writing
+# more output, which surfaced as a confusing "jq: broken pipe" error on top
+# of whatever actually failed.
+while IFS= read -r change; do
+  UUID_STR="$(jq -r '.metadata.UUID' <<<"$change")"
   TITLE="$(jq -r '.properties.title' <<<"$change")"
 
   if [[ "$DRY_RUN" == "true" ]]; then
-    echo "  [dry-run] would delete: $TITLE"
+    echo "  [dry-run] would delete: $TITLE ($UUID_STR)"
     continue
   fi
 
-  curl -sf -X POST "$API_URL/changes.ChangesService/DeleteChange" \
+  UUID_B64="$(uuid_to_base64 "$UUID_STR")"
+
+  HTTP_STATUS="$(curl -s -o "$RESPONSE_FILE" -w '%{http_code}' -X POST "$API_URL/changes.ChangesService/DeleteChange" \
     -H "Content-Type: application/json" -H "Connect-Protocol-Version: 1" \
     -H "Authorization: Bearer $TOKEN" \
-    -d "{\"UUID\": \"$UUID_B64\"}" >/dev/null
-  echo "  deleted: $TITLE"
-done
+    -d "{\"UUID\": \"$UUID_B64\"}")"
+
+  if [[ "$HTTP_STATUS" == "200" ]]; then
+    echo "  deleted: $TITLE ($UUID_STR)"
+  else
+    echo "  FAILED to delete: $TITLE ($UUID_STR) - HTTP $HTTP_STATUS: $(cat "$RESPONSE_FILE")" >&2
+    FAILURES=$((FAILURES + 1))
+  fi
+done < <(jq -c '.[]' <<<"$TO_DELETE")
+
+if [[ "$FAILURES" -gt 0 ]]; then
+  echo "$FAILURES deletion(s) failed" >&2
+  exit 1
+fi
