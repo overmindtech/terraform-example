@@ -37,6 +37,14 @@ jobs:
           version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Add Overmind CLI to PATH
+        run: |
+          # install-cli only extracts the binary to ./overmindtech/overmind,
+          # it doesn't put it on PATH (that's only done implicitly for the
+          # other overmindtech/actions/* composite actions, which reference
+          # it by relative path directly).
+          echo "$GITHUB_WORKSPACE/overmindtech" >> "$GITHUB_PATH"
+
       - name: Delete stale Overmind changes from previous demo runs
         env:
           OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
