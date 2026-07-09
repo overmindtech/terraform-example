@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   cleanup-old-branches:
-    name: Delete stale demo branches
+    name: Delete stale demo branches and changes
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -31,6 +31,21 @@ jobs:
                 echo "Deleting stale branch: $branch"
                 git push origin --delete "$branch" || echo "Could not delete $branch (may already be gone)"
               done
+
+      - uses: overmindtech/actions/install-cli@main
+        with:
+          version: latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete stale Overmind changes from previous demo runs
+        env:
+          OVM_API_KEY: ${{ secrets.OVM_API_KEY }}
+        run: |
+          # Wipe every change from previous runs so that, once this run's
+          # two PRs are created below, they're the only "narrow internal
+          # ingress" changes left in Overmind - keeps the demo tidy when
+          # presenting.
+          .github/scripts/overmind-cleanup-changes.sh --keep 0
 
   create-prs:
     name: Create needle PRs (no-knowledge + with-knowledge)
