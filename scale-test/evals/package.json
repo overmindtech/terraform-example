@@ -13,7 +13,7 @@
     "test:validate": "promptfoo eval --help > /dev/null && echo 'Config valid'"
   },
   "dependencies": {
-    "promptfoo": "^0.121.0"
+    "promptfoo": "^0.122.0"
   },
   "engines": {
     "node": ">=20.0.0"
