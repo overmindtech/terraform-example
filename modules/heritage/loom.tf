@@ -433,7 +433,7 @@ resource "aws_cloudfront_origin_request_policy" "headers_based_policy" {
 
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
-  version = "7.5.0"
+  version = "7.6.0"
 
   cluster_name = "example-${var.example_env}"
 
